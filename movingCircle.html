@@ -4,9 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Moving Circle</title>
+  <!-- The canvas BG color can be changed using 'background-color' -->
   <style>
     canvas {
-      background-color: #00aeef;
+      background-color: #FFFFFF; 
       display: block;
       margin: 0 auto;
     }
@@ -23,12 +24,13 @@
 
   // Circle class definition
   class Circle {
-    constructor(x, y, radius, dx, dy) {
+    constructor(x, y, radius, dx, dy, colorHex='#000000') { // colorHex has a default value of #000000 (black), unless a parameter is provided, it will use #000000.
       this.x = x;
       this.y = y;
       this.radius = radius;
       this.dx = dx;
       this.dy = dy;
+      this.colorHex = colorHex;
       // ChatGPT helped me debugging this step, as when the circle was converted to a class, it wasn't showing correctly.
       this.ctx = ctx;
     }
@@ -38,7 +40,7 @@
       this.ctx.clearRect(0, 0, canvas.width, canvas.height); // Now canvas is defined
       this.ctx.beginPath();
       this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      this.ctx.fillStyle = '#0095DD';
+      this.ctx.fillStyle = this.colorHex;
       this.ctx.fill();
       this.ctx.closePath();
     }
@@ -63,11 +65,11 @@
   }
 
   // Create an instance of the Circle class
-  let myCircle = new Circle(canvas.width / 2, canvas.height / 2, 20, 0, 3);
+  let newCircle = new Circle(canvas.width / 2, canvas.height / 2, 20, 0, 3,colorHex='#F5C6B3'); // Tested with a random color (turns out to be Beige-ish color)
 
   // Function to animate the circle
   function animate() {
-    myCircle.updatePosition(); // Update position and redraw circle
+    newCircle.updatePosition(); // Update position and redraw circle
     requestAnimationFrame(animate); // Keep the animation going
   }
 
