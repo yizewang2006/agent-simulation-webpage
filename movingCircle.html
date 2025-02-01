@@ -1,73 +1,78 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moving Circle</title>
-    <style>
-        canvas {
-            background-color: #f0f0f0;
-            display: block;
-            margin: 0 auto;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moving Circle</title>
+  <style>
+    canvas {
+      background-color: #00aeef;
+      display: block;
+      margin: 0 auto;
+    }
+  </style>
 </head>
 <body>
 
 <canvas id="canvasOne" width="500" height="500"></canvas>
 
 <script>
-// Circle class definition
-class Circle {
+  // Declare the global canvas variable
+  const canvas = document.getElementById('canvasOne');
+  const ctx = canvas.getContext('2d'); // global context, used by constructor
+
+  // Circle class definition
+  class Circle {
     constructor(x, y, radius, dx, dy) {
-        this.x = x;
-        this.y = y;
-        this.radius = radius;
-        this.dx = dx;
-        this.dy = dy;
-        this.ctx = document.getElementById('canvasOne').getContext('2d');
+      this.x = x;
+      this.y = y;
+      this.radius = radius;
+      this.dx = dx;
+      this.dy = dy;
+      // ChatGPT helped me debugging this step, as when the circle was converted to a class, it wasn't showing correctly.
+      this.ctx = ctx;
     }
 
     // Method to draw the circle
     draw() {
-        this.ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas before each frame
-        this.ctx.beginPath();
-        this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        this.ctx.fillStyle = '#0095DD';
-        this.ctx.fill();
-        this.ctx.closePath();
+      this.ctx.clearRect(0, 0, canvas.width, canvas.height); // Now canvas is defined
+      this.ctx.beginPath();
+      this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      this.ctx.fillStyle = '#0095DD';
+      this.ctx.fill();
+      this.ctx.closePath();
     }
 
     // Method to update the position of the circle
     updatePosition() {
-        this.x += this.dx;
-        this.y += this.dy;
-        this.bounceOffTheWall();
-        this.draw();
+      this.x += this.dx;
+      this.y += this.dy;
+      this.bounceOffTheWall();
+      this.draw();
     }
 
     // Method to bounce the circle off the walls
     bounceOffTheWall() {
-        if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
-            this.dx = -this.dx;  // Reverse horizontal direction
-        }
-        if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
-            this.dy = -this.dy;  // Reverse vertical direction
-        }
+      if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
+        this.dx = -this.dx;  // Reverse horizontal direction
+      }
+      if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
+        this.dy = -this.dy;  // Reverse vertical direction
+      }
     }
-}
+  }
 
-// Create an instance of the Circle class
-let myCircle = new Circle(canvas.width / 2, canvas.height / 2, 20, 0, 3);
+  // Create an instance of the Circle class
+  let myCircle = new Circle(canvas.width / 2, canvas.height / 2, 20, 0, 3);
 
-// Function to animate the circle
-function animate() {
+  // Function to animate the circle
+  function animate() {
     myCircle.updatePosition(); // Update position and redraw circle
     requestAnimationFrame(animate); // Keep the animation going
-}
+  }
 
-// Start the animation loop
-animate();
+  // Start the animation loop
+  animate();
 </script>
 
 </body>
