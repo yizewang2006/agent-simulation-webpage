@@ -37,12 +37,12 @@
 
     // Method to draw the circle
     draw() {
-      this.ctx.clearRect(0, 0, canvas.width, canvas.height); // Now canvas is defined
       this.ctx.beginPath();
       this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
       this.ctx.fillStyle = this.colorHex;
       this.ctx.fill();
       this.ctx.closePath();
+      // The original clearing canvas function before each frame is moved to animate().
     }
 
     // Method to update the position of the circle
@@ -65,11 +65,35 @@
   }
 
   // Create an instance of the Circle class
-  let newCircle = new Circle(canvas.width / 2, canvas.height / 2, 25, 50, 3,colorHex='#F5C6B3'); // Tested with a random color (turns out to be Beige-ish color)
+  let circleOne = new Circle(canvas.width / 2, canvas.height / 2, 25, 50, 3,colorHex='#F5C6B3'); // Tested with a random color (turns out to be Beige-ish color)
+
+  // Let's create a list of circles
+  const circles = [];
+
+  for (let i = 0; i < 5; i++) { // Adding circles with random position and velocity.
+    // Ensure the circle appears fully within the canvas:
+    const radius = 25;
+    const x = Math.random() * (canvas.width - radius * 2) + radius;
+    const y = Math.random() * (canvas.height - radius * 2) + radius;
+    // Random velocities between -5 and 5 (excluding 0)
+    const dx = (Math.random() - 0.5) * 10;
+    const dy = (Math.random() - 0.5) * 10;
+
+    circles.push(new Circle(x, y, radius, dx, dy));
+  }
+
+  circles.push(circleOne); // Let's also add the circleOne into this list.
 
   // Function to animate the circle
   function animate() {
-    newCircle.updatePosition(); // Update position and redraw circle
+    //circleOne.updatePosition(); --> Instead of update position and redraw CircleOne, do the same thing for each circle in circles[]
+
+    // Clear the canvas once per frame
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Loop through all circles and update their positions
+    circles.forEach(circle => circle.updatePosition());
+
     requestAnimationFrame(animate); // Keep the animation going
   }
 
