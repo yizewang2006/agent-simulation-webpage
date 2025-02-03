@@ -51,6 +51,7 @@
       this.y += this.dy;
       this.bounceOffTheWall();
       this.draw();
+      this.checkBumpingStatus();
     }
 
     // Method to bounce the circle off the walls
@@ -61,6 +62,11 @@
       if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
         this.dy = -this.dy;  // Reverse vertical direction
       }
+    }
+
+    // Method to check if bumped to other 'agents'
+    checkBumpingStatus() {
+      // TODO
     }
   }
 
