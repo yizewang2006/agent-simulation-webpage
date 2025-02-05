@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Moving Circle</title>
-  <!-- The canvas BG color can be changed using 'background-color' -->
   <style>
     canvas {
       background-color: #FFFFFF; 
@@ -17,104 +16,51 @@
 
 <canvas id="canvasOne" width="750" height="750"></canvas>
 
+<!-- Define the global canvas and context before loading circle.js -->
 <script>
-  // Declare the global canvas variable
+  // Global definitions that will be used by Circle
   const canvas = document.getElementById('canvasOne');
-  const ctx = canvas.getContext('2d'); // global context, used by constructor
+  const ctx = canvas.getContext('2d');
+</script>
 
-  // Circle class definition
-  class Circle {
-    constructor(x, y, radius, dx, dy, colorHex='#000000') { // colorHex has a default value of #000000 (black), unless a parameter is provided, it will use #000000.
-      this.x = x;
-      this.y = y;
-      this.radius = radius;
-      this.dx = dx;
-      this.dy = dy;
-      this.colorHex = colorHex;
-      // ChatGPT helped me debugging this step, as when the circle was converted to a class, it wasn't showing correctly.
-      this.ctx = ctx;
-    }
+<!-- Load the Circle class from circle.js -->
+<script src="circle.js"></script>
 
-    // Method to draw the circle
-    draw() {
-      this.ctx.beginPath();
-      this.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-      this.ctx.fillStyle = this.colorHex;
-      this.ctx.fill();
-      this.ctx.closePath();
-      // The original clearing canvas function before each frame is moved to animate().
-    }
+<!-- Main script that uses Circle -->
+<script>
+  // Create an instance of the Circle class with a specific color.
+  // Note: We pass the literal color string '#F5C6B3'; no accidental global variable creation.
+  let circleOne = new Circle(canvas.width / 2, canvas.height / 2, 25, 50, 3, '#F5C6B3');
 
-    // Method to update the position of the circle
-    updatePosition() {
-      this.x += this.dx;
-      this.y += this.dy;
-      this.bounceOffTheWall();
-      this.draw();
-      this.checkBumpingStatus();
-    }
-
-    // Method to bounce the circle off the walls
-    bounceOffTheWall() {
-      if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
-        this.dx = -this.dx;  // Reverse horizontal direction
-      }
-      if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
-        this.dy = -this.dy;  // Reverse vertical direction
-      }
-    }
-
-    // Method to check if bumped to other 'agents'
-    checkBumpingStatus() {
-      // TODO
-    }
-  }
-
-  // Create an instance of the Circle class
-  let circleOne = new Circle(canvas.width / 2, canvas.height / 2, 25, 50, 3,colorHex='#F5C6B3'); // Tested with a random color (turns out to be Beige-ish color)
-
-  // Let's create a list of circles
+  // Create a list of circles.
   const circles = [];
 
-  for (let i = 0; i < 5; i++) { // Adding circles with random position and velocity.
-    // Ensure the circle appears fully within the canvas:
+  // Create 5 circles with random positions and velocities that use the default color '#000000'
+  for (let i = 0; i < 5; i++) {
     const radius = 25;
     const x = Math.random() * (canvas.width - radius * 2) + radius;
     const y = Math.random() * (canvas.height - radius * 2) + radius;
-    // Random velocities between -5 and 5 (excluding 0)
     const dx = (Math.random() - 0.5) * 10;
     const dy = (Math.random() - 0.5) * 10;
-
     circles.push(new Circle(x, y, radius, dx, dy));
   }
 
-  circles.push(circleOne); // Let's also add the circleOne into this list.
+  // Also add the explicitly colored circle.
+  circles.push(circleOne);
 
-  // Function to animate the circle
+  // Animation function that updates and draws all circles.
   function animate() {
-    //circleOne.updatePosition(); --> Instead of update position and redraw CircleOne, do the same thing for each circle in circles[]
-
-    // Clear the canvas once per frame
+    // Clear the canvas once per frame.
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Loop through all circles and update their positions
+    // Update position and redraw each circle.
     circles.forEach(circle => circle.updatePosition());
 
-    requestAnimationFrame(animate); // Keep the animation going
+    requestAnimationFrame(animate);
   }
 
-  // Start the animation loop
+  // Start the animation loop.
   animate();
-
-  /* To Dr. Le: I am assuming "agents" (circles) cannot run into each other.
-      I guess the next function I can try to implement is let agents bounce
-      each other off when they "meet". Method in my mind is to add a method
-      like checkBumpingStatus() or something like that in Circle() class, where it will loop
-      through all circles and check their position real time. I don't know
-      where it will be good for computer as it may consume a lot of resources
-      when later we have a LOT of agents. Please let me know!
-  */
-
 </script>
 
 </body>
