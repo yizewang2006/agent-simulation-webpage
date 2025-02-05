@@ -37,14 +37,16 @@
   const circles = [];
 
   // Create 5 circles with random positions and velocities that use the default color '#000000'
-  for (let i = 0; i < 1000; i++) {
+  for (let i = 0; i < 5; i++) {
     const radius = 5;
     const x = Math.random() * (canvas.width - radius * 2) + radius;
     const y = Math.random() * (canvas.height - radius * 2) + radius;
     const dx = (Math.random() - 0.5) * 10;
     const dy = (Math.random() - 0.5) * 10;
-    circles.push(new Circle(x, y, radius, dx, dy));
-  }
+    
+    // Add a FOV radius of 100 pixels and an angle of 60 degrees (PI/3)
+    circles.push(new Circle(x, y, radius, dx, dy, "#000000", 100, Math.PI / 3));
+}
 
   // Also add the explicitly colored circle.
   circles.push(circleOne);
