@@ -22,7 +22,8 @@ class Circle {
     updatePosition() {
         this.x += this.dx;
         this.y += this.dy;
-        this.bounceOffTheWall();
+        //this.bounceOffTheWall();
+        this.warpIfNeeded();
         this.draw();
     }
 
@@ -33,6 +34,22 @@ class Circle {
         }
         if (this.y + this.radius > canvas.height || this.y - this.radius < 0) {
             this.dy = -this.dy;
+        }
+    }
+    checkBumpStatus(){
+        // More like a future task
+    }
+    warpIfNeeded() {
+        if (this.x - this.radius > canvas.width) { // Right edge detection
+            this.x = -this.radius; // Move to the left edge
+        } else if (this.x + this.radius < 0) { // Left edge detection
+            this.x = canvas.width + this.radius; // Move to the right edge
+        }
+    
+        if (this.y - this.radius > canvas.height) { // Lower edge detection
+            this.y = -this.radius; // Move to the top edge
+        } else if (this.y + this.radius < 0) { // Upper edge detection
+            this.y = canvas.height + this.radius; // Move to the bottom edge
         }
     }
 }

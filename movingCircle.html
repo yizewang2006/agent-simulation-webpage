@@ -9,6 +9,7 @@
       background-color: #FFFFFF; 
       display: block;
       margin: 0 auto;
+      border: 2px solid black; /* black border */
     }
   </style>
 </head>
@@ -30,14 +31,14 @@
 <script>
   // Create an instance of the Circle class with a specific color.
   // Note: We pass the literal color string '#F5C6B3'; no accidental global variable creation.
-  let circleOne = new Circle(canvas.width / 2, canvas.height / 2, 25, 50, 3, '#F5C6B3');
+  let circleOne = new Circle(canvas.width / 2, canvas.height / 2, radius=5, 3, 3, '#F5C6B3');
 
   // Create a list of circles.
   const circles = [];
 
   // Create 5 circles with random positions and velocities that use the default color '#000000'
-  for (let i = 0; i < 5; i++) {
-    const radius = 25;
+  for (let i = 0; i < 1000; i++) {
+    const radius = 5;
     const x = Math.random() * (canvas.width - radius * 2) + radius;
     const y = Math.random() * (canvas.height - radius * 2) + radius;
     const dx = (Math.random() - 0.5) * 10;
