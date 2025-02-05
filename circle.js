@@ -1,4 +1,3 @@
-// circle.js
 class Circle {
     constructor(x, y, radius, dx, dy, colorHex = '#000000') {
     this.x = x;
