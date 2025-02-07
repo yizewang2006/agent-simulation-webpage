@@ -33,7 +33,7 @@ class Circle {
     drawFOVCone() {
         let angle = Math.atan2(this.dy, this.dx); // Get movement direction
         let startAngle = angle - this.fovAngle / 2; // Start angle: left of that circle
-        let endAngle = angle + this.fovAngle / 2; // End angle: 
+        let endAngle = angle + this.fovAngle / 2; // End angle: right of that circle
 
         ctx.beginPath();
         ctx.moveTo(this.x, this.y);
