@@ -45,7 +45,7 @@
     const dy = (Math.random() - 0.5) * 10;
     
     // Add a FOV radius of 100 pixels and an angle of 60 degrees (PI/3)
-    circles.push(new Circle(x, y, radius, dx, dy, "#000000", 100, Math.PI / 3));
+    circles.push(new Circle(x, y, radius, dx, dy, "#000000", 100, 5 * Math.PI / 6));
 }
 
   // Also add the explicitly colored circle.
@@ -64,6 +64,12 @@
 
   // Start the animation loop.
   animate();
+
+// TO
+/*
+Make circle position into a class. DONE
+refer to pictures "virtual agents"
+*/
 </script>
 
 </body>
