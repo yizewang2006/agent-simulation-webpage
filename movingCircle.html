@@ -30,12 +30,12 @@
 <!-- Main script that uses Circle -->
 <script>
   // Create an instance of the Circle class with a specific color.
-  // Note: We pass the literal color string '#F5C6B3'; no accidental global variable creation.
-  let circleOne = new Circle(canvas.width / 2, canvas.height / 2, radius=5, 3, 3, '#F5C6B3');
+  let testAgent = new Circle(canvas.width / 2, canvas.height / 2, radius=5, dx=0, dy=0, '#F5C6B3');
 
   // Create a list of circles.
   const circles = [];
 
+  /*
   // Create 5 circles with random positions and velocities that use the default color '#000000'
   for (let i = 0; i < 5; i++) {
     const radius = 5;
@@ -47,9 +47,15 @@
     // Add a FOV radius of 100 pixels and an angle of 60 degrees (PI/3)
     circles.push(new Circle(x, y, radius, dx, dy, "#000000", 100, 5 * Math.PI / 6));
 }
+  */
 
-  // Also add the explicitly colored circle.
-  circles.push(circleOne);
+  // Also add the explicitly colored circle. 
+  // This step is testing only.
+  circles.push(testAgent);
+
+  // Set speed to 0
+  testAgent.dy = 0;
+  testAgent.dx = 1;
 
   // Animation function that updates and draws all circles.
   function animate() {
@@ -65,7 +71,7 @@
   // Start the animation loop.
   animate();
 
-// TO
+// TODO
 /*
 Make circle position into a class. DONE
 refer to pictures "virtual agents"
