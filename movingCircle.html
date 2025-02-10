@@ -35,19 +35,22 @@
   // Create a list of circles.
   const circles = [];
 
-  /*
+  
   // Create 5 circles with random positions and velocities that use the default color '#000000'
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 1; i++) {
     const radius = 5;
     const x = Math.random() * (canvas.width - radius * 2) + radius;
     const y = Math.random() * (canvas.height - radius * 2) + radius;
-    const dx = (Math.random() - 0.5) * 10;
-    const dy = (Math.random() - 0.5) * 10;
+    // const dx = (Math.random() - 0.5) * 10;
+    // const dy = (Math.random() - 0.5) * 10;
+
+    const dx = 10;
+    const dy = 0;
     
     // Add a FOV radius of 100 pixels and an angle of 60 degrees (PI/3)
     circles.push(new Circle(x, y, radius, dx, dy, "#000000", 100, 5 * Math.PI / 6));
-}
-  */
+  }
+  
 
   // Also add the explicitly colored circle. 
   // This step is testing only.
@@ -55,7 +58,7 @@
 
   // Set speed to 0
   testAgent.dy = 0;
-  testAgent.dx = 1;
+  testAgent.dx = -1;
 
   // Animation function that updates and draws all circles.
   function animate() {

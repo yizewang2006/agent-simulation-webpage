@@ -44,40 +44,13 @@ class Circle {
     // Method to update the position of the circle
     updatePosition() {
         // FIX: Updated to use the Circle's dx and dy, not this.position.dx and this.position.dy.
-        this.position.add(this.dx, this.dy);
-        this.warpIfNeeded();
-        this.draw();
+        this.warpIfNeeded();  // Warp first before applying movement
+        this.position.add(this.dx, this.dy); // Apply movement after wrapping
+        this.draw();  // Then draw at the new position
     }
 
     // Method to draw the FOV Cone
     drawFOVCone() {
-        /*
-        this.drawFOVAtOffset(new Offset(0,0)); // Real Agent's FOV, with NO offset.
-
-        // Horizontal Boundary
-        let horizontalOffset = 250;
-
-        // Two conditions: if the position of the agent is at the left/right border, trigger the "warp function", and virtual agents will draw their FOVs
-        // I used ChatGPT to debug my code, where it didn't work.
-
-        
-        if (this.position.x + this.radius + this.fovRadius > canvas.width) {
-            // Compute how far the FOV extends past the right edge.
-            const overlap = (this.position.x + this.radius + this.fovRadius) - canvas.width;
-            // Instead of shifting by the full canvas width, we shift by just enough
-            // so that the FOV's left-most drawn point on the virtual copy aligns with the edge.
-            horizontalOffset = -canvas.width + overlap;
-        } else if (this.position.x - (this.radius + this.fovRadius) < 0) {
-            const overlap = (this.radius + this.fovRadius) - this.position.x;
-            horizontalOffset = canvas.width - overlap;
-        }
-        
-
-        if (horizontalOffset != 0) {
-            this.drawFOVAtOffset(new Offset(horizontalOffset, 0));
-        }
-        */
-
         // First, draw the virtual FOV if needed.
         let horizontalOffset = 0;
         
@@ -116,6 +89,7 @@ class Circle {
     }
 
     drawFOVAtOffset(offset) {
+        /*
         // Calculate the new position where the FOV should be drawn. These are based on agent's position, plus an "offset"
         const x = this.position.x + offset.x;
         const y = this.position.y + offset.y;
@@ -130,6 +104,26 @@ class Circle {
         ctx.moveTo(this.position.x, this.position.y);
         ctx.arc(this.position.x, this.position.y, this.fovRadius, startAngle, endAngle);
         ctx.fillStyle = "rgba(0, 0, 255, 0.2)"; // Light blue transparent FOV
+        ctx.fill();
+        ctx.closePath();
+
+        */
+
+        // ChatGPT debugged this step.
+
+        // Calculate the new position where the FOV should be drawn.
+        const x = this.position.x + offset.x;
+        const y = this.position.y + offset.y;
+
+        // Get movement direction
+        let angle = Math.atan2(this.dy, this.dx); 
+        let startAngle = angle - this.fovAngle / 2; 
+        let endAngle = angle + this.fovAngle / 2; 
+
+        ctx.beginPath();
+        ctx.moveTo(x, y); // Use offset-adjusted position
+        ctx.arc(x, y, this.fovRadius, startAngle, endAngle);
+        ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
         ctx.fill();
         ctx.closePath();
     }
