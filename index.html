@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Moving Circle</title>
+  <title>Agent Simulation Project</title>
   <style>
     canvas {
       background-color: #FFFFFF; 
@@ -15,7 +15,7 @@
 </head>
 <body>
 
-<canvas id="canvasOne" width="750" height="750"></canvas>
+<canvas id="canvasOne" width="500" height="500"></canvas>
 
 <!-- Define the global canvas and context before loading circle.js -->
 <script>
@@ -25,40 +25,62 @@
 </script>
 
 <!-- Load the Circle class from circle.js -->
-<script src="circle.js"></script>
+<script src="agent.js"></script>
 
 <!-- Main script that uses Circle -->
 <script>
-  // Create an instance of the Circle class with a specific color.
-  let testAgent = new Circle(canvas.width / 2, canvas.height / 2, radius=5, dx=0, dy=0, '#F5C6B3');
+  // Create a testing agent
+  let agentOne = new Agent(true, canvas.width / 2, canvas.height / 2, 5, 0, 0, '#F5C6B3', 100);
 
-  // Create a list of circles.
-  const circles = [];
-
+  // Create a list of circles.??????????????????
+  const agents = [];
   
   // Create 5 circles with random positions and velocities that use the default color '#000000'
-  for (let i = 0; i < 1; i++) {
+  /*
+  for (let i = 0; i < 3; i++) {
     const radius = 5;
     const x = Math.random() * (canvas.width - radius * 2) + radius;
     const y = Math.random() * (canvas.height - radius * 2) + radius;
-    // const dx = (Math.random() - 0.5) * 10;
-    // const dy = (Math.random() - 0.5) * 10;
-
-    const dx = 10;
-    const dy = 0;
+    const dxTest = (Math.random() - 0.5) * 5;
+    const dyTest = (Math.random() - 0.5) * 5;
     
     // Add a FOV radius of 100 pixels and an angle of 60 degrees (PI/3)
-    circles.push(new Circle(x, y, radius, dx, dy, "#000000", 100, 5 * Math.PI / 6));
+    agents.push(new Agent(false, x, y, radius, dxTest, dyTest, "#000000", 100, 5 * Math.PI / 6));
   }
-  
+  */
 
-  // Also add the explicitly colored circle. 
+  // Test the four corners.
+  const radius = 5;
+  const xPos = [
+    canvas.width * 0.1,  // left
+    canvas.width * 0.1,  // left
+    canvas.width * 0.9,  // right
+    canvas.width * 0.9   // right
+  ];
+  const yPos = [
+    canvas.height * 0.9, // bottom
+    canvas.height * 0.1, // top
+    canvas.height * 0.9, // bottom
+    canvas.height * 0.1  // top
+  ];
+
+  const dxTest = 0;
+  const dyTest = 0;
+
+  for (let j = 0; j < 4; j++) {
+    const x = xPos[j];
+    const y = yPos[j];
+    console.log("Creating agent", j, "at x:", x, "y:", y);
+
+    agents.push(new Agent(false, x, y, radius, dxTest, dyTest, "#000000", 100, 5 * Math.PI / 6));
+  }
+
   // This step is testing only.
-  circles.push(testAgent);
+  agents.push(agentOne);
 
   // Set speed to 0
-  testAgent.dy = 0;
-  testAgent.dx = -1;
+  agentOne.dy = -2;
+  agentOne.dx = -2;
 
   // Animation function that updates and draws all circles.
   function animate() {
@@ -66,19 +88,13 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // Update position and redraw each circle.
-    circles.forEach(circle => circle.updatePosition());
+    agents.forEach(agent => agent.updatePosition(agents));
 
     requestAnimationFrame(animate);
   }
 
   // Start the animation loop.
   animate();
-
-// TODO
-/*
-Make circle position into a class. DONE
-refer to pictures "virtual agents"
-*/
 </script>
 
 </body>
