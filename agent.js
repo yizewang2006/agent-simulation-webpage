@@ -173,37 +173,37 @@ class Agent {
         // Loop through all agents to check if they are within FOV
         agents.forEach(agent => {
             if (agent !== this) { // Don't detect self
-                let dx = agent.position.x - this.position.x;
-                let dy = agent.position.y - this.position.y;
-
-                // For those warped FOVS
-                if (dx > canvas.width / 2) { // X axis
-                    dx -= canvas.width;
-                } else if (dx < -canvas.width / 2) {
-                    dx += canvas.width;
+                let diffX = agent.position.x - this.position.x;
+                let diffY = agent.position.y - this.position.y;
+    
+                // Adjust for wrapping on the x-axis
+                if (diffX > canvas.width / 2) {
+                    diffX -= canvas.width;
+                } else if (diffX < -canvas.width / 2) {
+                    diffX += canvas.width;
                 }
                 
-                if (dy > canvas.height / 2) { // Y axis
-                    dy -= canvas.height;
-                } else if (dy < -canvas.height / 2) {
-                    dy += canvas.height;
+                // Adjust for wrapping on the y-axis
+                if (diffY > canvas.height / 2) {
+                    diffY -= canvas.height;
+                } else if (diffY < -canvas.height / 2) {
+                    diffY += canvas.height;
                 }
-
-
-                let distance = Math.sqrt(dx * dx + dy * dy);
+    
+                let distanceBetweenAgents = Math.sqrt(diffX * diffX + diffY * diffY);
                 
                 // Check if within FOV radius
-                if (distance <= this.fovRadius) {
-                    let angleToAgent = Math.atan2(dy, dx);
-                    let selfAngle = Math.atan2(this.dy, this.dx);
+                if (distanceBetweenAgents <= this.fovRadius) {
+                    let targetAngle = Math.atan2(diffY, diffX);
+                    let currentAgentAngle = Math.atan2(this.dy, this.dx);
                     // Default to 0 if there is no movement
-                    if (this.dx === 0 && this.dy === 0) selfAngle = 0;
+                    if (this.dx === 0 && this.dy === 0) currentAgentAngle = 0;
                     
-                    let angleDiff = Math.abs(selfAngle - angleToAgent);
-                    if (angleDiff > Math.PI) angleDiff = (2 * Math.PI) - angleDiff;
+                    let angleDifference = Math.abs(currentAgentAngle - targetAngle);
+                    if (angleDifference > Math.PI) angleDifference = (2 * Math.PI) - angleDifference;
                     
                     // Check if within FOV angle
-                    if (angleDiff <= this.fovAngle / 2) {
+                    if (angleDifference <= this.fovAngle / 2) {
                         currentlyDetected.push(agent);
                         // Only change to red if this agent wasn't detected in the previous update
                         if (!this.detectedAgents.includes(agent)) {

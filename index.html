@@ -8,14 +8,14 @@
     canvas {
       background-color: #FFFFFF; 
       display: block;
-      margin: 0 auto;
-      border: 2px solid black; /* black border */
+      margin: 10 left;
+      border: 4px solid black; /* black border */
     }
   </style>
 </head>
 <body>
 
-<canvas id="canvasOne" width="500" height="500"></canvas>
+<canvas id="canvasOne" width="750" height="750"></canvas>
 
 <!-- Define the global canvas and context before loading circle.js -->
 <script>
@@ -30,7 +30,7 @@
 <!-- Main script that uses Circle -->
 <script>
   // Create a testing agent
-  let agentOne = new Agent(true, canvas.width / 2, canvas.height / 2, 5, 0, 0, '#F5C6B3', 100);
+  let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#F5C6B3', 100);
 
   // Create a list of circles.??????????????????
   const agents = [];
@@ -77,10 +77,61 @@
 
   // This step is testing only.
   agents.push(agentOne);
-
   // Set speed to 0
-  agentOne.dy = -2;
-  agentOne.dx = -2;
+  agentOne.dy = 0;
+  agentOne.dx = 0;
+
+  // Add event listeners for dragging agentOne
+  let isDragging = false;
+  let dragOffset = { x: 0, y: 0 };
+
+  canvas.addEventListener('mousedown', function(e) { // Changed canvasOne to canvas
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Add a small buffer to the hit area (e.g., 2 pixels)
+    const hitBuffer = agentOne.radius;
+    const dist = Math.sqrt((mouseX - agentOne.position.x) ** 2 + (mouseY - agentOne.position.y) ** 2);
+    
+    if (dist < agentOne.radius + hitBuffer) {
+        isDragging = true;
+        dragOffset.x = agentOne.position.x - mouseX;
+        dragOffset.y = agentOne.position.y - mouseY;
+    }
+  });
+
+  canvas.addEventListener('mousemove', function(e) { // Changed canvasOne to canvas
+      if (isDragging) {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        agentOne.position.x = mouseX + dragOffset.x;
+        agentOne.position.y = mouseY + dragOffset.y;
+
+        // Prevention of user dragging the agent into the border
+        // Calculate the new position using the dragOffset
+        let newX = mouseX + dragOffset.x;
+        let newY = mouseY + dragOffset.y;
+        
+        // Prevent the agent from being dragged into the border by clamping:
+        // Ensure the agent's center stays at least 'agentOne.radius' pixels away from each edge.
+        newX = Math.max(agentOne.radius, Math.min(newX, canvas.width - agentOne.radius));
+        newY = Math.max(agentOne.radius, Math.min(newY, canvas.height - agentOne.radius));
+        
+        agentOne.position.x = newX;
+        agentOne.position.y = newY;
+      }
+  });
+
+  canvas.addEventListener('mouseup', function() { // Changed canvasOne to canvas
+      isDragging = false;
+  });
+
+  canvas.addEventListener('mouseleave', function() { // Changed canvasOne to canvas
+      isDragging = false;
+  });
 
   // Animation function that updates and draws all circles.
   function animate() {
@@ -96,6 +147,7 @@
   // Start the animation loop.
   animate();
 </script>
+
 
 </body>
 </html>
