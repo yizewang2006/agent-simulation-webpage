@@ -4,20 +4,148 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agent Simulation Project</title>
+  <!-- Include Roboto font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <!-- I find this font good looking, including it here. -->
+  <link href="https://db.onlinewebfonts.com/c/33bce88f104fedc26d91518f6d8b4ca3?family=LetoSans-Bold" rel="stylesheet">
+  <!-- Probably a bunch of CSS Codes, consulted ChatGPT for this-->
   <style>
+    /* Global font setting */
+    body {
+      font-family: 'LetoSans-Bold', sans-serif;;
+      margin: 0;
+      padding: 0;
+    }
+    /* Header styling, for the title*/
+    header h1 {
+      text-align: center;
+      font-family: 'LetoSans-Bold', sans-serif;
+      font-size: 5em;
+      font-weight: 700;
+      color: #333;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      margin: 0px;
+      padding: 10px;
+      background-color: beige;
+    }
+    header h2 {
+      text-align: center;
+      font-family: 'LetoSans-Bold', sans-serif;
+      font-size: 1.2em;
+      font-weight: 700;
+      color: #333;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      margin: 0;
+      background-color: beige;
+    }
+    .subtitle{
+      font-size: 1.2em; /* Smaller than the main title */
+      font-weight: 300;
+      color: #333;
+      margin-top: 0px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+    }
+    /* Container for canvas and GUI panel */
+    .container {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      width: 100%;
+      background-color: beige;
+      box-sizing: border-box;
+      padding: 10px;
+    }
+    /* Canvas styling */
     canvas {
       background-color: #FFFFFF; 
       display: block;
-      margin: 10 left;
-      border: 4px solid black; /* black border */
+      margin: 10px; /* Margin from all sides */
+      border: 4px solid black; /* Black border */
+    }
+    /* GUI panel styling */
+    .gui-panel {
+      flex: 1;
+      margin: 10px;
+      padding: 10px;
+      border: 2px solid #333;       /* Panel border remains */
+      background-color: #f0f0f0;   /* Panel background remains */
+    }
+    /* Style for subtitle' */
+    .subtitle-left {
+      margin: 10px 0;      /* Small vertical margin */
+      padding: 0;          /* Or any padding you prefer */
+      border: black;        /* No border */
+      background-color: transparent;  /* No background color */
+    }
+    /* Style for h2 in the gui-panel */
+    .gui-panel h2 {
+      text-align: center;
+      font-family: 'LetoSans-Bold', sans-serif;;
+      font-size: 1.5em;
+      font-weight: 700;
+      margin-bottom: 10px;
+      margin-top: 0px;
+    }
+    /* How much textboxes/elements are separated vertically in the gui panel */
+    .gui-panel div {
+      margin-bottom: 10px; /* Adjust the value to your preference */
+    }
+    /* Regular Style textbox */
+    input[type="text"] {
+      border: 1px solid #ccc;
+      border-radius: 5px; /* Rounded corners */
+      padding: 5px 10px;
+      transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease;
+    }
+    /* When focused (use try to text in this textbox), the style */
+    input[type="text"]:focus {
+      border-color: #66afe9;
+      box-shadow: 0 0 8px rgba(102, 175, 233, 0.6);
+      outline: none;
     }
   </style>
 </head>
 <body>
 
-<canvas id="canvasOne" width="750" height="750"></canvas>
+<header>
+  <h1 class="title">Welcome to Agent Simulation</h1>
+  <!-- "class" is just applying the styles defined above to this header2-->
+  <h2 class="subtitle">Dr. Hai Le, Yize Wang</h2>
+</header>
 
-<!-- Define the global canvas and context before loading circle.js -->
+<!-- Wrap the canvas and the GUI panel inside a container -->
+<div class="container">
+  <canvas id="canvasOne" width="750" height="750"></canvas>
+
+  <!-- GUI panel on the right side of the canvas -->
+  <div class="gui-panel">
+    <h2>Agent Controls</h2>
+    <h3 class="subtitle-left">Manage your agent's settings here</h3>
+    <!-- Display agentOne's current position -->
+    <div>
+      <label for="posX">Agent X:</label>
+      <input type="text" id="posX" readonly>
+    </div>
+    <div>
+      <label for="posY">Agent Y:</label>
+      <input type="text" id="posY" readonly>
+    </div>
+    <!-- Input field to change agentOne's color -->
+    <div>
+      <label for="agentColor">Agent Color:</label>
+      <input type="text" id="agentColor" placeholder="#F5C6B3">
+    </div>
+    <!-- Input field to change agentOne's angle -->
+    <div>
+      <label for="agentAngle">Agent Angle (deg):</label>
+      <input type="text" id="agentAngle" placeholder="Enter angle">
+    </div>
+    <button id="updateAgent">Update Agent</button>
+    <button id="generateRandomColor">Generate Random Color</button>
+  </div>
+
+<!--Start of the script, defining global canvas variable-->
 <script>
   // Global definitions that will be used by Circle
   const canvas = document.getElementById('canvasOne');
@@ -27,12 +155,12 @@
 <!-- Load the Circle class from circle.js -->
 <script src="agent.js"></script>
 
-<!-- Main script that uses Circle -->
+<!-- Main script that uses Agent (agent simulation) -->
 <script>
   // Create a testing agent
   let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#F5C6B3', 100);
 
-  // Create a list of circles.??????????????????
+  // Create a list of circles.
   const agents = [];
   
   // Create 5 circles with random positions and velocities that use the default color '#000000'
@@ -132,6 +260,34 @@
   canvas.addEventListener('mouseleave', function() { // Changed canvasOne to canvas
       isDragging = false;
   });
+
+  function updateGUI() {
+    document.getElementById('posX').value = agentOne.position.x.toFixed(2);
+    document.getElementById('posY').value = agentOne.position.y.toFixed(2);
+  }
+
+  document.getElementById('updateAgent').addEventListener('click', function() {
+  // Update agentOne's color if a value is provided
+  const newColor = document.getElementById('agentColor').value;
+  if (newColor) {
+    agentOne.colorHex = newColor;
+  }
+
+  // TODO: implement random color
+  
+  // Update agentOne's angle if a valid number is provided
+  const angleDeg = parseFloat(document.getElementById('agentAngle').value);
+  if (!isNaN(angleDeg)) {
+    // Maintain the current speed while changing direction
+    const speed = Math.sqrt(agentOne.dx * agentOne.dx + agentOne.dy * agentOne.dy) || 1; // For some reason, this "1" are determining whether the agent is moving or not upon changing the angle.
+    const angleRad = angleDeg * Math.PI / 180;
+    agentOne.dx = speed * Math.cos(angleRad);
+    agentOne.dy = speed * Math.sin(angleRad);
+  }
+  });
+
+  // Periodically update the GUI fields with agentOne's position
+  setInterval(updateGUI, 100);
 
   // Animation function that updates and draws all circles.
   function animate() {

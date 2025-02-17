@@ -34,6 +34,11 @@ class Agent {
         this.detectedAgents = [];
     }
 
+    generateRandomColor() {
+        const possibleColor = ["#000000", "#FF0000", "#00FF00", "#0000FF"]; // Now we have black, red, blue, and green
+        this.colorHex = possibleColor[Math.random[0, possibleColor.length]];
+    }
+
     // Method to draw the circle
     draw() {
         // Draw the circle itself and hollow.
@@ -128,25 +133,7 @@ class Agent {
     }
 
     drawFOVAtOffset(offset) {
-        /*
         // Calculate the new position where the FOV should be drawn. These are based on agent's position, plus an "offset"
-        const x = this.position.x + offset.x;
-        const y = this.position.y + offset.y;
-
-        // This went wrong at the first time, where I accidentally used this.position.x and this.position.y. 
-        // This part was originally from drawFOVCone() method. 
-        let angle = Math.atan2(this.dy, this.dx); // Get movement direction
-        let startAngle = angle - this.fovAngle / 2; // Start angle: left of that circle
-        let endAngle = angle + this.fovAngle / 2; // End angle: right of that circle
-
-        ctx.beginPath();
-        ctx.moveTo(this.position.x, this.position.y);
-        ctx.arc(this.position.x, this.position.y, this.fovRadius, startAngle, endAngle);
-        ctx.fillStyle = "rgba(0, 0, 255, 0.2)"; // Light blue transparent FOV
-        ctx.fill();
-        ctx.closePath();
-        */
-
         // ChatGPT debugged this
         // Calculate the new position where the FOV should be drawn.
         const x = this.position.x + offset.x;
