@@ -104,6 +104,25 @@
       box-shadow: 0 0 8px rgba(102, 175, 233, 0.6);
       outline: none;
     }
+    /* Defining button styles */
+    button {
+      background-color: #008CBA; /* Base color */
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px; /* Smooth, rounded corners */
+      transition: background-color 0.3s ease; /* Smooth transition on hover */
+      cursor: pointer;
+    }
+    /* Defining button styles when hovered over */
+    button:hover {
+      background-color: #005f73; /* Color when hovered */
+    }
+    /* When a button is clicked (or active) */
+    button:active {
+      background-color: #003f50; /* Even darker color when clicked */
+    }
   </style>
 </head>
 <body>
@@ -141,8 +160,17 @@
       <label for="agentAngle">Agent Angle (deg):</label>
       <input type="text" id="agentAngle" placeholder="Enter angle">
     </div>
-    <button id="updateAgent">Update Agent</button>
-    <button id="generateRandomColor">Generate Random Color</button>
+    <!-- Input speed textfield -->
+    <div>
+      <label for="agentSpeed">Agent Speed:</label>
+      <input type="text" id="agentSpeed" placeholder="Enter speed">
+    </div>
+    <div>
+      <button id="updateAgent">Update Agent</button>
+    </div>
+    <div>
+      <button id="generateRandomColor">Generate Random Color</button>
+    </div>
   </div>
 
 <!--Start of the script, defining global canvas variable-->
@@ -218,7 +246,7 @@
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     
-    // Add a small buffer to the hit area (e.g., 2 pixels)
+    // Add a small buffer to the hit area
     const hitBuffer = agentOne.radius;
     const dist = Math.sqrt((mouseX - agentOne.position.x) ** 2 + (mouseY - agentOne.position.y) ** 2);
     
@@ -266,23 +294,41 @@
     document.getElementById('posY').value = agentOne.position.y.toFixed(2);
   }
 
+  // Attach the generateRandomColor event listener once
+  document.getElementById('generateRandomColor').addEventListener('click', function() {
+    agentOne.generateRandomColor();
+    document.getElementById('agentColor').value = agentOne.colorHex; // Update the color hexcode in the textbox
+  });
+
+  // Update agents
   document.getElementById('updateAgent').addEventListener('click', function() {
   // Update agentOne's color if a value is provided
   const newColor = document.getElementById('agentColor').value;
   if (newColor) {
     agentOne.colorHex = newColor;
   }
-
-  // TODO: implement random color
   
+  // Movement script
+  // Two helper methods
+  function degreesToRadians(deg) {
+    return deg * Math.PI / 180;
+  }
+  function radiansToDegrees(rad) {
+    return rad * 180 / Math.PI;
+  }
+
   // Update agentOne's angle if a valid number is provided
   const angleDeg = parseFloat(document.getElementById('agentAngle').value);
   if (!isNaN(angleDeg)) {
-    // Maintain the current speed while changing direction
-    const speed = Math.sqrt(agentOne.dx * agentOne.dx + agentOne.dy * agentOne.dy) || 1; // For some reason, this "1" are determining whether the agent is moving or not upon changing the angle.
-    const angleRad = angleDeg * Math.PI / 180;
-    agentOne.dx = speed * Math.cos(angleRad);
-    agentOne.dy = speed * Math.sin(angleRad);
+    const angleRad = -degreesToRadians(angleDeg); // using helper method to 'correct' angle to be intuitive, which is add a negative sign. ChatGPT was wrong.
+    agentOne.angle = angleRad;
+  }
+  
+  // Update agentOne's speed if a valid number is provided
+  const speed = parseFloat(document.getElementById('agentSpeed').value);
+  if (!isNaN(speed)) {
+    agentOne.dx = speed * Math.cos(agentOne.angle);
+    agentOne.dy = speed * Math.sin(agentOne.angle);
   }
   });
 

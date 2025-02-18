@@ -19,13 +19,15 @@ class Offset {
 }
 
 class Agent {
-    constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6) { // Standard FOV = 150 degrees OR 5π/6
+    constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0) { // Standard FOV = 150 degrees OR 5π/6
         // Instead of separate x and y, we now use a Position() class
         this.drawFOV = drawFOV;
         this.position = new Position(x, y);
         this.radius = radius;
         this.dx = dx;
         this.dy = dy;
+        // 2.17 FIX: ANGLE INDEPENDENT OF dy & dx
+        this.angle = angle; // We have now set the angle to be independent of dy & dx
         this.colorHex = colorHex;  // Default color
         this.originalColor = colorHex; // Store original color
         this.fovRadius = fovRadius; // FOV range of detection
@@ -35,8 +37,20 @@ class Agent {
     }
 
     generateRandomColor() {
-        const possibleColor = ["#000000", "#FF0000", "#00FF00", "#0000FF"]; // Now we have black, red, blue, and green
-        this.colorHex = possibleColor[Math.random[0, possibleColor.length]];
+        const possibleColor = [
+            "#000000", // Black
+            "#FF0000", // Red
+            "#00FF00", // Green
+            "#0000FF", // Blue
+            "#FFFF00", // Yellow
+            "#FF00FF", // Magenta
+            "#00FFFF", // Cyan
+            "#FFA500", // Orange
+            "#800080", // Purple
+            "#FFC0CB"  // Pink
+          ];
+        const randomIndex = Math.floor(Math.random() * possibleColor.length); // ChatGPT told me to round it down?
+        this.colorHex = possibleColor[randomIndex];
     }
 
     // Method to draw the circle
@@ -50,7 +64,7 @@ class Agent {
         ctx.closePath();
 
         // Draw movement direction segment
-        const angle = Math.atan2(this.dy, this.dx);
+        const angle = this.angle;
         const segmentLength = this.radius * 2
 
         const endX = this.position.x + Math.cos(angle) * segmentLength;
@@ -98,8 +112,8 @@ class Agent {
             verticalOffset = canvas.height + 2 * this.radius; // virtual copy should appear at the bottom.
         }
         
-        // Debug step, allows me to see the offset value in real time.
-        console.log(horizontalOffset, verticalOffset);
+        // Debug step, allows me to see the offset value in real time. This is no longer needed.
+        // console.log(horizontalOffset, verticalOffset);
 
         // Check offset in both directions.
         if (horizontalOffset !== 0) {
@@ -140,7 +154,7 @@ class Agent {
         const y = this.position.y + offset.y;
 
         // Get movement direction
-        let angle = Math.atan2(this.dy, this.dx); 
+        let angle = this.angle;
         let startAngle = angle - this.fovAngle / 2; 
         let endAngle = angle + this.fovAngle / 2; 
 
@@ -182,9 +196,8 @@ class Agent {
                 // Check if within FOV radius
                 if (distanceBetweenAgents <= this.fovRadius) {
                     let targetAngle = Math.atan2(diffY, diffX);
-                    let currentAgentAngle = Math.atan2(this.dy, this.dx);
-                    // Default to 0 if there is no movement
-                    if (this.dx === 0 && this.dy === 0) currentAgentAngle = 0;
+                    // 2.17 FIX: ANGLE INDEPENDENT OF dy & dx
+                    let currentAgentAngle = this.angle;
                     
                     let angleDifference = Math.abs(currentAgentAngle - targetAngle);
                     if (angleDifference > Math.PI) angleDifference = (2 * Math.PI) - angleDifference;
