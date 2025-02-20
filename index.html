@@ -233,10 +233,23 @@
         <input type="text" id="agentSpeed" placeholder="Enter speed" style="width: 100%; box-sizing: border-box;">
       </div>
     </div>
+
+    <!-- For FOV in Degrees and FOV's radius -->
+    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+      <div style="flex: 1; box-sizing: border-box;">
+        <label for="agentFOV">FOV (deg):</label>
+        <input type="text" id="agentFOV" placeholder="Enter FOV angle" style="width: 100%; box-sizing: border-box;">
+      </div>
+      <div style="flex: 1; box-sizing: border-box;">
+        <label for="agentFOVRadius">FOV Radius:</label>
+        <input type="text" id="agentFOVRadius" placeholder="Enter FOV Radius" style="width: 100%; box-sizing: border-box;">
+      </div>
+    </div>
     
-    <!-- Update Button Centered -->
-    <div class="center-button">
+    <!-- Two buttons -->
+    <div class="center-button" style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
       <button id="updateAgent">Update Agent</button>
+      <button id="resetAgent">Reset Agent</button>
     </div>
   </div>
     
@@ -440,6 +453,22 @@
   });
   */
 
+  document.getElementById('resetAgent').addEventListener('click', function() {
+  // Reset agent properties to default values
+  agentOne.angle = 0;
+  agentOne.dx = 0;
+  agentOne.dy = 0;
+  agentOne.fovAngle = 5 * Math.PI / 6;
+  agentOne.fovRadius = 100;
+  
+  // Reset the input fields to reflect the defaults
+  document.getElementById('agentAngle').value = 0;
+  document.getElementById('agentSpeed').value = 0;
+  // Convert 5π/6 radians to degrees for the input field (approx. 150°)
+  document.getElementById('agentFOV').value = 150;
+  document.getElementById('agentFOVRadius').value = 100;
+  });
+
   // Update agents
   document.getElementById('updateAgent').addEventListener('click', function() {
   // Update agentOne's color if a value is provided, replaced by a color swatch.
@@ -471,6 +500,25 @@
   if (!isNaN(speed)) {
     agentOne.dx = speed * Math.cos(agentOne.angle);
     agentOne.dy = speed * Math.sin(agentOne.angle);
+  }
+
+  // Update agentOne's FOV angle (convert from degrees to radians)
+  const fovDeg = parseFloat(document.getElementById('agentFOV').value);
+  if (!isNaN(fovDeg)) {
+    agentOne.fovAngle = degreesToRadians(fovDeg);
+  }
+
+  // Update agentOne's FOV radius
+  const fovRadius = parseFloat(document.getElementById('agentFOVRadius').value);
+  if (!isNaN(fovRadius)) {
+    agentOne.fovRadius = fovRadius;
+    if (fovRadius < 0) {
+      alert("Warning: FOV radius must be a positive value. Please enter a number greater or equal than 0.");
+      agentOne.fovRadius = 100; // If a negative value is given, user are prompted to re-enter, and the program falls back to default value.
+
+    } else {
+      agentOne.fovRadius = fovRadius;
+    }
   }
   });
 
