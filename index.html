@@ -8,18 +8,20 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
   <!-- I find this font good looking, including it here. -->
   <link href="https://db.onlinewebfonts.com/c/33bce88f104fedc26d91518f6d8b4ca3?family=LetoSans-Bold" rel="stylesheet">
+  <!-- Highway Gothic font -->
+  <link href="https://db.onlinewebfonts.com/c/734e5a726f37f261ff8a0d96260612a0?family=Highway+Gothic" rel="stylesheet" type="text/css"/>
   <!-- Probably a bunch of CSS Codes, consulted ChatGPT for this-->
   <style>
     /* Global font setting */
     body {
-      font-family: 'LetoSans-Bold', sans-serif;;
+      font-family: 'Highway Gothic', sans-serif;;
       margin: 0;
       padding: 0;
     }
     /* Header styling, for the title*/
     header h1 {
       text-align: center;
-      font-family: 'LetoSans-Bold', sans-serif;
+      font-family: 'Highway Gothic', sans-serif;
       font-size: 5em;
       font-weight: 700;
       color: #333;
@@ -30,7 +32,7 @@
     }
     header h2 {
       text-align: center;
-      font-family: 'LetoSans-Bold', sans-serif;
+      font-family: 'Highway Gothic', sans-serif;
       font-size: 1.2em;
       font-weight: 700;
       color: #333;
@@ -68,21 +70,21 @@
       flex: 1;
       margin: 10px;
       padding: 10px;
-      border: 2px solid #333;       /* Panel border remains */
+      border: 4px solid #333;       /* Panel border remains */
       background-color: #f0f0f0;   /* Panel background remains */
     }
     /* Style for subtitle' */
     .subtitle-left {
       margin: 10px 0;      /* Small vertical margin */
-      padding: 0;          /* Or any padding you prefer */
-      border: black;        /* No border */
+      padding: 0;          /* Or any padding*/
+      border: black;       /* No border */
       background-color: transparent;  /* No background color */
     }
     /* Style for h2 in the gui-panel */
     .gui-panel h2 {
       text-align: center;
-      font-family: 'LetoSans-Bold', sans-serif;;
-      font-size: 1.5em;
+      font-family: 'Highway Gothic', sans-serif;;
+      font-size: 3em;
       font-weight: 700;
       margin-bottom: 10px;
       margin-top: 0px;
@@ -90,6 +92,41 @@
     /* How much textboxes/elements are separated vertically in the gui panel */
     .gui-panel div {
       margin-bottom: 10px; /* Adjust the value to your preference */
+    }
+    .agent-controls label,
+    .coordinate-display label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 3px;
+      font-size: 1.2em;
+    }
+
+    /* 
+      Unify the repeated styles for .agent-controls and .playback-controls 
+      so they both have the same margin, padding, and background.
+    */
+    .agent-controls,
+    .playback-controls {
+      margin: 0px; /* same margin for both boxes */
+      padding: 10px;
+      border: none; /* No visible border */
+      background-color: rgba(128, 128, 128, 0.1); /* Light gray with slight opacity */
+      border-radius: 8px;
+    }
+
+    /* .playback-controls gets centered text. */
+    .playback-controls {
+      text-align: center; 
+    }
+
+    /* The heading inside playback controls */
+    .playback-controls h2 {
+      margin: 5px; /* 5px from text to slider vertically */
+      font-size: 3em;
+    }
+    .playback-controls input[type="range"] {
+      width: 80%;
+      margin: 5px 0;
     }
     /* Regular Style textbox */
     input[type="text"] {
@@ -123,6 +160,34 @@
     button:active {
       background-color: #003f50; /* Even darker color when clicked */
     }
+    /* Color picker for agents*/
+    .color-picker {
+      display: flex;
+      flex-wrap: nowrap;      /* Force items onto one line */
+      gap: 8px;
+      background-color: #ccc; /* Optional "box" background */
+      padding-top: 10px;
+      padding-left: 1%; /* so it has a left-padding for easier user experience */
+      margin-top: 10px;
+      border-radius: 8px;     /* Slightly rounded corners for the box */
+      justify-content: space-around;
+    }
+    .color-swatch {
+      width: 30px;
+      height: 30px;
+      border-radius: 10%;
+      cursor: pointer;
+      border: 2px solid #fff;
+      transition: border 0.3s ease;
+    }
+    .color-swatch:hover {
+      border: 2px solid #333;
+    }
+
+    /* Center the update button within its container */
+    .center-button {
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -139,37 +204,85 @@
 
   <!-- GUI panel on the right side of the canvas -->
   <div class="gui-panel">
+    <!-- Agent Controls Block -->
+  <div class="agent-controls">
     <h2>Agent Controls</h2>
-    <h3 class="subtitle-left">Manage your agent's settings here</h3>
-    <!-- Display agentOne's current position -->
-    <div>
-      <label for="posX">Agent X:</label>
-      <input type="text" id="posX" readonly>
-    </div>
-    <div>
-      <label for="posY">Agent Y:</label>
-      <input type="text" id="posY" readonly>
-    </div>
-    <!-- Input field to change agentOne's color -->
+    
+    <!-- Agent Color Block -->
     <div>
       <label for="agentColor">Agent Color:</label>
-      <input type="text" id="agentColor" placeholder="#F5C6B3">
+      <div class="color-picker">
+        <div class="color-swatch" data-color="#000000" style="background-color: #000000;"></div>
+        <div class="color-swatch" data-color="#FF0000" style="background-color: #FF0000;"></div>
+        <div class="color-swatch" data-color="#00FF00" style="background-color: #00FF00;"></div>
+        <div class="color-swatch" data-color="#0000FF" style="background-color: #0000FF;"></div>
+        <div class="color-swatch" data-color="#FFFF00" style="background-color: #FFFF00;"></div>
+        <div class="color-swatch" data-color="#FF00FF" style="background-color: #FF00FF;"></div>
+        <div class="color-swatch" data-color="#F5C6B3" style="background-color: #F5C6B3;"></div>
+      </div>
     </div>
-    <!-- Input field to change agentOne's angle -->
-    <div>
-      <label for="agentAngle">Agent Angle (deg):</label>
-      <input type="text" id="agentAngle" placeholder="Enter angle">
+    
+    <!-- Angle and Speed in one row -->
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <div style="flex: 1; box-sizing: border-box;">
+        <label for="agentAngle">Agent Angle (deg):</label>
+        <input type="text" id="agentAngle" placeholder="Enter angle" style="width: 100%; box-sizing: border-box;">
+      </div>
+      <div style="flex: 1; box-sizing: border-box;">
+        <label for="agentSpeed">Agent Speed:</label>
+        <input type="text" id="agentSpeed" placeholder="Enter speed" style="width: 100%; box-sizing: border-box;">
+      </div>
     </div>
-    <!-- Input speed textfield -->
-    <div>
-      <label for="agentSpeed">Agent Speed:</label>
-      <input type="text" id="agentSpeed" placeholder="Enter speed">
-    </div>
-    <div>
+    
+    <!-- Update Button Centered -->
+    <div class="center-button">
       <button id="updateAgent">Update Agent</button>
     </div>
-    <div>
-      <button id="generateRandomColor">Generate Random Color</button>
+  </div>
+    
+    <!-- Coordinate Display Block -->
+    <div class="coordinate-display" style="margin-top: 15px; padding: 10px; background-color: rgba(128,128,128,0.1); border-radius: 8px;">
+      <h2>Agent's Coordinates</h2>
+      
+      <!-- Cartesian Coordinates Row -->
+      <div style="margin-bottom: 15px;">
+        <p style="font-size: 1.2em; font-weight: bold; margin: 5px 0;">Cartesian Coordinates</p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <div style="flex: 1; box-sizing: border-box;">
+            <label for="cartesianX">X:</label>
+            <input type="text" id="cartesianX" disabled style="width: 100%; box-sizing: border-box;">
+          </div>
+          <div style="flex: 1; box-sizing: border-box;">
+            <label for="cartesianY">Y:</label>
+            <input type="text" id="cartesianY" disabled style="width: 100%; box-sizing: border-box;">
+          </div>
+        </div>
+      </div>
+      
+      <!-- JavaScript Coordinates Row -->
+      <div>
+        <p style="font-size: 1.2em; font-weight: bold; margin: 5px 0;">JavaScript Coordinates</p>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+          <div style="flex: 1; box-sizing: border-box;">
+            <label for="jsX">X:</label>
+            <input type="text" id="jsX" disabled style="width: 100%; box-sizing: border-box;">
+          </div>
+          <div style="flex: 1; box-sizing: border-box;">
+            <label for="jsY">Y:</label>
+            <input type="text" id="jsY" disabled style="width: 100%; box-sizing: border-box;">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playback control borderless box -->
+    <div class="playback-controls">
+      <h2>Simulation Playback</h2>
+      <input type="range" id="simulationSlider" min="0" max="100" value="0">
+      <div>
+        <button id="playButton">Play</button>
+        <button id="pauseButton">Pause</button>
+      </div>
     </div>
   </div>
 
@@ -288,25 +401,54 @@
   canvas.addEventListener('mouseleave', function() { // Changed canvasOne to canvas
       isDragging = false;
   });
+  
+  // Get all color swatches
+  const swatches = document.querySelectorAll('.color-swatch'); // Find all 'color-swatches'
+  swatches.forEach(swatch => {
+    swatch.addEventListener('click', function() {
+      // Get the color from the data attribute
+      const color = this.getAttribute('data-color');
+      // Update the agent's color
+      agentOne.colorHex = color; // Change color
+      // Added a border to indicate selected color
+      swatches.forEach(s => s.style.border = '2px solid #fff');
+      this.style.border = '2px solid #333';
+    });
+  });
 
   function updateGUI() {
-    document.getElementById('posX').value = agentOne.position.x.toFixed(2);
-    document.getElementById('posY').value = agentOne.position.y.toFixed(2);
+    // Calculate Cartesian coordinates with the desired range.
+    // For X: subtract half the canvas width, then multiply by 2.
+    let cartesianX = ((agentOne.position.x - canvas.width / 2) * 2).toFixed(2);
+    // For Y: subtract the canvas y from half the canvas height (to flip the axis),
+    // then multiply by 2.
+    let cartesianY = ((canvas.height / 2 - agentOne.position.y) * 2).toFixed(2);
+    
+    document.getElementById('cartesianX').value = cartesianX;
+    document.getElementById('cartesianY').value = cartesianY;
+    
+    // Update JavaScript coordinates (raw canvas coordinates)
+    document.getElementById('jsX').value = agentOne.position.x.toFixed(2);
+    document.getElementById('jsY').value = agentOne.position.y.toFixed(2);
   }
 
+  /*
   // Attach the generateRandomColor event listener once
   document.getElementById('generateRandomColor').addEventListener('click', function() {
     agentOne.generateRandomColor();
     document.getElementById('agentColor').value = agentOne.colorHex; // Update the color hexcode in the textbox
   });
+  */
 
   // Update agents
   document.getElementById('updateAgent').addEventListener('click', function() {
-  // Update agentOne's color if a value is provided
+  // Update agentOne's color if a value is provided, replaced by a color swatch.
+  /*
   const newColor = document.getElementById('agentColor').value;
   if (newColor) {
     agentOne.colorHex = newColor;
   }
+  */
   
   // Movement script
   // Two helper methods
@@ -349,7 +491,6 @@
   // Start the animation loop.
   animate();
 </script>
-
 
 </body>
 </html>
