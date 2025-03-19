@@ -14,40 +14,66 @@
   <style>
     /* Global font setting */
     body {
-      font-family: 'Highway Gothic', sans-serif;;
+      font-family: 'Highway Gothic', sans-serif;
       margin: 0;
       padding: 0;
     }
-    /* Header styling, for the title*/
-    header h1 {
-      text-align: center;
-      font-family: 'Highway Gothic', sans-serif;
-      font-size: 5em;
-      font-weight: 700;
-      color: #333;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-      margin: 0px;
-      padding: 10px;
-      background-color: beige;
+
+    /* Reusable flex row container with gap */
+    .row-flex {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
+
+    /* Reusable input block layout */
+    .input-block {
+      flex: 1;
+      box-sizing: border-box;
+    }
+
+    /* Margin top for grouped rows */
+    .group-margin-top {
+      margin-top: 10px;
+    }
+
+    /* Reusable coordinate section styles */
+    .coordinate-section {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: rgba(128,128,128,0.1);
+      border-radius: 8px;
+    }
+
+    /* Header styling, for the title and subtitle */
+    header h1,
     header h2 {
       text-align: center;
       font-family: 'Highway Gothic', sans-serif;
-      font-size: 1.2em;
       font-weight: 700;
       color: #333;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-      margin: 0;
       background-color: beige;
+      margin: 0;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
     }
-    .subtitle{
+    header h1 {
+      font-size: 5em;
+      padding: 10px;
+    }
+    header h2 {
+      font-size: 1.2em;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Subtitle styling */
+    .subtitle {
       font-size: 1.2em; /* Smaller than the main title */
       font-weight: 300;
       color: #333;
       margin-top: 0px;
-      padding-top: 10px;
-      padding-bottom: 10px;
+      padding: 10px 0;
     }
+
     /* Container for canvas and GUI panel */
     .container {
       display: flex;
@@ -58,6 +84,7 @@
       box-sizing: border-box;
       padding: 10px;
     }
+
     /* Canvas styling */
     canvas {
       background-color: #FFFFFF; 
@@ -65,6 +92,7 @@
       margin: 10px; /* Margin from all sides */
       border: 4px solid black; /* Black border */
     }
+
     /* GUI panel styling */
     .gui-panel {
       flex: 1;
@@ -73,6 +101,7 @@
       border: 4px solid #333;       /* Panel border remains */
       background-color: #f0f0f0;   /* Panel background remains */
     }
+
     /* Style for subtitle' */
     .subtitle-left {
       margin: 10px 0;      /* Small vertical margin */
@@ -80,19 +109,23 @@
       border: black;       /* No border */
       background-color: transparent;  /* No background color */
     }
-    /* Style for h2 in the gui-panel */
-    .gui-panel h2 {
+
+    /* Style for h2 in the gui-panel and playback-controls */
+    .gui-panel h2,
+    .playback-controls h2 {
       text-align: center;
-      font-family: 'Highway Gothic', sans-serif;;
+      font-family: 'Highway Gothic', sans-serif;
       font-size: 3em;
       font-weight: 700;
-      margin-bottom: 10px;
-      margin-top: 0px;
+      margin: 0 0 10px 0;
     }
+
     /* How much textboxes/elements are separated vertically in the gui panel */
     .gui-panel div {
       margin-bottom: 10px; /* Adjust the value to your preference */
     }
+
+    /* Label styling for both agent-controls and coordinate-display */
     .agent-controls label,
     .coordinate-display label {
       display: block;
@@ -101,16 +134,13 @@
       font-size: 1.2em;
     }
 
-    /* 
-      Unify the repeated styles for .agent-controls and .playback-controls 
-      so they both have the same margin, padding, and background.
-    */
+    /* Unify the repeated styles for .agent-controls and .playback-controls */
     .agent-controls,
     .playback-controls {
-      margin: 0px; /* same margin for both boxes */
+      margin: 0px;
       padding: 10px;
-      border: none; /* No visible border */
-      background-color: rgba(128, 128, 128, 0.1); /* Light gray with slight opacity */
+      border: none;
+      background-color: rgba(128, 128, 128, 0.1);
       border-radius: 8px;
     }
 
@@ -119,28 +149,28 @@
       text-align: center; 
     }
 
-    /* The heading inside playback controls */
-    .playback-controls h2 {
-      margin: 5px; /* 5px from text to slider vertically */
-      font-size: 3em;
-    }
     .playback-controls input[type="range"] {
       width: 80%;
       margin: 5px 0;
     }
+
     /* Regular Style textbox */
     input[type="text"] {
       border: 1px solid #ccc;
       border-radius: 5px; /* Rounded corners */
       padding: 5px 10px;
       transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease;
+      width: 100%;
+      box-sizing: border-box;
     }
+
     /* When focused (use try to text in this textbox), the style */
     input[type="text"]:focus {
       border-color: #66afe9;
       box-shadow: 0 0 8px rgba(102, 175, 233, 0.6);
       outline: none;
     }
+
     /* Defining button styles */
     button {
       background-color: #008CBA; /* Base color */
@@ -152,15 +182,18 @@
       transition: background-color 0.3s ease; /* Smooth transition on hover */
       cursor: pointer;
     }
+
     /* Defining button styles when hovered over */
     button:hover {
       background-color: #005f73; /* Color when hovered */
     }
+
     /* When a button is clicked (or active) */
     button:active {
       background-color: #003f50; /* Even darker color when clicked */
     }
-    /* Color picker for agents*/
+
+    /* Color picker for agents */
     .color-picker {
       display: flex;
       flex-wrap: nowrap;      /* Force items onto one line */
@@ -172,6 +205,7 @@
       border-radius: 8px;     /* Slightly rounded corners for the box */
       justify-content: space-around;
     }
+
     .color-swatch {
       width: 30px;
       height: 30px;
@@ -180,6 +214,7 @@
       border: 2px solid #fff;
       transition: border 0.3s ease;
     }
+
     .color-swatch:hover {
       border: 2px solid #333;
     }
@@ -187,117 +222,119 @@
     /* Center the update button within its container */
     .center-button {
       text-align: center;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-
 <header>
   <h1 class="title">Welcome to Agent Simulation</h1>
   <!-- "class" is just applying the styles defined above to this header2-->
   <h2 class="subtitle">Dr. Hai Le, Yize Wang</h2>
 </header>
-
 <!-- Wrap the canvas and the GUI panel inside a container -->
 <div class="container">
   <canvas id="canvasOne" width="750" height="750"></canvas>
-
   <!-- GUI panel on the right side of the canvas -->
   <div class="gui-panel">
-    <!-- Agent Controls Block -->
-  <div class="agent-controls">
-    <h2>Agent Controls</h2>
-    
-    <!-- Agent Color Block -->
-    <div>
-      <label for="agentColor">Agent Color:</label>
-      <div class="color-picker">
-        <div class="color-swatch" data-color="#000000" style="background-color: #000000;"></div>
-        <div class="color-swatch" data-color="#FF0000" style="background-color: #FF0000;"></div>
-        <div class="color-swatch" data-color="#00FF00" style="background-color: #00FF00;"></div>
-        <div class="color-swatch" data-color="#0000FF" style="background-color: #0000FF;"></div>
-        <div class="color-swatch" data-color="#FFFF00" style="background-color: #FFFF00;"></div>
-        <div class="color-swatch" data-color="#FF00FF" style="background-color: #FF00FF;"></div>
-        <div class="color-swatch" data-color="#F5C6B3" style="background-color: #F5C6B3;"></div>
-      </div>
+    <!-- Agent Selection and Creation Block, uses same style as agent-control -->
+    <div class="agent-controls">
+      <h2>Agents:</h2>
     </div>
+    <!-- Agent Controls Block -->
+    <div class="agent-controls">
+      <h2>Agent Controls</h2>
+      <!-- Agent Color Block -->
+      <div>
+        <label for="agentColor">Agent Color:</label>
+        <div class="color-picker">
+          <div class="color-swatch" data-color="#000000" style="background-color: #000000;"></div>
+          <div class="color-swatch" data-color="#FF0000" style="background-color: #FF0000;"></div>
+          <div class="color-swatch" data-color="#00FF00" style="background-color: #00FF00;"></div>
+          <div class="color-swatch" data-color="#0000FF" style="background-color: #0000FF;"></div>
+          <div class="color-swatch" data-color="#FFFF00" style="background-color: #FFFF00;"></div>
+          <div class="color-swatch" data-color="#FF00FF" style="background-color: #FF00FF;"></div>
+          <div class="color-swatch" data-color="#F5C6B3" style="background-color: #F5C6B3;"></div>
+        </div>
+      </div>
     
     <!-- Angle and Speed in one row -->
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-      <div style="flex: 1; box-sizing: border-box;">
+    <div class="row-flex">
+      <div class="input-block">
         <label for="agentAngle">Agent Cartesian Angle (deg):</label>
-        <input type="text" id="agentAngle" placeholder="Enter angle" style="width: 100%; box-sizing: border-box;">
+        <input type="text" id="agentAngle" placeholder="Enter angle">
       </div>
-      <div style="flex: 1; box-sizing: border-box;">
+      <div class="input-block">
         <label for="agentSpeed">Agent Speed:</label>
-        <input type="text" id="agentSpeed" placeholder="Enter speed" style="width: 100%; box-sizing: border-box;">
+        <input type="text" id="agentSpeed" placeholder="Enter speed">
       </div>
     </div>
 
     <!-- For FOV in Degrees and FOV's radius -->
-    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
-      <div style="flex: 1; box-sizing: border-box;">
+    <div class="row-flex group-margin-top">
+      <div class="input-block">
         <label for="agentFOV">FOV (deg):</label>
-        <input type="text" id="agentFOV" placeholder="Enter FOV angle" style="width: 100%; box-sizing: border-box;">
+        <input type="text" id="agentFOV" placeholder="Enter FOV angle">
       </div>
-      <div style="flex: 1; box-sizing: border-box;">
+      <div class="input-block">
         <label for="agentFOVRadius">FOV Radius:</label>
-        <input type="text" id="agentFOVRadius" placeholder="Enter FOV Radius" style="width: 100%; box-sizing: border-box;">
+        <input type="text" id="agentFOVRadius" placeholder="Enter FOV Radius">
       </div>
     </div>
-    
+
     <!-- Two buttons -->
-    <div class="center-button" style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+    <div class="center-button">
       <button id="updateAgent">Update</button>
       <button id="resetAgent">Reset</button>
     </div>
-  </div>
-    
+
     <!-- Coordinate Display Block -->
-    <div class="coordinate-display" style="margin-top: 15px; padding: 10px; background-color: rgba(128,128,128,0.1); border-radius: 8px;">
+    <div class="coordinate-display coordinate-section">
       <h2>Agent's Coordinates</h2>
-      
       <!-- Cartesian Coordinates Row -->
       <div style="margin-bottom: 15px;">
         <p style="font-size: 1.2em; font-weight: bold; margin: 5px 0;">Cartesian Coordinates</p>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <div style="flex: 1; box-sizing: border-box;">
+        <div class="row-flex">
+          <div class="input-block">
             <label for="cartesianX">X:</label>
-            <input type="text" id="cartesianX" disabled style="width: 100%; box-sizing: border-box;">
+            <input type="text" id="cartesianX" disabled>
           </div>
-          <div style="flex: 1; box-sizing: border-box;">
+          <div class="input-block">
             <label for="cartesianY">Y:</label>
-            <input type="text" id="cartesianY" disabled style="width: 100%; box-sizing: border-box;">
+            <input type="text" id="cartesianY" disabled>
           </div>
         </div>
       </div>
-      
+
       <!-- JavaScript Coordinates Row -->
       <div>
         <p style="font-size: 1.2em; font-weight: bold; margin: 5px 0;">JavaScript Coordinates</p>
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <div style="flex: 1; box-sizing: border-box;">
+        <div class="row-flex">
+          <div class="input-block">
             <label for="jsX">X:</label>
-            <input type="text" id="jsX" disabled style="width: 100%; box-sizing: border-box;">
+            <input type="text" id="jsX" disabled>
           </div>
-          <div style="flex: 1; box-sizing: border-box;">
+          <div class="input-block">
             <label for="jsY">Y:</label>
-            <input type="text" id="jsY" disabled style="width: 100%; box-sizing: border-box;">
+            <input type="text" id="jsY" disabled>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Playback control borderless box -->
-    <div class="playback-controls">
-      <h2>Simulation Playback</h2>
-      <input type="range" id="simulationSlider" min="0" max="100" value="0">
-      <div>
-        <button id="playButton">Play</button>
-        <button id="pauseButton">Pause</button>
-      </div>
+  <!-- Playback control borderless box -->
+  <div class="playback-controls">
+    <h2>Simulation Playback</h2>
+    <input type="range" id="simulationSlider" min="0" max="100" value="0">
+    <div>
+      <button id="playButton">Play</button>
+      <button id="pauseButton">Pause</button>
     </div>
   </div>
+</div>
 
 <!--Start of the script, defining global canvas variable-->
 <script>
@@ -331,7 +368,7 @@
   }
   */
 
-  // Test the four corners.
+  /* Test the four corners.
   const radius = 5;
   const xPos = [
     canvas.width * 0.1,  // left
@@ -356,6 +393,7 @@
 
     agents.push(new Agent(false, x, y, radius, dxTest, dyTest, "#000000", 100, 5 * Math.PI / 6));
   }
+  */
 
   // This step is testing only.
   agents.push(agentOne);
