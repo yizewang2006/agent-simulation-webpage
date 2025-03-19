@@ -348,8 +348,12 @@
 
 <!-- Main script that uses Agent (agent simulation) -->
 <script>
+  // New as of 3/18: selectable agent:
+  let selectedAgent = null;
+
   // Create a testing agent
   let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#F5C6B3', 100);
+  let agentTwo = new Agent(true, canvas.width * 0.5, canvas.height * 0.5, 5, 0, 0, '#000000', 100);
 
   // Create a list of circles.
   const agents = [];
@@ -397,6 +401,7 @@
 
   // This step is testing only.
   agents.push(agentOne);
+  agents.push(agentTwo);
   // Set speed to 0
   agentOne.dy = 0;
   agentOne.dx = 0;
@@ -405,44 +410,45 @@
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
 
-  canvas.addEventListener('mousedown', function(e) { // Changed canvasOne to canvas
+  canvas.addEventListener('mousedown', function(e) {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
-    // Add a small buffer to the hit area
-    const hitBuffer = agentOne.radius;
-    const dist = Math.sqrt((mouseX - agentOne.position.x) ** 2 + (mouseY - agentOne.position.y) ** 2);
-    
-    if (dist < agentOne.radius + hitBuffer) {
+
+    isDragging = false;
+    selectedAgent = null;
+
+    for (let agent of agents) {
+      const dist = Math.sqrt(
+        (mouseX - agent.position.x) ** 2 + (mouseY - agent.position.y) ** 2
+      );
+
+      if (dist <= agent.radius * 1.5) { // Hit buffer
+        selectedAgent = agent;
+        dragOffset.x = agent.position.x - mouseX;
+        dragOffset.y = agent.position.y - mouseY;
         isDragging = true;
-        dragOffset.x = agentOne.position.x - mouseX;
-        dragOffset.y = agentOne.position.y - mouseY;
+        break;
+      }
     }
+    updateGUI(); // Refresh the panel with the selected agent's info
   });
 
-  canvas.addEventListener('mousemove', function(e) { // Changed canvasOne to canvas
-      if (isDragging) {
-        const rect = canvas.getBoundingClientRect();
-        const mouseX = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        
-        agentOne.position.x = mouseX + dragOffset.x;
-        agentOne.position.y = mouseY + dragOffset.y;
+  canvas.addEventListener('mousemove', function(e) {
+    if (isDragging && selectedAgent) {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-        // Prevention of user dragging the agent into the border
-        // Calculate the new position using the dragOffset
-        let newX = mouseX + dragOffset.x;
-        let newY = mouseY + dragOffset.y;
-        
-        // Prevent the agent from being dragged into the border by clamping:
-        // Ensure the agent's center stays at least 'agentOne.radius' pixels away from each edge.
-        newX = Math.max(agentOne.radius, Math.min(newX, canvas.width - agentOne.radius));
-        newY = Math.max(agentOne.radius, Math.min(newY, canvas.height - agentOne.radius));
-        
-        agentOne.position.x = newX;
-        agentOne.position.y = newY;
-      }
+      let newX = mouseX + dragOffset.x;
+      let newY = mouseY + dragOffset.y;
+
+      newX = Math.max(selectedAgent.radius, Math.min(newX, canvas.width - selectedAgent.radius));
+      newY = Math.max(selectedAgent.radius, Math.min(newY, canvas.height - selectedAgent.radius));
+
+      selectedAgent.position.x = newX;
+      selectedAgent.position.y = newY;
+    }
   });
 
   canvas.addEventListener('mouseup', function() { // Changed canvasOne to canvas
@@ -460,7 +466,9 @@
       // Get the color from the data attribute
       const color = this.getAttribute('data-color');
       // Update the agent's color
-      agentOne.colorHex = color; // Change color
+      if (selectedAgent) {
+        selectedAgent.colorHex = color;
+      }
       // Added a border to indicate selected color
       swatches.forEach(s => s.style.border = '2px solid #fff');
       this.style.border = '2px solid #333';
@@ -468,19 +476,30 @@
   });
 
   function updateGUI() {
+    // If no agent is selected, exit function
+    if (!selectedAgent) return;
     // Calculate Cartesian coordinates with the desired range.
     // For X: subtract half the canvas width, then multiply by 2.
-    let cartesianX = ((agentOne.position.x - canvas.width / 2) * 2).toFixed(2);
+    let cartesianX = ((selectedAgent.position.x - canvas.width / 2) * 2).toFixed(2);
     // For Y: subtract the canvas y from half the canvas height (to flip the axis),
     // then multiply by 2.
-    let cartesianY = ((canvas.height / 2 - agentOne.position.y) * 2).toFixed(2);
+    let cartesianY = ((canvas.height / 2 - selectedAgent.position.y) * 2).toFixed(2);
     
     document.getElementById('cartesianX').value = cartesianX;
     document.getElementById('cartesianY').value = cartesianY;
     
     // Update JavaScript coordinates (raw canvas coordinates)
-    document.getElementById('jsX').value = agentOne.position.x.toFixed(2);
-    document.getElementById('jsY').value = agentOne.position.y.toFixed(2);
+    document.getElementById('jsX').value = selectedAgent.position.x.toFixed(2);
+    document.getElementById('jsY').value = selectedAgent.position.y.toFixed(2);
+
+    // Optional: sync other fields when selecting an agent
+    document.getElementById('agentAngle').value = (-selectedAgent.angle * 180 / Math.PI).toFixed(2);
+    const speed = Math.sqrt(selectedAgent.dx ** 2 + selectedAgent.dy ** 2).toFixed(2);
+    document.getElementById('agentSpeed').value = speed;
+    document.getElementById('agentFOV').value = (selectedAgent.fovAngle * 180 / Math.PI).toFixed(2);
+    document.getElementById('agentFOVRadius').value = selectedAgent.fovRadius.toFixed(2);
+
+    console.log(selectedAgent);
   }
 
   /*
@@ -492,75 +511,57 @@
   */
 
   document.getElementById('resetAgent').addEventListener('click', function() {
-  // Reset agent properties to default values
-  agentOne.angle = 0;
-  agentOne.dx = 0;
-  agentOne.dy = 0;
-  agentOne.fovAngle = 5 * Math.PI / 6;
-  agentOne.fovRadius = 100;
-  
-  // Reset the input fields to reflect the defaults
+  if (!selectedAgent) return;
+
+  selectedAgent.angle = 0;
+  selectedAgent.dx = 0;
+  selectedAgent.dy = 0;
+  selectedAgent.fovAngle = 5 * Math.PI / 6;
+  selectedAgent.fovRadius = 100;
+
   document.getElementById('agentAngle').value = 0;
   document.getElementById('agentSpeed').value = 0;
-  // Convert 5π/6 radians to degrees for the input field (approx. 150°)
   document.getElementById('agentFOV').value = 150;
   document.getElementById('agentFOVRadius').value = 100;
   });
 
   // Update agents
   document.getElementById('updateAgent').addEventListener('click', function() {
-  // Update agentOne's color if a value is provided, replaced by a color swatch.
-  /*
-  const newColor = document.getElementById('agentColor').value;
-  if (newColor) {
-    agentOne.colorHex = newColor;
-  }
-  */
-  
-  // Movement script
-  // Two helper methods
-  function degreesToRadians(deg) {
-    return deg * Math.PI / 180;
-  }
-  function radiansToDegrees(rad) {
-    return rad * 180 / Math.PI;
-  }
+  if (!selectedAgent) return;
 
-  // Update agentOne's angle if a valid number is provided
-  const angleDeg = parseFloat(document.getElementById('agentAngle').value);
-  if (!isNaN(angleDeg)) {
-    const angleRad = -degreesToRadians(angleDeg); // using helper method to 'correct' angle to be intuitive, which is add a negative sign. ChatGPT was wrong.
-    agentOne.angle = angleRad;
-  }
-  
-  // Update agentOne's speed if a valid number is provided
-  const speed = parseFloat(document.getElementById('agentSpeed').value);
-  if (!isNaN(speed)) {
-    agentOne.dx = speed * Math.cos(agentOne.angle);
-    agentOne.dy = speed * Math.sin(agentOne.angle);
-  }
-
-  // Update agentOne's FOV angle (convert from degrees to radians)
-  const fovDeg = parseFloat(document.getElementById('agentFOV').value);
-  if (!isNaN(fovDeg)) {
-    agentOne.fovAngle = degreesToRadians(fovDeg);
-  }
-
-  // Update agentOne's FOV radius
-  const fovRadius = parseFloat(document.getElementById('agentFOVRadius').value);
-  if (!isNaN(fovRadius)) {
-    agentOne.fovRadius = fovRadius;
-    if (fovRadius < 0) {
-      alert("Warning: FOV radius must be a positive value. Please enter a number greater or equal than 0.");
-      agentOne.fovRadius = 100; // If a negative value is given, user are prompted to re-enter, and the program falls back to default value.
-
-    } else {
-      agentOne.fovRadius = fovRadius;
+    function degreesToRadians(deg) {
+      return deg * Math.PI / 180;
     }
-  }
+
+    const angleDeg = parseFloat(document.getElementById('agentAngle').value);
+    if (!isNaN(angleDeg)) {
+      const angleRad = -degreesToRadians(angleDeg);
+      selectedAgent.angle = angleRad;
+    }
+
+    const speed = parseFloat(document.getElementById('agentSpeed').value);
+    if (!isNaN(speed)) {
+      selectedAgent.dx = speed * Math.cos(selectedAgent.angle);
+      selectedAgent.dy = speed * Math.sin(selectedAgent.angle);
+    }
+
+    const fovDeg = parseFloat(document.getElementById('agentFOV').value);
+    if (!isNaN(fovDeg)) {
+      selectedAgent.fovAngle = degreesToRadians(fovDeg);
+    }
+
+    const fovRadius = parseFloat(document.getElementById('agentFOVRadius').value);
+    if (!isNaN(fovRadius)) {
+      if (fovRadius < 0) {
+        alert("Warning: FOV radius must be a positive value.");
+        selectedAgent.fovRadius = 100;
+      } else {
+        selectedAgent.fovRadius = fovRadius;
+      }
+    }
   });
 
-  // Periodically update the GUI fields with agentOne's position
+  // Periodically update the GUI fields with selected agent's position
   setInterval(updateGUI, 100);
 
   // Animation function that updates and draws all circles.
