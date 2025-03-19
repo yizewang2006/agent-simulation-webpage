@@ -336,6 +336,38 @@
   </div>
 </div>
 
+<div id="popupMenu" style="display: none; position: absolute; z-index: 10; background: #f0f0f0; border: 2px solid #333; border-radius: 10px; padding: 10px; width: 220px;">
+  <h3 style="margin-top: 0; text-align: center;">Edit Agent</h3>
+
+  <label>Color:</label>
+  <div class="color-picker" id="popupColorPicker">
+    <!-- Color swatches will be cloned in JS -->
+  </div>
+
+  <label>Angle (deg):</label>
+  <input type="text" id="popupAngle" placeholder="Angle">
+
+  <label>Speed:</label>
+  <input type="text" id="popupSpeed" placeholder="Speed">
+
+  <label>FOV (deg):</label>
+  <input type="text" id="popupFOV" placeholder="FOV">
+
+  <label>FOV Radius:</label>
+  <input type="text" id="popupRadius" placeholder="Radius">
+
+  <label>X (JS Coord):</label>
+  <input type="text" id="popupX" placeholder="X">
+
+  <label>Y (JS Coord):</label>
+  <input type="text" id="popupY" placeholder="Y">
+
+  <div class="center-button">
+    <button id="popupUpdate">Update</button>
+    <button id="popupClose">Close</button>
+  </div>
+</div>
+
 <!--Start of the script, defining global canvas variable-->
 <script>
   // Global definitions that will be used by Circle
@@ -350,6 +382,20 @@
 <script>
   // New as of 3/18: selectable agent:
   let selectedAgent = null;
+  
+  // Clone color swatches from GUI into popup menu
+  const popupColorPicker = document.getElementById('popupColorPicker');
+  document.querySelectorAll('.color-swatch').forEach(original => {
+    const clone = original.cloneNode(true);
+    clone.addEventListener('click', () => {
+      if (selectedAgent) {
+        selectedAgent.colorHex = clone.getAttribute('data-color');
+      }
+      popupColorPicker.querySelectorAll('.color-swatch').forEach(s => s.style.border = '2px solid #fff');
+      clone.style.border = '2px solid #333';
+    });
+    popupColorPicker.appendChild(clone);
+  });
 
   // Create a testing agent
   let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#F5C6B3', 100);
@@ -423,15 +469,29 @@
         (mouseX - agent.position.x) ** 2 + (mouseY - agent.position.y) ** 2
       );
 
-      if (dist <= agent.radius * 1.5) { // Hit buffer
+      if (dist <= agent.radius * 1.5) {
         selectedAgent = agent;
         dragOffset.x = agent.position.x - mouseX;
         dragOffset.y = agent.position.y - mouseY;
         isDragging = true;
+
+        const popup = document.getElementById('popupMenu');
+        popup.style.left = `${agent.position.x + 20}px`;
+        popup.style.top = `${agent.position.y + 20}px`;
+        popup.style.display = 'block';
+
+        document.getElementById('popupAngle').value = (-agent.angle * 180 / Math.PI).toFixed(2);
+        document.getElementById('popupSpeed').value = Math.sqrt(agent.dx ** 2 + agent.dy ** 2).toFixed(2);
+        document.getElementById('popupFOV').value = (agent.fovAngle * 180 / Math.PI).toFixed(2);
+        document.getElementById('popupRadius').value = agent.fovRadius.toFixed(2);
+        document.getElementById('popupX').value = agent.position.x.toFixed(2);
+        document.getElementById('popupY').value = agent.position.y.toFixed(2);
+
         break;
       }
     }
-    updateGUI(); // Refresh the panel with the selected agent's info
+
+    updateGUI();
   });
 
   canvas.addEventListener('mousemove', function(e) {
@@ -474,6 +534,26 @@
       this.style.border = '2px solid #333';
     });
   });
+
+  document.getElementById('popupUpdate').addEventListener('click', () => {
+    if (!selectedAgent) return;
+
+    const degToRad = d => d * Math.PI / 180;
+
+    selectedAgent.angle = -degToRad(parseFloat(document.getElementById('popupAngle').value));
+    const spd = parseFloat(document.getElementById('popupSpeed').value);
+    selectedAgent.dx = spd * Math.cos(selectedAgent.angle);
+    selectedAgent.dy = spd * Math.sin(selectedAgent.angle);
+    selectedAgent.fovAngle = degToRad(parseFloat(document.getElementById('popupFOV').value));
+    selectedAgent.fovRadius = parseFloat(document.getElementById('popupRadius').value);
+    selectedAgent.position.x = parseFloat(document.getElementById('popupX').value);
+    selectedAgent.position.y = parseFloat(document.getElementById('popupY').value);
+  });
+  
+  document.getElementById('popupClose').addEventListener('click', () => {
+    document.getElementById('popupMenu').style.display = 'none';
+  });
+
 
   function updateGUI() {
     // If no agent is selected, exit function
