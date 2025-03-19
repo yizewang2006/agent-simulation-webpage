@@ -464,11 +464,13 @@
     isDragging = false;
     selectedAgent = null;
 
+    // Calculate the pos of the mouse between it and the center of the circle.
     for (let agent of agents) {
       const dist = Math.sqrt(
         (mouseX - agent.position.x) ** 2 + (mouseY - agent.position.y) ** 2
       );
-
+      
+      // If matched mouse click position and the agent
       if (dist <= agent.radius * 1.5) {
         selectedAgent = agent;
         dragOffset.x = agent.position.x - mouseX;
@@ -476,8 +478,8 @@
         isDragging = true;
 
         const popup = document.getElementById('popupMenu');
-        popup.style.left = `${agent.position.x + 20}px`;
-        popup.style.top = `${agent.position.y + 20}px`;
+        popup.style.left = `${agent.position.x + 100}px`; // Consulted ChatGPT for specific positions
+        popup.style.top = `${agent.position.y + 100}px`; // Must make sure the menu has enough offset so it doesn't block the agent.
         popup.style.display = 'block';
 
         document.getElementById('popupAngle').value = (-agent.angle * 180 / Math.PI).toFixed(2);
@@ -493,9 +495,10 @@
 
     updateGUI();
   });
-
+  // Dragging still works
   canvas.addEventListener('mousemove', function(e) {
     if (isDragging && selectedAgent) {
+      document.getElementById('popupMenu').style.display = 'none'; // If dragging is in progress, hide the menu.
       const rect = canvas.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
@@ -551,9 +554,8 @@
   });
   
   document.getElementById('popupClose').addEventListener('click', () => {
-    document.getElementById('popupMenu').style.display = 'none';
+    document.getElementById('popupMenu').style.display = 'none'; // Close the popup menu
   });
-
 
   function updateGUI() {
     // If no agent is selected, exit function
