@@ -19,7 +19,7 @@ class Offset {
 }
 
 class Agent {
-    constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0) { // Standard FOV = 150 degrees OR 5π/6
+    constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id) { // Standard FOV = 150 degrees OR 5π/6
         // Instead of separate x and y, we now use a Position() class
         this.drawFOV = drawFOV;
         this.position = new Position(x, y);
@@ -29,11 +29,12 @@ class Agent {
         // 2.17 FIX: ANGLE INDEPENDENT OF dy & dx
         this.angle = angle; // We have now set the angle to be independent of dy & dx
         this.colorHex = colorHex;  // Default color
-        this.originalColor = colorHex; // Store original color
+        this.originalColor = colorHex; // Store original color: won't change, final in java
         this.fovRadius = fovRadius; // FOV range of detection
         this.fovAngle = fovAngle; 
         // Initialize an empty array to hold detected agents
         this.detectedAgents = [];
+        this.id = id;
     }
 
     generateRandomColor() {
@@ -224,5 +225,19 @@ class Agent {
         
         // Update the detectedAgents list for the next update cycle.
         this.detectedAgents = currentlyDetected;
+    }
+    
+    // for simulation - what info do we report?
+    reportInformation() {
+        return {
+            x: this.position.x,
+            y: this.position.y,
+            dx: this.dx,
+            dy: this.dy,
+            angle: this.angle,
+            fovAngle: this.fovAngle,
+            fovRadius: this.fovRadius,
+            colorHex: this.colorHex
+        }
     }
 }
