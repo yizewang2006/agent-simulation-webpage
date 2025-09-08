@@ -10,330 +10,18 @@
   <link href="https://db.onlinewebfonts.com/c/33bce88f104fedc26d91518f6d8b4ca3?family=LetoSans-Bold" rel="stylesheet">
   <!-- Highway Gothic font -->
   <link href="https://db.onlinewebfonts.com/c/734e5a726f37f261ff8a0d96260612a0?family=Highway+Gothic" rel="stylesheet" type="text/css"/>
-  <!-- Probably a bunch of CSS Codes, consulted ChatGPT for this-->
-  <style>
-    /* Global font setting */
-    body {
-      font-family: 'Highway Gothic', sans-serif;
-      margin: 0;
-      padding: 0;
-    }
   
-    /* Reusable flex row container with gap */
-    .row-flex {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-  
-    /* Reusable input block layout */
-    .input-block {
-      flex: 1;
-      box-sizing: border-box;
-    }
-  
-    /* Margin top for grouped rows */
-    .group-margin-top {
-      margin-top: 10px;
-    }
-  
-    /* Reusable coordinate section styles */
-    .coordinate-section {
-      margin-top: 15px;
-      padding: 10px;
-      background-color: rgba(128,128,128,0.1);
-      border-radius: 8px;
-    }
-  
-    /* Header styling, for the title and subtitle */
-    header h1,
-    header h2 {
-      text-align: center;
-      font-family: 'Highway Gothic', sans-serif;
-      font-weight: 700;
-      color: #333;
-      background-color: beige;
-      margin: 0;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    }
-    header h1 {
-      font-size: 5em;
-      padding: 10px;
-    }
-    header h2 {
-      font-size: 1.2em;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    }
-    header h3 {
-      font-size: 1em;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
-    }
-  
-    /* Subtitle styling */
-    .subtitle {
-      font-size: 1.2em;
-      font-weight: 300;
-      color: #333;
-      margin-top: 0px;
-      padding: 10px 0;
-    }
-  
-    /* Container for canvas and GUI panel */
-    .container {
-      display: flex;
-      flex-direction: row;
-      align-items: flex-start;
-      width: 100%;
-      background-color: beige;
-      box-sizing: border-box;
-      padding: 10px;
-    }
-  
-    /* Canvas styling */
-    canvas {
-      background-color: #FFFFFF;
-      display: block;
-      margin: 10px;
-      border: 4px solid black;
-    }
-  
-    /* GUI panel styling */
-    .gui-panel {
-      flex: 1;
-      margin: 10px;
-      padding: 10px;
-      border: 4px solid #333;
-      background-color: #f0f0f0;
-    }
-  
-    /* Style for subtitle' */
-    .subtitle-left {
-      margin: 10px 0;
-      padding: 0;
-      border: black;
-      background-color: transparent;
-    }
-  
-    /* Style for h2 in the gui-panel and playback-controls */
-    .gui-panel h2,
-    .playback-controls h2 {
-      text-align: center;
-      font-family: 'Highway Gothic', sans-serif;
-      font-size: 3em;
-      font-weight: 700;
-      margin: 0 0 10px 0;
-    }
-  
-    /* How much textboxes/elements are separated vertically in the gui panel */
-    .gui-panel div {
-      margin-bottom: 10px;
-    }
-  
-    /* Label styling for both agent-controls and coordinate-display */
-    .agent-controls label,
-    .coordinate-display label {
-      display: block;
-      font-weight: bold;
-      margin-bottom: 3px;
-      font-size: 1.2em;
-    }
-  
-    /* Unify the repeated styles for .agent-controls and .playback-controls */
-    .agent-controls,
-    .playback-controls {
-      margin: 0px;
-      padding: 10px;
-      border: none;
-      background-color: rgba(128, 128, 128, 0.1);
-      border-radius: 8px;
-    }
-  
-    /* .playback-controls gets centered text. */
-    .playback-controls {
-      text-align: center;
-    }
-  
-    .playback-controls input[type="range"] {
-      width: 80%;
-      margin: 5px 0;
-    }
-  
-    /* Regular Style textbox */
-    input[type="text"] {
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      padding: 5px 10px;
-      transition: border-color 0.3s ease-in-out, box-shadow 0.3s ease;
-      width: 100%;
-      box-sizing: border-box;
-    }
-  
-    /* When focused (use try to text in this textbox), the style */
-    input[type="text"]:focus {
-      border-color: #66afe9;
-      box-shadow: 0 0 8px rgba(102, 175, 233, 0.6);
-      outline: none;
-    }
-  
-    /* Defining button styles */
-    button {
-      background-color: #008CBA;
-      border: none;
-      color: white;
-      padding: 10px 20px;
-      font-size: 16px;
-      border-radius: 8px;
-      transition: background-color 0.3s ease;
-      cursor: pointer;
-    }
-  
-    /* Defining button styles when hovered over */
-    button:hover {
-      background-color: #005f73;
-    }
-  
-    /* When a button is clicked (or active) */
-    button:active {
-      background-color: #003f50;
-    }
-  
-    /* Color picker for agents */
-    .color-picker {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 8px;
-      background-color: #ccc;
-      padding: 10px;
-      border-radius: 8px;
-      justify-content: space-around;
-    }
-  
-    .color-swatch {
-      width: 30px;
-      height: 30px;
-      border-radius: 10%;
-      cursor: pointer;
-      border: 2px solid #fff;
-      transition: border 0.3s ease;
-    }
-  
-    .color-swatch:hover {
-      border: 2px solid #333;
-    }
-  
-    /* Center the update button within its container */
-    .center-button button {
-      text-align: center;
-      display: flex;
-      flex: 1;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 10px;
-    }
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
-    #popupMenu label,
-    #popupMenu input {
-      display: block;
-      margin-top: 8px;
-    }
+  <!-- Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 
-    #popupMenu .center-button {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 12px;
-      flex-wrap: wrap; /* Allow wrapping if needed */
-    }
-
-    #popupMenu .color-picker {
-      display: flex;
-      flex-wrap: nowrap;
-      gap: 6px;
-      overflow-x: auto;
-      padding: 6px 0;
-    }
-
-    #popupMenu h3 {
-      margin-bottom: 10px;
-    }
-
-    #popupMenu .color-swatch {
-      width: 24px;
-      height: 24px;
-      border: 1px solid #aaa;
-      cursor: pointer;
-      border-radius: 4px;
-      flex-shrink: 0;
-    }
-
-    #popupMenu .center-button {
-      margin-top: 12px;
-      text-align: center;
-    }
-
-    #popupMenu button {
-      margin: 0 5px;
-    }
-    /* Collapsable Header showing agent's ids*/
-    .collapsible-section {
-      border: none;
-      border-radius: 0;
-      padding: 0;
-      margin-top: 15px;
-    }
-    /* Collapsible header button */
-    .collapsible-header {
-      background-color: #008CBA;
-      color: white;
-      cursor: pointer;
-      padding: 10px;
-      font-size: 1.2em;
-      border: none;
-      text-align: left;
-      width: 100%;
-      border-radius: 8px;
-      transition: background-color 0.3s ease;
-    }
-
-    .collapsible-header:hover {
-      background-color: #005f73;
-    }
-
-    /* The collapsible content */
-    .collapsible-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease-out;
-    }
-
-    /* Expand when active */
-    .collapsible-section.active .collapsible-content {
-      max-height: none;
-    }
-
-    /* Style for individual agent entry */
-    .agent-entry {
-      padding: 8px 5px;
-      font-size: 1.1em; /* Make the text bigger */
-      border-bottom: 1px solid #ccc;
-      display: flex;
-      justify-content: flex-start; /* Align to the left */
-      align-items: center;
-      gap: 10px; /* Add spacing between dot and text */
-    }
-
-    /* Dot showing color */
-    .agent-color-dot {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      margin-right: 8px;
-      display: inline-block;
-      border: 1px solid #333;
-    }
-
-  </style>
+  <!-- All styling settings are now in style.css -->
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 <header>
   <h1 class="title">Welcome to Agent Simulation</h1>
@@ -373,11 +61,8 @@
 
     <!-- Playback control borderless box -->
     <div class="playback-controls">
-      <h2>Simulation Playback</h2>
-      <input type="range" id="simulationSlider" min="0" max="100" value="0">
-      <div>
-        <h3>Recording</h3>
-      </div>
+      <h2>Simulation</h2>
+      <h3>Record this simulation below</h3>
       <div>
         <!--here for start recording & end recording-->
         <button id="startRecording">Start Recording</button>
@@ -396,7 +81,7 @@
 <!-- Popup menu for editing agent parameters -->
 <div id="popupMenu" style="display: none; position: absolute; z-index: 10; background: #f0f0f0; border: 2px solid #333; border-radius: 10px; padding: 10px; width: 300px; ">
   <h3 style="margin-top: 0; text-align: center;">Edit Agent</h3>
-  <label>Agent Name (Click "Update" to apply change):</label>
+  <label>Name (Click "Update" to apply change):</label>
   <input type="text" id="agentID">
   <label>Color:</label>
   <div class="color-picker" id="popupColorPicker">
@@ -442,10 +127,11 @@
   let normalAgentCount = 0; // Normal agents do not draw FOV, thus no detection happens (can be added later)
   let specialAgentCount = 0;
 
-  // Create a testing agent
+  
+  // Create a testing agent 
   let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#F5C6B3', 100, 5 * Math.PI / 6, 0, "Agent 1");
-  let agentTwo = new Agent(true, canvas.width * 0.5, canvas.height * 0.5, 5, 0, 0, '#000000', 100, 5 * Math.PI / 6, 0, "Agent 2");
-  let agentThree = new Agent(true, canvas.width * 0.7, canvas.height * 0.7, 5, 0, 0, '#0000FF', 100, 5 * Math.PI / 6, 0, "Agent 100");
+  //let agentTwo = new Agent(true, canvas.width * 0.5, canvas.height * 0.5, 5, 0, 0, '#000000', 100, 5 * Math.PI / 6, 0, "Agent 2");
+  //let agentThree = new Agent(true, canvas.width * 0.7, canvas.height * 0.7, 5, 0, 0, '#0000FF', 100, 5 * Math.PI / 6, 0, "Agent 100");
 
   // Create a list of circles.
   const agents = [];
@@ -492,8 +178,8 @@
   */
 
   agents.push(agentOne);
-  agents.push(agentTwo);
-  agents.push(agentThree);
+  //agents.push(agentTwo);
+  //agents.push(agentThree);
 
   // recording
   let isRecording = false;
@@ -508,17 +194,25 @@
     const li = document.createElement('li');
     li.className = 'agent-entry';
 
-    const colorDot = document.createElement('span');
-    colorDot.className = 'agent-color-dot';
-    colorDot.style.backgroundColor = agent.colorHex;
+    // Make a clickable color button
+    const colorBtn = document.createElement('button');
+    colorBtn.className = 'agent-color-btn';
+    colorBtn.style.backgroundColor = agent.colorHex;
+    colorBtn.dataset.color = agent.colorHex;
 
+    colorBtn.addEventListener('click', () => {
+      selectAgent(agent, null, null, true);
+    });
+
+    // Agent label
     const textSpan = document.createElement('span');
     textSpan.textContent = agent.id;
 
-    li.appendChild(colorDot);
+    li.appendChild(colorBtn);
     li.appendChild(textSpan);
     listElement.appendChild(li);
   }
+
   // Set 'expanded' at the beginning
   specialSection.classList.add('active');
 
@@ -588,19 +282,28 @@
   }
 
   // Select an agent and show the popup with its current data
-  function selectAgent(agent, mouseX, mouseY) {
+  function selectAgent(agent, mouseX, mouseY, fromList = false) {
     selectedAgent = agent;
-    dragOffset.x = agent.position.x - mouseX;
-    dragOffset.y = agent.position.y - mouseY;
-    isDragging = true;
 
-    const popup = document.getElementById('popupMenu');
-    popup.style.left = `${agent.position.x + 100}px`;
-    popup.style.top = `${agent.position.y + 100}px`;
-    popup.style.display = 'block';
+    if (!fromList && mouseX != null && mouseY != null) {
+      dragOffset.x = agent.position.x - mouseX;
+      dragOffset.y = agent.position.y - mouseY;
+      isDragging = true;
 
+      const popup = document.getElementById('popupMenu');
+      popup.style.left = `${agent.position.x + 100}px`;
+      popup.style.top = `${agent.position.y + 100}px`;
+      popup.style.display = 'block';
+    }
+    else {
+      isDragging = false;
+      const popup = document.getElementById('popupMenu');
+      popup.style.left = "1250px";   // fixed location near GUI
+      popup.style.top = "200px";
+      popup.style.display = "block";
+    }
+    
     highlightSelectedSwatch(agent.colorHex);
-
     document.getElementById('agentID').value = agent.id;
     document.getElementById('popupAngle').value = (-agent.angle * 180 / Math.PI).toFixed(2);
     document.getElementById('popupSpeed').value = Math.sqrt(agent.dx ** 2 + agent.dy ** 2).toFixed(2);
@@ -741,19 +444,34 @@
     isRecording = true;
     recordedFrames = [];
     console.log("Recording in progress");
+    startRecBtn.disabled = true;
+    stopRecBtn.disabled = false;
   }
 
   function endRecording() {
     isRecording = false;
+    startRecBtn.disabled = false;
+    stopRecBtn.disabled = true;
     console.log("Recording stopped. This recording has " + recordedFrames.length + " frames.");
     console.log("results: recordedFrames");
     console.table(recordedFrames[recordedFrames.length - 1]); // showing last frame
+    
+    /*
     // registering slider event
     const slider = document.getElementById("simulationSlider");
     slider.max = recordedFrames.length - 1; // index goes from 0..N-1
     slider.value = 0; // reset to start
+    */
+
+    openPlaybackWindow();
   }
 
+  function openPlaybackWindow() {
+    const win = window.open("playbackwindow.html", "PlaybackWindow", "width=650,height=700");
+    win.onload = (() => {
+      win.loadRecording(recordedFrames);
+    });
+  }
   function showFrame(frameIndex) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -770,12 +488,20 @@
   }
 
   //!needs attention: all agents continues with their path and motions even when we replay
-  document.getElementById("startRecording").addEventListener("click", startRecording);
-  document.getElementById("endRecording").addEventListener("click", endRecording);
+  startRecBtn = document.getElementById("startRecording")
+  startRecBtn.addEventListener("click", startRecording);
+  startRecBtn.disabled = false;
+
+  stopRecBtn = document.getElementById("endRecording");
+  stopRecBtn.addEventListener("click", endRecording);
+  stopRecBtn.disabled = true;
+  
+  /* Slider has been moved to another frame
   document.getElementById("simulationSlider").addEventListener("input", (e) => {
     const frameIndex = parseInt(e.target.value, 10);
     showFrame(frameIndex);
   });
+  */
 
   // have 3 slots & 1 save button, pick 1 and play in a new window. when user clicks 'replay' function keys, must record positions of all agents at that moment.
 
@@ -804,31 +530,6 @@
 
     //console.log(selectedAgent);
   }
-
-  /*
-  // Attach the generateRandomColor event listener once
-  document.getElementById('generateRandomColor').addEventListener('click', function() {
-    agentOne.generateRandomColor();
-    document.getElementById('agentColor').value = agentOne.colorHex; // Update the color hexcode in the textbox
-  });
-  */
-
-  /* This function is commented out because reset agent no longer exists.
-  document.getElementById('resetAgent').addEventListener('click', function() {
-  if (!selectedAgent) return;
-
-  selectedAgent.angle = 0;
-  selectedAgent.dx = 0;
-  selectedAgent.dy = 0;
-  selectedAgent.fovAngle = 5 * Math.PI / 6;
-  selectedAgent.fovRadius = 100;
-
-  document.getElementById('agentAngle').value = 0;
-  document.getElementById('agentSpeed').value = 0;
-  document.getElementById('agentFOV').value = 150;
-  document.getElementById('agentFOVRadius').value = 100;
-  });
-  */
 
   // Update agents
   document.getElementById('popupUpdate').addEventListener('click', function() {

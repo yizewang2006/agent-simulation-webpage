@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Playback</title>
+  <style>
+    body { margin: 0; background: #eee; }
+    canvas { border: 2px solid black; display: block; margin: auto; }
+  </style>
+</head>
+<body>
+  <canvas id="playbackCanvas" width="600" height="600"></canvas>
+  <input type="range" id="frameSlider" min="0" value="0" />
+  <button id="playButton">Play</button>
+  <button id="pauseButton">Pause</button>
+
+  <script>
+    let recordedFrames = [];
+    let frame = 0;
+    let playing = false;
+    const canvas = document.getElementById("playbackCanvas");
+    const ctx = canvas.getContext("2d");
+    const slider = document.getElementById("frameSlider");
+
+    // Function called by parent
+    function loadRecording(data) {
+      recordedFrames = data;
+      slider.max = recordedFrames.length - 1;
+      showFrame(0);
+    }
+
+    function showFrame(f) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!recordedFrames[f]) return;
+      recordedFrames[f].forEach(info => {
+        ctx.beginPath();
+        ctx.arc(info.x, info.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = info.color;
+        ctx.fill();
+      });
+      slider.value = f;
+    }
+
+    slider.addEventListener("input", () => {
+      frame = parseInt(slider.value, 10);
+      showFrame(frame);
+    });
+
+    document.getElementById("playButton").addEventListener("click", () => {
+      playing = true;
+      animate();
+    });
+    document.getElementById("pauseButton").addEventListener("click", () => {
+      playing = false;
+    });
+
+    function animate() {
+      if (!playing) return;
+      showFrame(frame);
+      frame = (frame + 1) % recordedFrames.length;
+      requestAnimationFrame(animate);
+    }
+
+    // Expose loadRecording to global scope
+    window.loadRecording = loadRecording;
+  </script>
+</body>
+</html>
