@@ -24,9 +24,9 @@
 
 <body>
 <header>
-  <h1 class="title">Welcome to Agent Simulation</h1>
+  <h1 class="title">Agent Simulation Project</h1>
   <!-- "class" is just applying the styles defined above to this header2-->
-  <h2 class="subtitle"></h2>
+  <h2 class="subtitle">Web Version, Updated September 7, 2025</h2>
 </header>
 <!-- Wrap the canvas and the GUI panel inside a container -->
 <div class="container">
@@ -35,7 +35,7 @@
   <div class="gui-panel">
     <!-- Agent Selection and Creation Block, uses same style as agent-control -->
     <div class="agent-controls">
-      <h2>Agent Control</h2>
+      <h2>Agent Controls</h2>
       <div class="row-flex center-button">
         <button id="addSpecialAgent">Create Special Agent</button>
         <button id="addNormalAgent">Create Normal Agent</button>
@@ -62,8 +62,8 @@
     <!-- Playback control borderless box -->
     <div class="playback-controls">
       <h2>Simulation</h2>
-      <h3>Record this simulation below</h3>
-      <div>
+      <h3 id="recordSimulationLabel">Record this simulation below</h3>
+      <div class="row-flex center-button">
         <!--here for start recording & end recording-->
         <button id="startRecording">Start Recording</button>
         <button id="endRecording">End Recording</button>
@@ -211,6 +211,13 @@
     li.appendChild(colorBtn);
     li.appendChild(textSpan);
     listElement.appendChild(li);
+
+    // we store some references of the agent, so we can access them later.
+    agent.domReferences = {
+      li, 
+      colorBtn, 
+      label:textSpan
+    }
   }
 
   // Set 'expanded' at the beginning
@@ -285,6 +292,7 @@
   function selectAgent(agent, mouseX, mouseY, fromList = false) {
     selectedAgent = agent;
 
+    // when clicked from canvas
     if (!fromList && mouseX != null && mouseY != null) {
       dragOffset.x = agent.position.x - mouseX;
       dragOffset.y = agent.position.y - mouseY;
@@ -295,6 +303,7 @@
       popup.style.top = `${agent.position.y + 100}px`;
       popup.style.display = 'block';
     }
+    // from GUI, not the canvas
     else {
       isDragging = false;
       const popup = document.getElementById('popupMenu');
@@ -323,33 +332,58 @@
   // --- Below are UI controls ---
   // Get all color swatches
   const swatches = document.querySelectorAll('.color-swatch'); // Find all 'color-swatches'
-  swatches.forEach(swatch => {
+    swatches.forEach(swatch => {
     swatch.addEventListener('click', function() {
       const color = this.getAttribute('data-color');
       if (selectedAgent) {
         selectedAgent.colorHex = color;
-        selectedAgent.originalColor = color; // Previously, by exiting other agent's FOV, it will return to black. By setting original color to selected color, we avoid this issue.
+        selectedAgent.originalColor = color;
+        // reflect in sidebar immediately
+        selectedAgent.domReferences?.colorBtn && (selectedAgent.domReferences.colorBtn.style.backgroundColor = color);
       }
-      highlightSelectedSwatch(color); // Highlight UI part
+      highlightSelectedSwatch(color);
     });
   });
 
   // Update via pop-up menu.
-  document.getElementById('popupUpdate').addEventListener('click', () => {
+
+  function updateViaPopup() {
     if (!selectedAgent) return;
 
     const degToRad = d => d * Math.PI / 180;
 
+    // update model
     selectedAgent.id = document.getElementById('agentID').value;
-    selectedAgent.angle = -degToRad(parseFloat(document.getElementById('popupAngle').value));
+
+    const angleDeg = parseFloat(document.getElementById('popupAngle').value);
+    if (!isNaN(angleDeg)) selectedAgent.angle = -degToRad(angleDeg);
+
     const spd = parseFloat(document.getElementById('popupSpeed').value);
-    selectedAgent.dx = spd * Math.cos(selectedAgent.angle);
-    selectedAgent.dy = spd * Math.sin(selectedAgent.angle);
-    selectedAgent.fovAngle = degToRad(parseFloat(document.getElementById('popupFOV').value));
-    selectedAgent.fovRadius = parseFloat(document.getElementById('popupRadius').value);
+    if (!isNaN(spd)) {
+      selectedAgent.dx = spd * Math.cos(selectedAgent.angle);
+      selectedAgent.dy = spd * Math.sin(selectedAgent.angle);
+    }
+
+    const fovDeg = parseFloat(document.getElementById('popupFOV').value);
+    if (!isNaN(fovDeg)) selectedAgent.fovAngle = degToRad(fovDeg);
+
+    const fovRadius = parseFloat(document.getElementById('popupRadius').value);
+    if (!isNaN(fovRadius)) selectedAgent.fovRadius = Math.max(0, fovRadius);
+
     selectedAgent.position.x = parseFloat(document.getElementById('popupX').value);
     selectedAgent.position.y = parseFloat(document.getElementById('popupY').value);
-  });
+
+    // update list UI
+    if (selectedAgent.domReferences?.label) {
+      selectedAgent.domReferences.label.textContent = selectedAgent.id;
+    }
+    if (selectedAgent.domReferences?.colorBtn) {
+      selectedAgent.domReferences.colorBtn.style.backgroundColor = selectedAgent.colorHex; // not "color"
+    }
+  }
+  
+  // Register the updateViaPopup to the update button
+  document.getElementById('popupUpdate').addEventListener('click', updateViaPopup);
   
   document.getElementById('popupClose').addEventListener('click', () => {
     document.getElementById('popupMenu').style.display = 'none'; // Close the popup menu
@@ -402,33 +436,16 @@
   });
 
   // Wire function to createSpecialAgent button.
-  document.getElementById("addSpecialAgent").addEventListener("click", () => {
+    document.getElementById("addSpecialAgent").addEventListener("click", () => {
     specialAgentCount++;
     const name = `Special Agent ${specialAgentCount}`;
     const { x, y, dx, dy, angle, radius } = randomParameter();
-    // Create a special agent — set isSpecial to true
+
     const agent = new Agent(true, x, y, radius, dx, dy, '#F5C6B3', 100, 5 * Math.PI / 6, angle, name);
-
     agents.push(agent);
-    // Add to the DOM list
-    const list = document.getElementById('specialAgentList');
 
-    const li = document.createElement('li');
-    li.className = 'agent-entry';
-
-    // Create a colored dot
-    const colorDot = document.createElement('span');
-    colorDot.className = 'agent-color-dot';
-    colorDot.style.backgroundColor = agent.colorHex;
-
-    // Create the text span
-    const textSpan = document.createElement('span');
-    textSpan.textContent = name;
-
-    // Combine and append
-    li.appendChild(colorDot);
-    li.appendChild(textSpan);
-    list.appendChild(li);
+    const specialList = document.getElementById('specialAgentList');
+    addAgentToList(agent, specialList);   // <- this creates the button + label
   });
 
   // Setup collapsible headers
@@ -442,16 +459,31 @@
   // Recording functions
   function startRecording() {
     isRecording = true;
-    recordedFrames = [];
-    console.log("Recording in progress");
+    
+    // UI Element Update
+    document.getElementById("canvasOne").style.border = "5px solid red"; // set the canvas border to red for better visual
+    const recordSimulationLabel = document.getElementById("recordSimulationLabel");
+    recordSimulationLabel.textContent = "Recording in Progress";
+    recordSimulationLabel.style.color = "red"
     startRecBtn.disabled = true;
     stopRecBtn.disabled = false;
+
+    // Recording mech.
+    recordedFrames = [];
   }
 
   function endRecording() {
     isRecording = false;
+
+    // UI Element Update
+    document.getElementById("canvasOne").style.border = "4px solid black"; // set the canvas border to black again
+    const recordSimulationLabel = document.getElementById("recordSimulationLabel");
+    recordSimulationLabel.textContent = "Record this simulation below";
+    recordSimulationLabel.style.color = "black";
     startRecBtn.disabled = false;
     stopRecBtn.disabled = true;
+
+    // Debug only
     console.log("Recording stopped. This recording has " + recordedFrames.length + " frames.");
     console.log("results: recordedFrames");
     console.table(recordedFrames[recordedFrames.length - 1]); // showing last frame
@@ -530,42 +562,6 @@
 
     //console.log(selectedAgent);
   }
-
-  // Update agents
-  document.getElementById('popupUpdate').addEventListener('click', function() {
-  if (!selectedAgent) return;
-
-    function degreesToRadians(deg) {
-      return deg * Math.PI / 180;
-    }
-
-    const angleDeg = parseFloat(document.getElementById('popupAngle').value);
-    if (!isNaN(angleDeg)) {
-      const angleRad = -degreesToRadians(angleDeg);
-      selectedAgent.angle = angleRad;
-    }
-
-    const speed = parseFloat(document.getElementById('popupSpeed').value);
-    if (!isNaN(speed)) {
-      selectedAgent.dx = speed * Math.cos(selectedAgent.angle);
-      selectedAgent.dy = speed * Math.sin(selectedAgent.angle);
-    }
-
-    const fovDeg = parseFloat(document.getElementById('popupFOV').value);
-    if (!isNaN(fovDeg)) {
-      selectedAgent.fovAngle = degreesToRadians(fovDeg);
-    }
-
-    const fovRadius = parseFloat(document.getElementById('popupRadius').value);
-    if (!isNaN(fovRadius)) {
-      if (fovRadius < 0) {
-        alert("Warning: FOV radius must be a positive value.");
-        selectedAgent.fovRadius = 100;
-      } else {
-        selectedAgent.fovRadius = fovRadius;
-      }
-    }
-  });
 
   // Periodically update the GUI fields with selected agent's position
   setInterval(updateGUI, 1); // less number = better.
