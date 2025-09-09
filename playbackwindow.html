@@ -3,66 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <title>Playback</title>
-  <style>
-    body { margin: 0; background: #eee; }
-    canvas { border: 2px solid black; display: block; margin: auto; }
-  </style>
+  <link rel="stylesheet" href="style.css"> <!-- import your style -->
 </head>
 <body>
-  <canvas id="playbackCanvas" width="600" height="600"></canvas>
-  <input type="range" id="frameSlider" min="0" value="0" />
-  <button id="playButton">Play</button>
-  <button id="pauseButton">Pause</button>
+  <h2>Playback Window</h2>
+  <canvas id="playbackCanvas" width="1000" height="1000" style="border:1px solid black"></canvas>
+  <div>
+    <button id="prevFrame">⏮ Prev</button>
+    <button id="nextFrame">⏭ Next</button>
+  </div>
 
   <script>
-    let recordedFrames = [];
-    let frame = 0;
-    let playing = false;
     const canvas = document.getElementById("playbackCanvas");
     const ctx = canvas.getContext("2d");
-    const slider = document.getElementById("frameSlider");
 
-    // Function called by parent
-    function loadRecording(data) {
-      recordedFrames = data;
-      slider.max = recordedFrames.length - 1;
-      showFrame(0);
-    }
+    let frames = [];
+    let currentFrame = 0;
 
-    function showFrame(f) {
+    // This will be called from the opener page
+    window.loadRecording = function(recordedFrames) {
+      frames = recordedFrames;
+      currentFrame = 0;
+      showFrame(currentFrame);
+    };
+
+    function showFrame(i) {
+      console.log("Showing first frame");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!recordedFrames[f]) return;
-      recordedFrames[f].forEach(info => {
+      if (!frames[i]) return;
+
+      frames[i].forEach(info => {
         ctx.beginPath();
         ctx.arc(info.x, info.y, 5, 0, Math.PI * 2);
         ctx.fillStyle = info.color;
         ctx.fill();
+        ctx.closePath();
       });
-      slider.value = f;
     }
 
-    slider.addEventListener("input", () => {
-      frame = parseInt(slider.value, 10);
-      showFrame(frame);
-    });
-
-    document.getElementById("playButton").addEventListener("click", () => {
-      playing = true;
-      animate();
-    });
-    document.getElementById("pauseButton").addEventListener("click", () => {
-      playing = false;
-    });
-
-    function animate() {
-      if (!playing) return;
-      showFrame(frame);
-      frame = (frame + 1) % recordedFrames.length;
-      requestAnimationFrame(animate);
-    }
-
-    // Expose loadRecording to global scope
-    window.loadRecording = loadRecording;
+    document.getElementById("prevFrame").onclick = () => {
+      if (currentFrame > 0) {
+        currentFrame--;
+        showFrame(currentFrame);
+      }
+    };
+    document.getElementById("nextFrame").onclick = () => {
+      if (currentFrame < frames.length - 1) {
+        currentFrame++;
+        showFrame(currentFrame);
+      }
+    };
   </script>
 </body>
 </html>

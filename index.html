@@ -499,11 +499,13 @@
   }
 
   function openPlaybackWindow() {
+    console.log(recordedFrames);
     const win = window.open("playbackwindow.html", "PlaybackWindow", "width=650,height=700");
     win.onload = (() => {
       win.loadRecording(recordedFrames);
     });
   }
+
   function showFrame(frameIndex) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
