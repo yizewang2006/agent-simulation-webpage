@@ -1,3 +1,5 @@
+import { Entity } from "./entity.js";
+
 class Position {
     constructor(x, y) {
         this.x = x;
@@ -18,7 +20,7 @@ class Offset {
     }
 }
 
-class Agent {
+class Agent extends Entity{
     constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id) { // Standard FOV = 150 degrees OR 5π/6
         // Instead of separate x and y, we now use a Position() class
         this.drawFOV = drawFOV;
@@ -35,7 +37,7 @@ class Agent {
         // Initialize an empty array to hold detected agents
         this.detectedAgents = [];
         this.id = id;
-    }
+    }   
 
     generateRandomColor() {
         const possibleColor = [
@@ -241,3 +243,6 @@ class Agent {
         }
     }
 }
+
+export { Agent };
+window.Agent = Agent;
