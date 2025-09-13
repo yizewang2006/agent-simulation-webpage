@@ -1,0 +1,253 @@
+Sum is average between 3 simulations of each model
+Best model at generation: 0
+Agent specification: 
+FOV: Distance - 60.0 Angle - 360
+Product Fitness
+Obs avoidance Fitness
+Follow leader Fitness
+Exceed angle turn Fitness
+Crossover sucessfully 
+Mutation successfully 
+----------------------------------aaaaaaaaaaaaaaaaaa----------------------------------
+Generation #0 :9.999999999999991E-11
+Inside #0 :1.0
+Finish time #0 :1.0
+
+Behavior Group #0
+Extracted property: 3.0 (Speed)
+   + Behavior #0
+	*** Activation
+		+ Activation property: 1.0
+		+ LowerRange: 0.0
+		+ UpperRange: 120.0
+		+ Check Set: []
+		+ Option: 3 _ Check space_property
+		+ AF type: 2 (Linear AF)
+			+ AF slope: 5.0
+			+ AF increase: false
+		+ Null activation: false
+		+ Act on empty segment: 1
+		+ Segment com filter: 1.0
+		+ Segment distance filter: 1
+		+ Filter: #0
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 120.0]
+			+ Category ranged: []
+	*** Action
+		+ Option: 0 (Self reference)
+		+ Offset: 0.25
+
+Behavior Group #1
+Extracted property: 1.0 (Position)
+   + Behavior #0
+	*** Activation
+		+ Activation property: 1.0
+		+ LowerRange: 0.0
+		+ UpperRange: 20.0
+		+ Check Set: []
+		+ Option: 2 _ Check neighbor_property 
+		+ AF type: 2 (Linear AF)
+			+ AF slope: 10.0
+			+ AF increase: false
+		+ Null activation: false
+		+ Filter: #0
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 1.0]
+			+ Category ranged: []
+		+ Filter: #1
+			+ Filtered property: 1.0
+			+ Numeritc ranged: [0.0 , 40.0]
+			+ Category ranged: []
+		+ Filter: #2
+			+ Filtered property: 1.0
+			+ Combine method: 1 (Relative: nearest)
+	*** Action
+		+ Option: 1 (Neighbor reference)
+		+ Offset: -90.0
+		+ Filter: #0
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 1.0]
+			+ Category ranged: []
+		+ Filter: #1
+			+ Filtered property: 1.0
+			+ Numeritc ranged: [0.0 , 40.0]
+			+ Category ranged: []
+		+ Filter: #2
+			+ Filtered property: 1.0
+			+ Combine method: 1 (Relative: nearest)
+}
+
+
+Sum is average between 3 simulations of each model
+Best model at generation: 0
+Agent specification: 
+FOV: Distance - 60.0 Angle - 360
+Product Fitness
+Obs avoidance Fitness
+Follow leader Fitness
+Exceed angle turn Fitness
+Crossover sucessfully 
+Mutation successfully 
+----------------------------------aaaaaaaaaaaaaaaaaa----------------------------------
+Generation #0 :8.555555555555555E-10
+Inside #0 :1.0
+Finish time #0 :1.0
+
+Behavior Group #0
+Extracted property: 3.0 (Speed)
+   + Behavior #0
+	*** Activation
+		+ Activation property: 1.0
+		+ LowerRange: 0.0
+		+ UpperRange: 120.0
+		+ Check Set: []
+		+ Option: 3 _ Check space_property
+		+ AF type: 2 (Linear AF)
+			+ AF slope: 5.0
+			+ AF increase: false
+		+ Null activation: false
+		+ Act on empty segment: 1
+		+ Segment com filter: 1.0
+		+ Segment distance filter: 1
+		+ Filter: #0
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 120.0]
+			+ Category ranged: []
+	*** Action
+		+ Option: 0 (Self reference)
+		+ Offset: 0.25
+
+Behavior Group #1
+Extracted property: 1.0 (Position)
+   + Behavior #0
+	*** Activation
+		+ Activation property: 1.0
+		+ LowerRange: 0.0
+		+ UpperRange: 60.0
+		+ Check Set: []
+		+ Option: 2 _ Check neighbor_property 
+		+ AF type: 2 (Linear AF)
+			+ AF slope: 10.0
+			+ AF increase: false
+		+ Null activation: false
+		+ Filter: #0
+			+ Filtered property: 4.0
+			+ Numeritc ranged: [0.0 , 0.0]
+			+ Category ranged: [2.1]
+		+ Filter: #1
+			+ Filtered property: 1.0
+			+ Combine method: 1 (Relative: nearest)
+	*** Action
+		+ Option: 2 (Self space)
+		+ Offset: 0.0
+		+ Act_on_empty_segment: 1
+		+ Segment_com_filter: 2.2
+		+ Segment_distance_filter: 1
+		+ Filter: #0
+			+ Filtered property: 2.0
+			+ Numeritc ranged: [10.0 , 61.0]
+			+ Category ranged: []
+		+ Filter: #1
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 120.0]
+			+ Category ranged: []
+}
+
+
+Sum is average between 3 simulations of each model
+Best model at generation: 0
+Agent specification: 
+FOV: Distance - 60.0 Angle - 360
+Product Fitness
+Obs avoidance Fitness
+Follow leader Fitness
+Exceed angle turn Fitness
+Crossover sucessfully 
+Mutation successfully 
+----------------------------------aaaaaaaaaaaaaaaaaa----------------------------------
+Generation #0 :1.0E-9
+Inside #0 :1.0
+Finish time #0 :1.0
+
+Behavior Group #0
+Extracted property: 3.0 (Speed)
+   + Behavior #0
+	*** Activation
+		+ Activation property: 2.1
+		+ LowerRange: 0.0
+		+ UpperRange: 20.0
+		+ Check Set: []
+		+ Option: 3 _ Check space_property
+		+ AF type: 1 (Binary AF)
+			+ AF inside: false
+			+ Weight: 20.0
+		+ Null activation: true
+		+ Act on empty segment: 1
+		+ Segment com filter: 2.1
+		+ Segment distance filter: 1
+		+ Filter: #0
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 45.0]
+			+ Category ranged: []
+	*** Action
+		+ Option: 0 (Self reference)
+		+ Offset: 1.0
+   + Behavior #1
+	*** Activation
+		+ Activation property: 2.1
+		+ LowerRange: 0.0
+		+ UpperRange: 20.0
+		+ Check Set: []
+		+ Option: 3 _ Check space_property
+		+ AF type: 1 (Binary AF)
+			+ AF inside: false
+			+ Weight: 20.0
+		+ Null activation: true
+		+ Act on empty segment: 1
+		+ Segment com filter: 2.1
+		+ Segment distance filter: 1
+		+ Filter: #0
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 45.0]
+			+ Category ranged: []
+	*** Action
+		+ Option: 0 (Self reference)
+		+ Offset: 1.0
+
+Behavior Group #1
+Extracted property: 1.0 (Position)
+   + Behavior #0
+	*** Activation
+		+ Activation property: 1.0
+		+ LowerRange: 0.0
+		+ UpperRange: 60.0
+		+ Check Set: []
+		+ Option: 2 _ Check neighbor_property 
+		+ AF type: 2 (Linear AF)
+			+ AF slope: 100.0
+			+ AF increase: false
+		+ Null activation: false
+		+ Filter: #0
+			+ Filtered property: 4.0
+			+ Numeritc ranged: [0.0 , 0.0]
+			+ Category ranged: [2.1]
+		+ Filter: #1
+			+ Filtered property: 1.0
+			+ Combine method: 1 (Relative: nearest)
+	*** Action
+		+ Option: 2 (Self space)
+		+ Offset: 0.0
+		+ Act_on_empty_segment: 1
+		+ Segment_com_filter: 2.2
+		+ Segment_distance_filter: 1
+		+ Filter: #0
+			+ Filtered property: 2.0
+			+ Numeritc ranged: [10.0 , 61.0]
+			+ Category ranged: []
+		+ Filter: #1
+			+ Filtered property: 3.0
+			+ Numeritc ranged: [0.0 , 120.0]
+			+ Category ranged: []
+}
+
+
