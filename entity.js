@@ -1,4 +1,4 @@
-export class Entity { // where it all started
+class Entity { // where it all started
     constructor(ID) {
         this.ID = ID;
         this.warp = false;
