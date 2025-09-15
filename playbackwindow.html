@@ -3,56 +3,69 @@
 <head>
   <meta charset="UTF-8">
   <title>Playback</title>
-  <link rel="stylesheet" href="style.css"> <!-- import your style -->
+  <link rel="stylesheet" href="style.css">
+  <!--font families-->
+  <!-- Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
 </head>
 <body>
   <h2>Playback Window</h2>
-  <canvas id="playbackCanvas" width="1000" height="1000" style="border:1px solid black"></canvas>
-  <div>
-    <button id="prevFrame">⏮ Prev</button>
-    <button id="nextFrame">⏭ Next</button>
+  <div class="center-container">
+    <canvas id="playbackCanvas" width="1000" height="1000" ></canvas>
+    <div>
+      <button id="prevFrame">⏮ Prev</button>
+      <input type="range" id="frameSlider" min="0" max="0" value="0">
+      <button id="nextFrame">⏭ Next</button>
+    </div>
   </div>
 
-  <script>
-    const canvas = document.getElementById("playbackCanvas");
-    const ctx = canvas.getContext("2d");
 
-    let frames = [];
-    let currentFrame = 0;
+<script src="agent.js"></script>
 
-    // This will be called from the opener page
-    window.loadRecording = function(recordedFrames) {
-      frames = recordedFrames;
-      currentFrame = 0;
-      showFrame(currentFrame);
-    };
+<script>
+  const canvas = document.getElementById("playbackCanvas");
+  const ctx = canvas.getContext("2d");
 
-    function showFrame(i) {
-      console.log("Showing first frame");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      if (!frames[i]) return;
+  let frames = [];
+  let currentFrame = 0;
 
-      frames[i].forEach(info => {
-        ctx.beginPath();
-        ctx.arc(info.x, info.y, 5, 0, Math.PI * 2);
-        ctx.fillStyle = info.color;
-        ctx.fill();
-        ctx.closePath();
-      });
-    }
+  // This will be called from the opener page
+  const slider = document.getElementById("frameSlider");
 
-    document.getElementById("prevFrame").onclick = () => {
-      if (currentFrame > 0) {
-        currentFrame--;
-        showFrame(currentFrame);
-      }
-    };
-    document.getElementById("nextFrame").onclick = () => {
-      if (currentFrame < frames.length - 1) {
-        currentFrame++;
-        showFrame(currentFrame);
-      }
-    };
-  </script>
+  window.loadRecording = function(recordedFrames) {
+    frames = recordedFrames;
+    currentFrame = 0;
+
+    // set slider range
+    slider.min = 0;
+    slider.max = frames.length - 1;
+    slider.value = 0;
+
+    showFrame(currentFrame);
+  };
+
+  function showFrame(i) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!frames[i]) return;
+
+    // Rebuild each agent and draw it
+    frames[i].forEach(info => {
+      const agent = new Agent(
+        info.x, info.y, info.dx, info.dy,
+        info.angle, info.fovAngle, info.fovRadius,
+        info.colorHex
+      );
+
+      // If your Agent constructor sets defaults differently,
+      // you may need to tweak argument order here.
+
+      agent.draw();
+    });
+
+    slider.value = i;
+  }
+</script>
 </body>
 </html>

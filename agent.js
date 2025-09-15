@@ -168,7 +168,6 @@ class Agent{
     }
 
     // Detection system to identify agents inside FOV
-    // Written by ChatGPT, will make my own version.
     detectAgents(agents) {
         let currentlyDetected = [];
         
@@ -227,7 +226,7 @@ class Agent{
         this.detectedAgents = currentlyDetected;
     }
     
-    // for simulation - what info do we report?
+    // for simulation - we report both important properties and attributes
     reportInformation() {
         return {
             x: this.position.x,

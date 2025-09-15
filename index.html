@@ -26,7 +26,7 @@
 <header>
   <h1 class="title">Agent Simulation Project</h1>
   <!-- "class" is just applying the styles defined above to this header2-->
-  <h2 class="subtitle">Web Version, Updated September 7, 2025</h2>
+  <h2 class="subtitle">Web Version, Updated September 14, 2025</h2>
 </header>
 <!-- Wrap the canvas and the GUI panel inside a container -->
 <div class="container">
@@ -62,7 +62,7 @@
     <!-- Playback control borderless box -->
     <div class="playback-controls">
       <h2>Simulation</h2>
-      <h3 id="recordSimulationLabel">Record this simulation below</h3>
+      <h3 id="recordSimulationLabel">Record this simulation below (New agent creation should be disabled during recording)</h3>
       <div class="row-flex center-button">
         <!--here for start recording & end recording-->
         <button id="startRecording">Start Recording</button>
@@ -455,6 +455,25 @@
       section.classList.toggle('active');
     });
   });
+
+  // solved as of 9/14, playback is done in another window
+  startRecBtn = document.getElementById("startRecording")
+  startRecBtn.addEventListener("click", startRecording);
+  startRecBtn.disabled = false;
+
+  stopRecBtn = document.getElementById("endRecording");
+  stopRecBtn.addEventListener("click", endRecording);
+  stopRecBtn.disabled = true;
+
+  createSpecialAgent = document.getElementById("addSpecialAgent");
+  createNormalAgent = document.getElementById("addNormalAgent")
+  
+  /* Slider has been moved to another window
+  document.getElementById("simulationSlider").addEventListener("input", (e) => {
+    const frameIndex = parseInt(e.target.value, 10);
+    showFrame(frameIndex);
+  });
+  */
   
   // Recording functions
   function startRecording() {
@@ -467,6 +486,8 @@
     recordSimulationLabel.style.color = "red"
     startRecBtn.disabled = true;
     stopRecBtn.disabled = false;
+    createSpecialAgent.disabled = true;
+    createNormalAgent.disabled = true;
 
     // Recording mech.
     recordedFrames = [];
@@ -478,10 +499,12 @@
     // UI Element Update
     document.getElementById("canvasOne").style.border = "4px solid black"; // set the canvas border to black again
     const recordSimulationLabel = document.getElementById("recordSimulationLabel");
-    recordSimulationLabel.textContent = "Record this simulation below";
+    recordSimulationLabel.textContent = "Record this simulation below (New agent creation should be disabled during recording)";
     recordSimulationLabel.style.color = "black";
     startRecBtn.disabled = false;
     stopRecBtn.disabled = true;
+    createSpecialAgent.disabled = false;
+    createNormalAgent.disabled = false;
 
     // Debug only
     console.log("Recording stopped. This recording has " + recordedFrames.length + " frames.");
@@ -520,22 +543,6 @@
       ctx.closePath();
     });
   }
-
-  //!needs attention: all agents continues with their path and motions even when we replay
-  startRecBtn = document.getElementById("startRecording")
-  startRecBtn.addEventListener("click", startRecording);
-  startRecBtn.disabled = false;
-
-  stopRecBtn = document.getElementById("endRecording");
-  stopRecBtn.addEventListener("click", endRecording);
-  stopRecBtn.disabled = true;
-  
-  /* Slider has been moved to another frame
-  document.getElementById("simulationSlider").addEventListener("input", (e) => {
-    const frameIndex = parseInt(e.target.value, 10);
-    showFrame(frameIndex);
-  });
-  */
 
   // have 3 slots & 1 save button, pick 1 and play in a new window. when user clicks 'replay' function keys, must record positions of all agents at that moment.
 
