@@ -18,8 +18,9 @@ class Offset {
     }
 }
 
-class Agent{
+class Agent {
     constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id) { // Standard FOV = 150 degrees OR 5π/6
+        console.log("A new agent called " + id + " has been created");
         // Instead of separate x and y, we now use a Position() class
         this.drawFOV = drawFOV;
         this.position = new Position(x, y);
