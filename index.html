@@ -117,10 +117,12 @@
   const ctx = canvas.getContext('2d');
 </script>
 
-<script src="agent.js"></script>
+<script type="module" src="entity.js"></script>
 
 <!-- Main script that uses Agent (agent simulation) -->
-<script> 
+<script type="module"> 
+  import { Agent } from "./entity.js";
+
   // New as of 3/18: selectable agent:
   let selectedAgent = null;
 
