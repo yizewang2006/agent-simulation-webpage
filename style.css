@@ -54,7 +54,7 @@ header h2 {
   font-family: 'Montserrat', sans-serif;
   font-weight: 800;
   color: #333;
-  background-color: beige;
+  background-color: #e4e6f0;
   margin: 0;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
@@ -86,7 +86,7 @@ header h3 {
   flex-direction: row;
   align-items: flex-start;
   width: 100%;
-  background-color: beige;
+  background-color: #e4e6f0;
   box-sizing: border-box;
   padding: 10px;
 }
@@ -105,7 +105,7 @@ canvas {
   margin: 10px;
   padding: 10px;
   border: 4px solid #333;
-  background-color: #f0f0f0;
+  background-color: #e4e6f0;
 }
 
 /* Style for subtitle' */
@@ -188,7 +188,7 @@ input[type="text"]:focus {
 
 /* Defining button styles */
 button {
-  background-color: #008CBA;
+  background-color: #002878;
   border: none;
   color: white;
   padding: 10px 20px;
@@ -201,16 +201,16 @@ button {
 
 /* Defining button styles when hovered over */
 button:hover {
-  background-color: #005f73;
+  background-color: #001F5E;
 }
 
 /* When a button is clicked (or active) */
 button:active {
-  background-color: #003f50;
+  background-color: #00194A;
 }
 
 button:disabled{
-    background-color: #808080;
+    background-color: #99A9C7;
 }
 
 /* Color picker for agents */
@@ -301,7 +301,7 @@ button:disabled{
 
 /* Collapsible header button */
 .collapsible-header {
-  background-color: #008CBA;
+  background-color: #002878;
   color: white;
   cursor: pointer;
   padding: 10px;
