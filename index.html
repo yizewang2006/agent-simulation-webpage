@@ -26,7 +26,7 @@
 <header>
   <h1 class="title">Agent Simulation Project</h1>
   <!-- "class" is just applying the styles defined above to this header2-->
-  <h2 class="subtitle">Web Version, Updated September 14, 2025</h2>
+  <h2 class="subtitle">Web Version, Updated September 18, 2025</h2>
 </header>
 <!-- Wrap the canvas and the GUI panel inside a container -->
 <div class="container">
@@ -117,11 +117,11 @@
   const ctx = canvas.getContext('2d');
 </script>
 
-<script type="module" src="entity.js"></script>
+<script type="module" src="./agent.js"></script>
 
 <!-- Main script that uses Agent (agent simulation) -->
 <script type="module"> 
-  import { Agent } from "./entity.js";
+  import { Agent } from "./agent.js";
 
   // New as of 3/18: selectable agent:
   let selectedAgent = null;
@@ -129,7 +129,6 @@
   // New as of 3/20: Create agents:
   let normalAgentCount = 0; // Normal agents do not draw FOV, thus no detection happens (can be added later)
   let specialAgentCount = 0;
-
   
   // Create a testing agent 
   let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#F5C6B3', 100, 5 * Math.PI / 6, 0, "Agent 1");
@@ -137,7 +136,7 @@
   //let agentThree = new Agent(true, canvas.width * 0.7, canvas.height * 0.7, 5, 0, 0, '#0000FF', 100, 5 * Math.PI / 6, 0, "Agent 100");
 
   // Create a list of circles.
-  const agents = [];
+  let agents = [];
 
   // Create 5 circles with random positions and velocities that use the default color '#000000'
   /*
@@ -460,16 +459,16 @@
   });
 
   // solved as of 9/14, playback is done in another window
-  startRecBtn = document.getElementById("startRecording")
+  let startRecBtn = document.getElementById("startRecording");
   startRecBtn.addEventListener("click", startRecording);
   startRecBtn.disabled = false;
 
-  stopRecBtn = document.getElementById("endRecording");
+  let stopRecBtn = document.getElementById("endRecording");
   stopRecBtn.addEventListener("click", endRecording);
   stopRecBtn.disabled = true;
 
-  createSpecialAgent = document.getElementById("addSpecialAgent");
-  createNormalAgent = document.getElementById("addNormalAgent")
+  let createSpecialAgent = document.getElementById("addSpecialAgent");
+  let createNormalAgent = document.getElementById("addNormalAgent")
   
   /* Slider has been moved to another window
   document.getElementById("simulationSlider").addEventListener("input", (e) => {

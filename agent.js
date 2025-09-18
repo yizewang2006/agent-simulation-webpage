@@ -1,3 +1,5 @@
+import { Entity } from "./entity.js";
+
 class Position {
     constructor(x, y) {
         this.x = x;
@@ -18,7 +20,7 @@ class Offset {
     }
 }
 
-class Agent extends Entity{
+export class Agent extends Entity{
     constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + id + " has been created");
         super();
@@ -84,11 +86,11 @@ class Agent extends Entity{
     }
 
     // Method to update the position of the circle
-    updatePosition() {
+    updatePosition(allAgents) {
         // FIX: Updated to use the Circle's dx and dy, not this.position.dx and this.position.dy.
         this.position.add(this.dx, this.dy); 
         this.warpAgent();
-        if (this.drawFOV) this.detectAgents(agents)
+        if (this.drawFOV) this.detectAgents(allAgents)
         this.draw();
     }
 
@@ -231,14 +233,17 @@ class Agent extends Entity{
     // for simulation - we report both important properties and attributes
     reportInformation() {
         return {
-            x: this.position.x,
-            y: this.position.y,
-            dx: this.dx,
-            dy: this.dy,
-            angle: this.angle,
-            fovAngle: this.fovAngle,
-            fovRadius: this.fovRadius,
-            colorHex: this.colorHex
+            _drawFOV: this.drawFOV,
+            _x: this.position.x,
+            _y: this.position.y,
+            _radius : this.radius,
+            _dx: this.dx,
+            _dy: this.dy,
+            _colorHex: this.colorHex,
+            _fovRadius: this.fovRadius,
+            _fovAngle: this.fovAngle,
+            _angle: this.angle,
+            _id: this.id
         }
     }
 }

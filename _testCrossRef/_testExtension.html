@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<script type="module" src="_testExtension.js"></script>
+<script type="module" src="_testExtension2.js"></script>
+<script type="module" src="_testExtensionCat.js"></script>
+
+<script type="module">
+    import { Animal } from "./_testExtension.js"
+    import { Dog } from "./_testExtension.js"
+    import { Cat } from "./_testExtensionCat.js"
+    import { Bird } from "./_testExtensionCat.js"
+    import { Kiha40 } from "./_testExtension2.js"; // キハ(Kiha)40 is a japanese train which i'm fairly familiar with
+
+    let animal = new Animal("tier"); // das Tier = German word for animal
+    animal.sound();
+
+    let dog1 = new Dog("wangchai");
+    dog1.sound();
+
+    let cat1 = new Cat("Kitty");
+    cat1.sound();
+
+    let bird1 = new Bird("Xiaofeixia");
+    bird1.sound();
+
+    let Kiha40_101 = new Kiha40(1, 80);
+    Kiha40_101.identifyCountry();
+    Kiha40_101.getMaxSpeed();
+    
+</script>
+</html>

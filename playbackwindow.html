@@ -22,9 +22,12 @@
   </div>
 
 
-<script src="./entity.js"></script>
+<script type="module" src="./agent.js"></script>
 
-<script>
+<script type="module">
+
+  import { Agent } from "./agent.js";
+
   const canvas = document.getElementById("playbackCanvas");
   const ctx = canvas.getContext("2d");
 
@@ -34,6 +37,7 @@
   // This will be called from the opener page
   const slider = document.getElementById("frameSlider");
 
+  // Initiallize the window
   window.loadRecording = function(recordedFrames) {
     frames = recordedFrames;
     currentFrame = 0;
@@ -53,13 +57,18 @@
     // Rebuild each agent and draw it
     frames[i].forEach(info => {
       const agent = new Agent(
-        info.x, info.y, info.dx, info.dy,
-        info.angle, info.fovAngle, info.fovRadius,
-        info.colorHex
+        true,                 // drawFOV
+        info.x, info.y,       // position
+        5,                   // radius
+        info.dx, info.dy,     // velocity
+        info.colorHex,        // colorHex
+        info.fovRadius,       // fovRadius
+        info.fovAngle,        // fovAngle
+        info.angle,           // angle
+        info.id         // id (optional, you can use info.id if stored)
       );
 
-      // If your Agent constructor sets defaults differently,
-      // you may need to tweak argument order here.
+      // constructor Agent(drawFOV: any, x: any, y: any, radius: any, dx: any, dy: any, colorHex: string | undefined, fovRadius: number | undefined, fovAngle: number | undefined, angle: number | undefined, id: any): Agent
 
       agent.draw();
     });
