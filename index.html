@@ -90,7 +90,7 @@
     <div class="color-swatch" data-color="#0000FF" style="background-color: #0000FF;"></div>
     <div class="color-swatch" data-color="#FFFF00" style="background-color: #FFFF00;"></div>
     <div class="color-swatch" data-color="#FF00FF" style="background-color: #FF00FF;"></div>
-    <div class="color-swatch" data-color="#F5C6B3" style="background-color: #F5C6B3;"></div>
+    <div class="color-swatch" data-color="#D28E00" style="background-color: #D28E00;"></div>
   </div>
   <label>Angle (deg):</label>
   <input type="text" id="popupAngle" placeholder="Angle">
@@ -131,7 +131,7 @@
   let specialAgentCount = 0;
   
   // Create a testing agent 
-  let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#F5C6B3', 100, 5 * Math.PI / 6, 0, "Agent 1");
+  let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#d28e00', 100, 5 * Math.PI / 6, 0, "Agent 1");
   //let agentTwo = new Agent(true, canvas.width * 0.5, canvas.height * 0.5, 5, 0, 0, '#000000', 100, 5 * Math.PI / 6, 0, "Agent 2");
   //let agentThree = new Agent(true, canvas.width * 0.7, canvas.height * 0.7, 5, 0, 0, '#0000FF', 100, 5 * Math.PI / 6, 0, "Agent 100");
 
@@ -443,7 +443,7 @@
     const name = `Special Agent ${specialAgentCount}`;
     const { x, y, dx, dy, angle, radius } = randomParameter();
 
-    const agent = new Agent(true, x, y, radius, dx, dy, '#F5C6B3', 100, 5 * Math.PI / 6, angle, name);
+    const agent = new Agent(true, x, y, radius, dx, dy, '#D28E00', 100, 5 * Math.PI / 6, angle, name);
     agents.push(agent);
 
     const specialList = document.getElementById('specialAgentList');

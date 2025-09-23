@@ -31,8 +31,11 @@
   const canvas = document.getElementById("playbackCanvas");
   const ctx = canvas.getContext("2d");
 
+  // define variables, keys are: how many frames (recover frame data), current frame for control, and 2 agent lists
   let frames = [];
   let currentFrame = 0;
+  let specialAgentList = [];
+  let normalAgentList = [];
 
   // This will be called from the opener page
   const slider = document.getElementById("frameSlider");
