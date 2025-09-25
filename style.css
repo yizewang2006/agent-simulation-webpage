@@ -315,7 +315,7 @@ button:disabled{
 }
 
 .collapsible-header:hover {
-  background-color: #005f73;
+  background-color: #001F5E;
 }
 
 /* The collapsible content */
@@ -355,4 +355,53 @@ button:disabled{
 
 .agent-color-btn:focus {
   outline: 2px solid #666;
+}
+
+.checkbox-container {
+  display: inline-block;
+  position: relative;
+  padding-left: 30px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0; /* hide default box */
+  cursor: pointer;
+}
+
+.checkmark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 20px;
+  height: 20px;
+  background-color: #eee;
+  border-radius: 4px;
+  border: 2px solid #333;
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background-color: #002878; /* when checked */
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-container .checkmark:after {
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
 }

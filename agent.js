@@ -21,11 +21,11 @@ class Offset {
 }
 
 export class Agent extends Entity{
-    constructor(drawFOV, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id) { // Standard FOV = 150 degrees OR 5π/6
+    constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + id + " has been created");
         super();
         // Instead of separate x and y, we now use a Position() class
-        this.drawFOV = drawFOV;
+        this.isSpecial = isSpecial;
         this.position = new Position(x, y);
         this.radius = radius;
         this.dx = dx;
@@ -80,9 +80,9 @@ export class Agent extends Entity{
         ctx.lineTo(endX, endY);
         ctx.stroke();
         ctx.closePath();
-
-        if (this.drawFOV)
-            this.drawFOVCones(); // Draw FOV
+        
+        // New as of 9/23
+        if (this.isSpecial) this.drawFOVCones(); // Draw FOV
     }
 
     // Method to update the position of the circle
@@ -90,7 +90,7 @@ export class Agent extends Entity{
         // FIX: Updated to use the Circle's dx and dy, not this.position.dx and this.position.dy.
         this.position.add(this.dx, this.dy); 
         this.warpAgent();
-        if (this.drawFOV) this.detectAgents(allAgents)
+        this.detectAgents(allAgents); // New as of 9/23/25
         this.draw();
     }
 
@@ -225,10 +225,56 @@ export class Agent extends Entity{
                 agent.colorHex = agent.originalColor;
             }
         });
+
+        if (currentlyDetected.length > 0) {
+            let target = currentlyDetected.reduce((nearest, agent) => {
+                let dx = agent.position.x - this.position.x;
+                let dy = agent.position.y - this.position.y;
+                let d = Math.sqrt(dx*dx + dy*dy);
+                return d < nearest.dist ? {agent, dist: d} : nearest;
+            }, {agent: currentlyDetected[0], dist: Infinity}).agent;
+
+            this.follow(target);
+            }
         
         // Update the detectedAgents list for the next update cycle.
         this.detectedAgents = currentlyDetected;
     }
+
+    // lianhe cnt的yunzhuanmoshi
+
+
+    follow(target) {
+        // AI initial solution!!!
+
+        if (!target) return;
+
+        // Calculate the vector from this agent to the target
+        let diffX = target.position.x - this.position.x;
+        let diffY = target.position.y - this.position.y;
+
+        // Adjust for wrapping on canvas (so agents don't "see" across the wrong side)
+        if (diffX > canvas.width / 2) diffX -= canvas.width;
+        else if (diffX < -canvas.width / 2) diffX += canvas.width;
+
+        if (diffY > canvas.height / 2) diffY -= canvas.height;
+        else if (diffY < -canvas.height / 2) diffY += canvas.height;
+
+        // Normalize the vector
+        let dist = Math.sqrt(diffX * diffX + diffY * diffY);
+        if (dist === 0) return;
+
+        diffX /= dist;
+        diffY /= dist;
+
+        // Set a "desired speed"
+        const speed = 1; // tweak this number as needed
+        this.dx = diffX * speed;
+        this.dy = diffY * speed;
+
+        // Update facing angle
+        this.angle = Math.atan2(this.dy, this.dx);
+        }
     
     // for simulation - we report both important properties and attributes
     reportInformation() {

@@ -37,27 +37,15 @@
     <div class="agent-controls">
       <h2>Agent Controls</h2>
       <div class="row-flex center-button">
-        <button id="addSpecialAgent">Create Special Agent</button>
-        <button id="addNormalAgent">Create Normal Agent</button>
+        <button id="addAgent">Create Agent</button>
       </div>
-      <!-- Collapsible Section: Special Agents -->
-      <div class="collapsible-section" id="specialAgentsSection">
-        <button class="collapsible-header">Special Agents</button>
+      <!-- Collapsible Section: Agents -->
+      <div class="collapsible-section" id="agentsSection">
+        <button class="collapsible-header">Agents</button>
         <div class="collapsible-content">
-          <ul id="specialAgentList" class="agent-list"></ul>
+          <ul id="agentList" class="agent-list"></ul>
         </div>
       </div>
-
-      <!-- Collapsible Section: Normal Agents -->
-      <!--
-      <div class="collapsible-section" id="normalAgentsSection">
-        <button class="collapsible-header">Normal Agents</button>
-        <div class="collapsible-content">
-          <ul id="normalAgentList" class="agent-list"></ul>
-        </div>
-      </div>
-    </div>
-    -->
 
     <!-- Playback control borderless box -->
     <div class="playback-controls">
@@ -81,6 +69,11 @@
 <!-- Popup menu for editing agent parameters -->
 <div id="popupMenu" style="display: none; position: absolute; z-index: 10; background: #f0f0f0; border: 2px solid #333; border-radius: 10px; padding: 10px; width: 300px; ">
   <h3 style="margin-top: 0; text-align: center;">Edit Agent</h3>
+  <label class="checkbox-container">
+    This is a special agent
+    <input type="checkbox">
+    <span class="checkmark"></span>
+  </label>
   <label>Name (Click "Update" to apply change):</label>
   <input type="text" id="agentID">
   <label>Color:</label>
@@ -126,70 +119,36 @@
   // New as of 3/18: selectable agent:
   let selectedAgent = null;
 
-  // New as of 3/20: Create agents:
-  let normalAgentCount = 0; // Normal agents do not draw FOV, thus no detection happens (can be added later)
-  let specialAgentCount = 0;
+  // New as of 9/25: Create agents:
+  let agentCount = 0;
   
+  /* !!! TEST AGENTS
   // Create a testing agent 
-  let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#d28e00', 100, 5 * Math.PI / 6, 0, "Agent 1");
+  //let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#D28E00', 100, 5 * Math.PI / 6, 0, "Agent 1");
   //let agentTwo = new Agent(true, canvas.width * 0.5, canvas.height * 0.5, 5, 0, 0, '#000000', 100, 5 * Math.PI / 6, 0, "Agent 2");
-  //let agentThree = new Agent(true, canvas.width * 0.7, canvas.height * 0.7, 5, 0, 0, '#0000FF', 100, 5 * Math.PI / 6, 0, "Agent 100");
-
+  //let agentThree = new Agent(true, canvas.width * 0.7, canvas.height * 0.7, 5, 0, 0, '#000000', 100, 5 * Math.PI / 6, 0, "Agent 100");
+  */
+  
   // Create a list of circles.
   let agents = [];
 
-  // Create 5 circles with random positions and velocities that use the default color '#000000'
   /*
-  for (let i = 0; i < 3; i++) {
-    const radius = 5;
-    const x = Math.random() * (canvas.width - radius * 2) + radius;
-    const y = Math.random() * (canvas.height - radius * 2) + radius;
-    const dxTest = (Math.random() - 0.5) * 5;
-    const dyTest = (Math.random() - 0.5) * 5;
-    
-    // Add a FOV radius of 100 pixels and an angle of 60 degrees (PI/3)
-    agents.push(new Agent(false, x, y, radius, dxTest, dyTest, "#000000", 100, 5 * Math.PI / 6));
-  }
-  */
-
-  /* Test the four corners.
-  const radius = 5;
-  const xPos = [
-    canvas.width * 0.1,  // left
-    canvas.width * 0.1,  // left
-    canvas.width * 0.9,  // right
-    canvas.width * 0.9   // right
-  ];
-  const yPos = [
-    canvas.height * 0.9, // bottom
-    canvas.height * 0.1, // top
-    canvas.height * 0.9, // bottom
-    canvas.height * 0.1  // top
-  ];
-
-  const dxTest = 0;
-  const dyTest = 0;
-
-  for (let j = 0; j < 4; j++) {
-    const x = xPos[j];
-    const y = yPos[j];
-    console.log("Creating agent", j, "at x:", x, "y:", y);
-
-    agents.push(new Agent(false, x, y, radius, dxTest, dyTest, "#000000", 100, 5 * Math.PI / 6));
-  }
-  */
-
-  agents.push(agentOne);
+  //agents.push(agentOne);
   //agents.push(agentTwo);
   //agents.push(agentThree);
+  */
+
+  // Pending Change:
+  // 1. Combine "Create Agent" to 1
+  // 2. Add checkbox to "make the agent special"
 
   // recording
   let isRecording = false;
   let recordedFrames = []; // list holding them. 
   
   // Populate exisiting agents
-  const specialList = document.getElementById('specialAgentList');
-  const specialSection = document.getElementById('specialAgentsSection');
+  const agentList = document.getElementById('agentList');
+  const agentSection = document.getElementById('agentsSection');
 
   // Helper to add agent entry to a list
   function addAgentToList(agent, listElement) {
@@ -217,22 +176,18 @@
     // we store some references of the agent, so we can access them later.
     agent.domReferences = {
       li, 
-      colorBtn, 
+      colorBtn,
       label:textSpan
     }
   }
 
   // Set 'expanded' at the beginning
-  specialSection.classList.add('active');
+  agentSection.classList.add('active');
 
   agents.forEach(agent => {
     if (!agent.drawFOV) return;
     addAgentToList(agent, specialList);
   });
-  
-  // Set speed to 0
-  agentOne.dy = 0;
-  agentOne.dx = 0;
 
   // Add event listeners for dragging agents
   let isDragging = false;
@@ -314,6 +269,7 @@
       popup.style.display = "block";
     }
     
+    // Add: wire up the checkbox function
     highlightSelectedSwatch(agent.colorHex);
     document.getElementById('agentID').value = agent.id;
     document.getElementById('popupAngle').value = (-agent.angle * 180 / Math.PI).toFixed(2);
@@ -392,7 +348,7 @@
   });
 
   // Random agent parameter generator function
-  function randomParameter() {
+  function randomAttributes() {
     const radius = 5;
 
     const x = Math.random() * (canvas.width - 2 * radius) + radius;
@@ -404,50 +360,17 @@
     return { x, y, dx, dy, angle, radius };
   }
 
-
-  // Wire function to createNormalAgent button.
-  document.getElementById("addNormalAgent").addEventListener("click", () => {
-    normalAgentCount++;
-    const name = `Normal Agent ${normalAgentCount}`;
-
-    const { x, y, dx, dy, angle, radius } = randomParameter();
-
-    const agent = new Agent(false, x, y, radius, dx, dy, '#000000', 100, 5 * Math.PI / 6, angle, name);
-
-    agents.push(agent);
-
-    // Add to the DOM list
-    const list = document.getElementById('normalAgentList');
-
-    const li = document.createElement('li');
-    li.className = 'agent-entry';
-
-    // Create a colored dot
-    const colorDot = document.createElement('span');
-    colorDot.className = 'agent-color-dot';
-    colorDot.style.backgroundColor = agent.colorHex;
-
-    // Create the text span
-    const textSpan = document.createElement('span');
-    textSpan.textContent = name;
-
-    // Combine and append
-    li.appendChild(colorDot);
-    li.appendChild(textSpan);
-    list.appendChild(li);
-  });
-
   // Wire function to createSpecialAgent button.
-    document.getElementById("addSpecialAgent").addEventListener("click", () => {
-    specialAgentCount++;
-    const name = `Special Agent ${specialAgentCount}`;
-    const { x, y, dx, dy, angle, radius } = randomParameter();
+    document.getElementById("addAgent").addEventListener("click", () => {
+    agentCount++;
+    const name = `Agent ${agentCount}`;
+    const { x, y, dx, dy, angle, radius } = randomAttributes();
 
-    const agent = new Agent(true, x, y, radius, dx, dy, '#D28E00', 100, 5 * Math.PI / 6, angle, name);
+    const agent = new Agent(false, x, y, radius, dx, dy, '#D28E00', 100, 5 * Math.PI / 6, angle, name);
     agents.push(agent);
 
-    const specialList = document.getElementById('specialAgentList');
-    addAgentToList(agent, specialList);   // <- this creates the button + label
+    const agentList = document.getElementById('agentList');
+    addAgentToList(agent, agentList);   // <- this creates the button + label
   });
 
   // Setup collapsible headers
@@ -467,15 +390,7 @@
   stopRecBtn.addEventListener("click", endRecording);
   stopRecBtn.disabled = true;
 
-  let createSpecialAgent = document.getElementById("addSpecialAgent");
-  let createNormalAgent = document.getElementById("addNormalAgent")
-  
-  /* Slider has been moved to another window
-  document.getElementById("simulationSlider").addEventListener("input", (e) => {
-    const frameIndex = parseInt(e.target.value, 10);
-    showFrame(frameIndex);
-  });
-  */
+  let createSpecialAgent = document.getElementById("addAgent");
   
   // Recording functions
   function startRecording() {
