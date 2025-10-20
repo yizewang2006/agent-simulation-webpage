@@ -1,19 +1,7 @@
 import { Entity } from "./entity.js";
+import { Position } from "./behavior.js"
 
-class Position {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-
-    // Method to update the position by adding dx and dy
-    add(dx, dy) {
-        this.x += dx;
-        this.y += dy;
-    }
-}
-
-class Offset {
+class fovOffset {
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -123,17 +111,17 @@ export class Agent extends Entity{
         // Check offset in both directions.
         if (horizontalOffset !== 0) {
             // Draw the virtual FOV first.
-            this.drawFOVAtOffset(new Offset(horizontalOffset, 0)); // Left or Right copy
+            this.drawFOVAtOffset(new fovOffset(horizontalOffset, 0)); // Left or Right copy
         }
         if (verticalOffset !== 0) {
-            this.drawFOVAtOffset(new Offset(0, verticalOffset)); // Top or Bottom copy
+            this.drawFOVAtOffset(new fovOffset(0, verticalOffset)); // Top or Bottom copy
         }
         if (horizontalOffset !== 0 && verticalOffset !== 0) {
-            this.drawFOVAtOffset(new Offset(horizontalOffset, verticalOffset)); // Diagonal copy
+            this.drawFOVAtOffset(new fovOffset(horizontalOffset, verticalOffset)); // Diagonal copy
         }
         
         // Then draw the real FOV on top so it overwrites any overlapping parts.
-        this.drawFOVAtOffset(new Offset(0, 0));
+        this.drawFOVAtOffset(new fovOffset(0, 0));
     }
 
     // Wrap to the other side of the canvas if out of bounds
@@ -151,9 +139,8 @@ export class Agent extends Entity{
         }
     }
 
-    drawFOVAtOffset(offset) {
+    drawFOVAtOffset(offset) { // offset = FOV OFFSET
         // Calculate the new position where the FOV should be drawn. These are based on agent's position, plus an "offset"
-        // ChatGPT debugged this
         // Calculate the new position where the FOV should be drawn.
         const x = this.position.x + offset.x;
         const y = this.position.y + offset.y;
