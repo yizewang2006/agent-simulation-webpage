@@ -41,7 +41,7 @@
       </div>
       <!-- Collapsible Section: Agents -->
       <div class="collapsible-section" id="agentsSection">
-        <button class="collapsible-header">Agents</button>
+        <button class="collapsible-header">Agent List - Click to Expand</button>
         <div class="collapsible-content">
           <ul id="agentList" class="agent-list"></ul>
         </div>
@@ -149,7 +149,7 @@
   // Populate exisiting agents
   const agentList = document.getElementById('agentList');
   const agentSection = document.getElementById('agentsSection');
-
+  
   // Helper to add agent entry to a list
   function addAgentToList(agent, listElement) {
     const li = document.createElement('li');
@@ -183,11 +183,6 @@
 
   // Set 'expanded' at the beginning
   agentSection.classList.add('active');
-
-  agents.forEach(agent => {
-    if (!agent.drawFOV) return;
-    addAgentToList(agent, specialList);
-  });
 
   // Add event listeners for dragging agents
   let isDragging = false;
