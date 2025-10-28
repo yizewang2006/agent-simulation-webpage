@@ -2,11 +2,30 @@ class Behavior {
     // another 3-4 components, each components has its own class (action[changing speeds, pos... -> changing properties], 
     // activation[agents have 1+ behaviors, change the properties of agents], 
     // filter[filter out what agents focus on, example: avoid obstacles | filter by distances, speed, angle, based on properties])
+
+    filters = []; // list of filters
 }
 
 class Filter {
     // Ranged: properties & range [Speed, Position]
     // Method: property (which property are we modifying) & method (how?) [Follow Closest, Furtherst, Averaged]
+
+    //Property filterProperty = typeOfProperty; // speed, position, or angle
+    //Type:  refer to above ranged/method
+    property = new Property();
+}
+
+class RangedFilter extends Filter {
+    // Lower/Upper bounds 
+    // Refer to filterProperty
+
+    // double lower = ?, upper = ?;
+    // Property filterProperty = super.filterProperty;
+    // We do it with object, speed isn't related to agent's speed
+}
+
+class MethodFilter extends Filter {
+
 }
 
 class Property {
@@ -44,6 +63,27 @@ export class Position extends Property{ // This will be the Position class the a
 
     get(agent) {
         return agent.position;
+    }
+
+    findAverage(self, targets) {
+        // Find the central position
+        
+        //?
+        avgX = 0;
+        avgY = 0;
+
+        for (target of targets) { // target = Agent, targets = array of Agent
+            avgX += target.position.x;
+            avgY += target.position.y
+        }
+
+        avgX /= targets.length;
+        avgY /= targets.length;
+
+        return new Position()
+
+        // 
+        
     }
 
     findNthClosest(self, targets, n) { // Will return the Agent that is nth closest to self from targets
