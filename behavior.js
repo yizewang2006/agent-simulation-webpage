@@ -3,7 +3,7 @@ class Behavior {
     // activation[agents have 1+ behaviors, change the properties of agents], 
     // filter[filter out what agents focus on, example: avoid obstacles | filter by distances, speed, angle, based on properties])
 
-    filters = []; // list of filters
+    filters = [a, b, c]; // list of filters
 }
 
 class Filter {
