@@ -1,8 +1,10 @@
+import Header from "./Header";
+
 function Simulation() {
   return (
-    <main className="simulation-page">
-      <h1 className="simulation-title">Agent Simulation Project</h1>
-    </main>
+    <div className="simulation-page"> 
+        <Header />
+    </div>
   );
 }
 

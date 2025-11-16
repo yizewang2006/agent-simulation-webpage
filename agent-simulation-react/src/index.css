@@ -1,6 +1,8 @@
 /* We define Montserrat as the global font, and we import the font here.*/
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap');
 
+
+
 /* Global theme */
 :root {
   font-family: "Montserrat", system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -9,7 +11,7 @@
 
   /* Unified light theme */
   color: #213547;
-  background-color: #e4e6f0;
+  background-color: #f8f9ed;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,7 +23,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background-color: #e4e6f0;
+  background-color: #fcfcfc;
   min-width: 320px;
   min-height: 100vh;
 }
@@ -62,23 +64,4 @@ button:hover {
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
-}
-
-.simulation-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: center;
-  padding: 2rem;
-  text-align: center;
-}
-
-.simulation-title {
-  margin: 0;
-  font-size: 4rem;
-  font-weight: 800;
-  font-family: 'montserrat', system-ui, Avenir, Helvetica, Arial, sans-serif;
-  letter-spacing: -.01em;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
