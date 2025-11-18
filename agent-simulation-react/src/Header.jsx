@@ -1,14 +1,16 @@
-import emoryLogo from './assets/EU_shield_hz_rv.png';
+import oxfordLogo from './assets/OXFD_shield_hz_rv.png';
 import './header.css';
 
 export default function Header() {
   return (
     <header className="emory-header">
       <div className="emory-header-inner">
-        <img src={emoryLogo} alt="Emory Logo" className="emory-logo" />
+        <a href='https://www.oxford.emory.edu' target='_blank' rel='noopener noreferrer'>
+          <img src={oxfordLogo} alt="Emory Logo" className="emory-logo" />
+        </a>
         <div className="header-text">
           <h1 className="header-title">Agent Simulation Project</h1>
-          <p className="header-subtitle">React Version - Updated Nov. 15th by Kevin</p>
+          <p className="header-subtitle">Dr. Hai Hoang Le & Yize (Kevin) Wang</p>
         </div>
       </div>
     </header>

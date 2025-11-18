@@ -1,0 +1,21 @@
+.instructionTextContainer {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    font-weight: bold;
+    gap: .75rem;
+}
+
+.instructionBig {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 2rem;
+  color: #fcfcfc;
+  font-weight: bolder;
+}
+
+.instructionSmall {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  color: #fcfcfc;
+}

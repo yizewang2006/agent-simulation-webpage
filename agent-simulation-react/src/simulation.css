@@ -1,0 +1,50 @@
+.simulation-container {
+  display: flex;
+  flex-direction: row;
+  align-items: top;
+  padding: 2rem;
+  gap: 2rem;
+  height: auto;
+  background-color: #f0f0f0;
+}
+
+.canvas-section {
+    background-color: #ffffff;
+    overflow: hidden;
+}
+
+.simulation-canvas {
+    width: 1000px;
+    height: 1000px;
+    display: block;
+    border: 6px solid #000000;
+}
+
+.control-panel {
+  flex: 1 1 20%;
+  min-width: 250px;
+  height: auto;
+  background-color: #333333;
+  border: 1px solid #5b5c5e;
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+    gap: .5rem;
+}
+
+.control-panel h1 {
+  margin: 0;
+  color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 4rem;
+  align-self:center;
+  text-shadow: 5px 5px 5px rgb(0, 0, .5);
+}
+
+.control-panel h2 {
+  margin: 0;
+  color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.5rem;
+}

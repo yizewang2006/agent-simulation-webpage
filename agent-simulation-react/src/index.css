@@ -1,8 +1,6 @@
 /* We define Montserrat as the global font, and we import the font here.*/
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap');
 
-
-
 /* Global theme */
 :root {
   font-family: "Montserrat", system-ui, Avenir, Helvetica, Arial, sans-serif;

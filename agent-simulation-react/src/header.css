@@ -6,7 +6,7 @@
 }
 
 .emory-header-inner {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -30,11 +30,12 @@
 
 .header-title {
   margin: 0;
-  font-size: 3.5rem;
+  font-size: 3rem;
   font-weight: 700;
   color:#d28e00;
   text-shadow: rgba(0,0,0,0.6);
   font-family: 'Montserrat', sans-serif;
+    text-shadow: 5px 5px 5px rgb(0, 0, .5);
 }
 
 .header-subtitle {
@@ -44,9 +45,10 @@
   text-shadow: rgba(0,0,0,0.6);
   font-family: 'Montserrat', sans-serif;
   color:#fcfcfc;
+    text-shadow: 5px 5px 5px rgb(0, 0, .5);
 }
 
-/* Responsive: stack logo above title on small screens */
+/* Responsive: stack logo above title on small screens [Written by ChatGPT]*/
 @media (max-width: 640px) {
   .emory-header-inner {
     flex-direction: column;
