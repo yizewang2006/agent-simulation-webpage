@@ -1,5 +1,6 @@
-import oxfordLogo from './assets/OXFD_shield_hz_rv.png';
-import './header.css';
+// Renders the header section with logo and titles
+import oxfordLogo from './assets/OXFD_shield_hz_rv.png'; // importing the Oxford logo image
+import './header.css'; // importing the CSS for header styling
 
 export default function Header() {
   return (

@@ -131,8 +131,8 @@ export class Position extends Property{ // This will be the Position class the a
     }
 
     distanceTo(position) {
-        const diffX = this.x - position.x;
-        const diffY = this.y - position.y
+        var diffX = this.x - position.x;
+        var diffY = this.y - position.y
         // Corrected by ChatGPT for Warping
         if (diffX > width / 2) diffX = width - diffX;
         if (diffY > height / 2) diffY = height - diffY;

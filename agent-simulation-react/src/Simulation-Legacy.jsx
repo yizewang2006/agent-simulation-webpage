@@ -1,3 +1,4 @@
+// This JSX file loads the legacy simulation built with Villa HTML
 function SimulationLegacy() {
   return (
     <div style={{ padding: "3rem" }}>

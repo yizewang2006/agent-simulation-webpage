@@ -48,7 +48,7 @@
     text-shadow: 5px 5px 5px rgb(0, 0, .5);
 }
 
-/* Responsive: stack logo above title on small screens [Written by ChatGPT]*/
+/* Responsive: stack logo above title on small screens [Written by AI]*/
 @media (max-width: 640px) {
   .emory-header-inner {
     flex-direction: column;

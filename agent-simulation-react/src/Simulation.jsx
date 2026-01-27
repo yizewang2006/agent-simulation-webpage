@@ -17,6 +17,8 @@ function Simulation() {
 
     /* create the canvas */
     const ctx = canvas.getContext('2d'); // same thing as the HTML version
+
+    // Change canvas dimensions here
     canvas.width = 1000;
     canvas.height = 1000;
   }, []);
@@ -28,6 +30,7 @@ function Simulation() {
           <div className="canvas-section"><canvas ref={canvasRef} className="simulation-canvas"></canvas></div>
           <div className="control-panel">
             <h1>Control Panel</h1>
+            <h2>12345</h2>
           </div>
         </div>
     </div>
