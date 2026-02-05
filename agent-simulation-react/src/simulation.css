@@ -1,7 +1,16 @@
+.simulation-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .simulation-container {
+  flex: 1;
   display: flex;
   flex-direction: row;
-  align-items: top;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
   padding: 2rem;
   gap: 2rem;
   height: auto;
@@ -9,42 +18,73 @@
 }
 
 .canvas-section {
-    background-color: #ffffff;
-    overflow: hidden;
+  background-color: #ffffff;
+  overflow: hidden;
 }
 
 .simulation-canvas {
-    width: 1000px;
-    height: 1000px;
-    display: block;
-    border: 6px solid #000000;
+  width: 500px;
+  height: 500px;
+  display: block;
+  border: 5px solid #000000;
+  border-radius: 8px;
 }
 
 .control-panel {
-  flex: 1 1 20%;
-  min-width: 250px;
-  height: auto;
-  background-color: #333333;
-  border: 1px solid #5b5c5e;
+  height: 510px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  background-color: #e4e6f0;
+  border: 5px solid #5b5c5e;
   border-radius: 8px;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
-    gap: .5rem;
+  gap: .5rem;
 }
 
 .control-panel h1 {
   margin: 0;
-  color: #ffffff;
+  color: #d28e00;
   font-family: 'Montserrat', sans-serif;
-  font-size: 4rem;
+  font-size: 3rem;
   align-self:center;
-  text-shadow: 5px 5px 5px rgb(0, 0, .5);
+  text-shadow: 2px 2px 2px rgb(0, 0, .5);
 }
 
 .control-panel h2 {
-  margin: 0;
-  color: #ffffff;
+  margin: 0 0 -.5rem 0;
+  color: #333333;
   font-family: 'Montserrat', sans-serif;
   font-size: 1.5rem;
+  font-weight: 1000;
+  align-self: center;
+}
+/* Styling labels and input boxes */
+.control-panel label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: #5b5c5e;
+}
+
+.control-panel input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5rem;
+  border: 2px solid #5b5c5e;
+  border-radius: 8px;
+  font-size: 1rem;
+  background-color: #ffffff;
+}
+
+.control-panel input:focus {
+  outline: none;
+  border-color: #d28e00;
+}
+
+.control-panel .input-group {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
 }

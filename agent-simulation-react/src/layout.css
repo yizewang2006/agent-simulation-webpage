@@ -60,3 +60,15 @@
     margin-top: 0.5rem;
   }
 }
+
+/* Footer Styles */
+.emory-footer {
+  width: 100%;
+  padding: 1rem;
+  background-color: #002878;
+  color: #ffffff;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
