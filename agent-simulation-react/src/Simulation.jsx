@@ -17,6 +17,9 @@ function Simulation() {
 
   const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
   const fpsRef = useRef(targetFPS); // Ref to hold the current FPS value, reference this value without the need of rendering
+
+  const [agents, setAgents] = useState([]); // State to hold agents for display in the control panel
+  const [agentsListExpanded, setAgentsListExpanded] = useState(false); // State to toggle agents list visibility
   
   useEffect(() => {
     fpsRef.current = Number(targetFPS) || 1; // Update the ref whenever targetFPS state changes, default to 1 if empty/invalid
@@ -34,12 +37,15 @@ function Simulation() {
     canvas.height = 500;
 
     // Array to hold all agents
-    const agents = [];
+    const agentsArray = [];
 
     // Create 3 agents
-    const agent = new Agent(true, 375, 375, 5, 3, 4, '#000000', 100, Math.PI/3, 0, 0, ctx, canvas, agents);
-    const agent2 = new Agent(true, 250, 250, 5, -5, 6, '#000000', 100, Math.PI/3, 0, 0, ctx, canvas, agents);
-    const agent3 = new Agent(true, 125, 125, 5, -7, -8, '#000000', 100, Math.PI/3, 0, 0, ctx, canvas, agents);
+    const agent = new Agent(true, 375, 375, 5, 3, 4, '#000000', 100, Math.PI/3, 0, "Elaine", ctx, canvas, agentsArray);
+    const agent2 = new Agent(true, 250, 250, 5, -5, 6, '#000000', 100, Math.PI/3, 0, "Kevin", ctx, canvas, agentsArray);
+    const agent3 = new Agent(true, 125, 125, 5, -7, -8, '#000000', 100, Math.PI/3, 0, "Robin", ctx, canvas, agentsArray);
+
+    // Update state with agents for the control panel
+    setAgents(agentsArray); // explained by Claude: ",,," implies a shallow copy of the array, but not required here
 
     // Animation loop - borrowed from legacy simulation
     let animationId;
@@ -52,7 +58,7 @@ function Simulation() {
       if (elapsed >= frameInterval) {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        agents.forEach(agent => {
+        agentsArray.forEach(agent => {
           agent.updatePosition([agent]); // Update it's own position
         });
       }
@@ -83,8 +89,29 @@ function Simulation() {
               />
             </div>
 
-            <h2>Simulation Set-up</h2>
+            <h2>Agent Control</h2>
 
+            <div className="agents-list-container">
+              <button
+                className="agents-list-toggle"
+                onClick={() => setAgentsListExpanded(!agentsListExpanded)}
+              >
+                Agents ({agents.length}) {agentsListExpanded ? '▲' : '▼'}
+              </button>
+              {agentsListExpanded && (
+                <ul className="agents-list">
+                  {agents.map((agent, index) => (
+                    <li key={index} className="agent-item">
+                      <span className="agent-color" style={{ backgroundColor: agent.color }}></span>
+                      {agent.id}
+                      <span className="agent-pos">
+                        ({Math.round(agent.position.x)}, {Math.round(agent.position.y)})
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <h2>Miscellaneous</h2>
             <div className="input-group">

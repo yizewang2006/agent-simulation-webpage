@@ -11,7 +11,7 @@ export default function Header() {
         </a>
         <div className="header-text">
           <h1 className="header-title">Agent Simulation Project</h1>
-          <p className="header-subtitle">Dr. Hai Hoang Le & Yize (Kevin) Wang</p>
+          <p className="header-subtitle">Dr. Hai Hoang Le | Yize (Kevin) Wang | Hanyi (Elaine) Ding</p>
         </div>
       </div>
     </header>
