@@ -148,9 +148,3 @@
   border: 1px solid #333;
   flex-shrink: 0;
 }
-
-.agent-pos {
-  margin-left: auto;
-  color: #888;
-  font-size: 0.8rem;
-}

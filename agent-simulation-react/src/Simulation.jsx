@@ -40,7 +40,7 @@ function Simulation() {
     const agentsArray = [];
 
     // Create 3 agents
-    const agent = new Agent(true, 375, 375, 5, 3, 4, '#000000', 100, Math.PI/3, 0, "Elaine", ctx, canvas, agentsArray);
+    const agent = new Agent(true, 375, 375, 5, 2, 2, '#000000', 100, Math.PI/3, 0, "Elaine", ctx, canvas, agentsArray);
     const agent2 = new Agent(true, 250, 250, 5, -5, 6, '#000000', 100, Math.PI/3, 0, "Kevin", ctx, canvas, agentsArray);
     const agent3 = new Agent(true, 125, 125, 5, -7, -8, '#000000', 100, Math.PI/3, 0, "Robin", ctx, canvas, agentsArray);
 
@@ -104,9 +104,6 @@ function Simulation() {
                     <li key={index} className="agent-item">
                       <span className="agent-color" style={{ backgroundColor: agent.color }}></span>
                       {agent.id}
-                      <span className="agent-pos">
-                        ({Math.round(agent.position.x)}, {Math.round(agent.position.y)})
-                      </span>
                     </li>
                   ))}
                 </ul>
