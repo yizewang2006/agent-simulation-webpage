@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agent Simulation Project</title>
+  <!-- Include Roboto font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <!-- I find this font good looking, including it here. -->
+  <link href="https://db.onlinewebfonts.com/c/33bce88f104fedc26d91518f6d8b4ca3?family=LetoSans-Bold" rel="stylesheet">
+  <!-- Highway Gothic font -->
+  <link href="https://db.onlinewebfonts.com/c/734e5a726f37f261ff8a0d96260612a0?family=Highway+Gothic" rel="stylesheet" type="text/css"/>
+  
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+  <!-- All styling settings are now in style.css -->
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<header>
+  <h1 class="title">Agent Collision Time Simulation</h1>
+  <!-- "class" is just applying the styles defined above to this header2-->
+  <h2 class="subtitle">文件夹：public/collision-simulation</h2>
+</header>
+<!-- Wrap the canvas and the GUI panel inside a container -->
+<div class="container">
+  <canvas id="canvasOne" width="1000" height="1000"></canvas>
+  <!-- GUI panel on the right side of the canvas -->
+  <div class="gui-panel">
+    <!-- Agent Selection and Creation Block, uses same style as agent-control -->
+    <div class="agent-controls">
+      <h2>Agent Controls</h2>
+      <div class="row-flex center-button">
+        <button id="addAgent">Create Agent</button>
+      </div>
+      <!-- Collapsible Section: Agents -->
+      <div class="collapsible-section" id="agentsSection">
+        <button class="collapsible-header">Agent List - Click to Expand</button>
+        <div class="collapsible-content">
+          <ul id="agentList" class="agent-list"></ul>
+        </div>
+      </div>
+
+    <!-- Playback control borderless box -->
+    <div class="playback-controls">
+      <h2>Simulation</h2>
+      <h3 id="recordSimulationLabel">Record this simulation below (New agent creation should be disabled during recording)</h3>
+      <div class="row-flex center-button">
+        <!--here for start recording & end recording-->
+        <button id="startRecording">Start Recording</button>
+        <button id="endRecording">End Recording</button>
+      </div>
+      <!--
+      <div>
+        <button id="playButton">Play</button>
+        <button id="pauseButton">Pause</button>
+      </div>
+      -->
+    </div>
+  </div>
+</div>
+
+<!-- Popup menu for editing agent parameters -->
+<div id="popupMenu" style="display: none; position: absolute; z-index: 10; background: #f0f0f0; border: 2px solid #333; border-radius: 10px; padding: 10px; width: 300px; ">
+  <h3 style="margin-top: 0; text-align: center;">Edit Agent</h3>
+  <label class="checkbox-container">
+    This is a special agent
+    <input type="checkbox">
+    <span class="checkmark"></span>
+  </label>
+  <label>Name (Click "Update" to apply change):</label>
+  <input type="text" id="agentID">
+  <label>Color:</label>
+  <div class="color-picker" id="popupColorPicker">
+    <div class="color-swatch" data-color="#000000" style="background-color: #000000;"></div>
+    <div class="color-swatch" data-color="#00FF00" style="background-color: #00FF00;"></div>
+    <div class="color-swatch" data-color="#0000FF" style="background-color: #0000FF;"></div>
+    <div class="color-swatch" data-color="#FFFF00" style="background-color: #FFFF00;"></div>
+    <div class="color-swatch" data-color="#FF00FF" style="background-color: #FF00FF;"></div>
+    <div class="color-swatch" data-color="#D28E00" style="background-color: #D28E00;"></div>
+  </div>
+  <label>Angle (deg):</label>
+  <input type="text" id="popupAngle" placeholder="Angle">
+  <label>Speed:</label>
+  <input type="text" id="popupSpeed" placeholder="Speed">
+  <label>FOV (deg):</label>
+  <input type="text" id="popupFOV" placeholder="FOV">
+  <label>FOV Radius:</label>
+  <input type="text" id="popupRadius" placeholder="Radius">
+  <label>X Position (JavaScript):</label>
+  <input readonly type="text" id="popupX" placeholder="X">
+  <label>Y Position (JavaScript):</label>
+  <input readonly type="text" id="popupY" placeholder="Y">
+  <div class="center-button">
+    <button id="popupUpdate">Update</button>
+    <button id="popupClose">Close</button>
+  </div>
+</div>
+
+<!-- Canvas setup -->
+<script>
+  // Start of the script, defining global canvas variable
+  const canvas = document.getElementById('canvasOne');
+  const ctx = canvas.getContext('2d');
+</script>
+
+<script type="module" src="./collision_agent.js"></script>
+
+<!-- Main script that uses Agent (agent simulation) -->
+<script type="module"> 
+  import { Agent } from "./collision_agent.js";
+
+  // New as of 3/18: selectable agent:
+  let selectedAgent = null;
+
+  // New as of 9/25: Create agents:
+  let agentCount = 0;
+  
+  /* !!! TEST AGENTS
+  // Create a testing agent 
+  //let agentOne = new Agent(true, canvas.width * 0.12, canvas.height * 0.12, 5, 0, 0, '#D28E00', 100, 5 * Math.PI / 6, 0, "Agent 1");
+  //let agentTwo = new Agent(true, canvas.width * 0.5, canvas.height * 0.5, 5, 0, 0, '#000000', 100, 5 * Math.PI / 6, 0, "Agent 2");
+  //let agentThree = new Agent(true, canvas.width * 0.7, canvas.height * 0.7, 5, 0, 0, '#000000', 100, 5 * Math.PI / 6, 0, "Agent 100");
+  */
+  
+  // Create a list of circles.
+  let agents = [];
+
+  /*
+  //agents.push(agentOne);
+  //agents.push(agentTwo);
+  //agents.push(agentThree);
+  */
+
+  // Pending Change:
+  // 1. Combine "Create Agent" to 1
+  // 2. Add checkbox to "make the agent special"
+
+  // recording
+  let isRecording = false;
+  let recordedFrames = []; // list holding them. 
+  
+  // Populate exisiting agents
+  const agentList = document.getElementById('agentList');
+  const agentSection = document.getElementById('agentsSection');
+  
+  // Helper to add agent entry to a list
+  function addAgentToList(agent, listElement) {
+    const li = document.createElement('li');
+    li.className = 'agent-entry';
+
+    // Make a clickable color button
+    const colorBtn = document.createElement('button');
+    colorBtn.className = 'agent-color-btn';
+    colorBtn.style.backgroundColor = agent.colorHex;
+    colorBtn.dataset.color = agent.colorHex;
+
+    colorBtn.addEventListener('click', () => {
+      selectAgent(agent, null, null, true);
+    });
+
+    // Agent label
+    const textSpan = document.createElement('span');
+    textSpan.textContent = agent.id;
+
+    li.appendChild(colorBtn);
+    li.appendChild(textSpan);
+    listElement.appendChild(li);
+
+    // we store some references of the agent, so we can access them later.
+    agent.domReferences = {
+      li, 
+      colorBtn,
+      label:textSpan
+    }
+  }
+
+  // Set 'expanded' at the beginning
+  agentSection.classList.add('active');
+
+  // Add event listeners for dragging agents
+  let isDragging = false;
+  let dragOffset = { x: 0, y: 0 };
+
+  // Registering mouse events
+  canvas.addEventListener('mousedown', handleCanvasMouseDown);
+  canvas.addEventListener('mousemove', handleCanvasMouseMove);
+  canvas.addEventListener('mouseup', stopDragging);
+  canvas.addEventListener('mouseleave', stopDragging);
+
+  // Handle mouse down event to select an agent
+  function handleCanvasMouseDown(e) {
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    isDragging = false;
+    selectedAgent = null;
+
+    for (let agent of agents) {
+      const dist = Math.sqrt(
+        (mouseX - agent.position.x) ** 2 + (mouseY - agent.position.y) ** 2
+      );
+
+      if (dist <= agent.radius * 2) {
+        selectAgent(agent, mouseX, mouseY);
+        break;
+      }
+    }
+  }
+
+  // Handle mouse move event to drag the selected agent
+  function handleCanvasMouseMove(e) {
+    if (!isDragging || !selectedAgent) return;
+
+    document.getElementById('popupMenu').style.display = 'none';
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    let newX = mouseX + dragOffset.x;
+    let newY = mouseY + dragOffset.y;
+
+    newX = Math.max(selectedAgent.radius, Math.min(newX, canvas.width - selectedAgent.radius));
+    newY = Math.max(selectedAgent.radius, Math.min(newY, canvas.height - selectedAgent.radius));
+
+    selectedAgent.position.x = newX;
+    selectedAgent.position.y = newY;
+  }
+
+  // Stop dragging when mouse is released or leaves the canvas
+  function stopDragging() {
+    isDragging = false;
+  }
+
+  // Select an agent and show the popup with its current data
+  function selectAgent(agent, mouseX, mouseY, fromList = false) {
+    selectedAgent = agent;
+
+    // when clicked from canvas
+    if (!fromList && mouseX != null && mouseY != null) {
+      dragOffset.x = agent.position.x - mouseX;
+      dragOffset.y = agent.position.y - mouseY;
+      isDragging = true;
+
+      const popup = document.getElementById('popupMenu');
+      popup.style.left = `${agent.position.x + 100}px`;
+      popup.style.top = `${agent.position.y + 100}px`;
+      popup.style.display = 'block';
+    }
+    // from GUI, not the canvas
+    else {
+      isDragging = false;
+      const popup = document.getElementById('popupMenu');
+      popup.style.left = "1250px";   // fixed location near GUI
+      popup.style.top = "200px";
+      popup.style.display = "block";
+    }
+    
+    // Add: wire up the checkbox function
+    highlightSelectedSwatch(agent.colorHex);
+    document.getElementById('agentID').value = agent.id;
+    document.getElementById('popupAngle').value = (-agent.angle * 180 / Math.PI).toFixed(2);
+    document.getElementById('popupSpeed').value = Math.sqrt(agent.dx ** 2 + agent.dy ** 2).toFixed(2);
+    document.getElementById('popupFOV').value = (agent.fovAngle * 180 / Math.PI).toFixed(2);
+    document.getElementById('popupRadius').value = agent.fovRadius.toFixed(2);
+    document.getElementById('popupX').value = agent.position.x.toFixed(2);
+    document.getElementById('popupY').value = agent.position.y.toFixed(2);
+  }
+
+  function highlightSelectedSwatch(colorHex) {
+    swatches.forEach(swatch => {
+      const swatchColor = swatch.getAttribute('data-color');
+      swatch.style.border = (swatchColor === colorHex) ? '2px solid #333' : '2px solid #fff';
+    });
+  }
+
+  // --- Below are UI controls ---
+  // Get all color swatches
+  const swatches = document.querySelectorAll('.color-swatch'); // Find all 'color-swatches'
+    swatches.forEach(swatch => {
+    swatch.addEventListener('click', function() {
+      const color = this.getAttribute('data-color');
+      if (selectedAgent) {
+        selectedAgent.colorHex = color;
+        selectedAgent.originalColor = color;
+        // reflect in sidebar immediately
+        selectedAgent.domReferences?.colorBtn && (selectedAgent.domReferences.colorBtn.style.backgroundColor = color);
+      }
+      highlightSelectedSwatch(color);
+    });
+  });
+
+  // Update via pop-up menu.
+
+  function updateViaPopup() {
+    if (!selectedAgent) return;
+
+    const degToRad = d => d * Math.PI / 180;
+
+    // update model
+    selectedAgent.id = document.getElementById('agentID').value;
+
+    const angleDeg = parseFloat(document.getElementById('popupAngle').value);
+    if (!isNaN(angleDeg)) selectedAgent.angle = -degToRad(angleDeg);
+
+    const spd = parseFloat(document.getElementById('popupSpeed').value);
+    if (!isNaN(spd)) {
+      selectedAgent.dx = spd * Math.cos(selectedAgent.angle);
+      selectedAgent.dy = spd * Math.sin(selectedAgent.angle);
+    }
+
+    const fovDeg = parseFloat(document.getElementById('popupFOV').value);
+    if (!isNaN(fovDeg)) selectedAgent.fovAngle = degToRad(fovDeg);
+
+    const fovRadius = parseFloat(document.getElementById('popupRadius').value);
+    if (!isNaN(fovRadius)) selectedAgent.fovRadius = Math.max(0, fovRadius);
+
+    selectedAgent.position.x = parseFloat(document.getElementById('popupX').value);
+    selectedAgent.position.y = parseFloat(document.getElementById('popupY').value);
+
+    // update list UI
+    if (selectedAgent.domReferences?.label) {
+      selectedAgent.domReferences.label.textContent = selectedAgent.id;
+    }
+    if (selectedAgent.domReferences?.colorBtn) {
+      selectedAgent.domReferences.colorBtn.style.backgroundColor = selectedAgent.colorHex; // not "color"
+    }
+  }
+  
+  // Register the updateViaPopup to the update button
+  document.getElementById('popupUpdate').addEventListener('click', updateViaPopup);
+  
+  document.getElementById('popupClose').addEventListener('click', () => {
+    document.getElementById('popupMenu').style.display = 'none'; // Close the popup menu
+  });
+
+  // Random agent parameter generator function
+  function randomAttributes() {
+    const radius = 5;
+
+    const x = Math.random() * (canvas.width - 2 * radius) + radius;
+    const y = Math.random() * (canvas.height - 2 * radius) + radius;
+    const dx = (Math.random() - 0.5) * 4;
+    const dy = (Math.random() - 0.5) * 4;
+    const angle = Math.atan2(dy, dx);
+
+    return { x, y, dx, dy, angle, radius };
+  }
+
+  // Wire function to createSpecialAgent button.
+    document.getElementById("addAgent").addEventListener("click", () => {
+    agentCount++;
+    const name = `Agent ${agentCount}`;
+    const { x, y, dx, dy, angle, radius } = randomAttributes();
+
+    const agent = new Agent(false, x, y, radius, dx, dy, '#D28E00', 100, 5 * Math.PI / 6, angle, name, ctx, canvas);
+    agents.push(agent);
+
+    const agentList = document.getElementById('agentList');
+    addAgentToList(agent, agentList);   // <- this creates the button + label
+  });
+
+  // Setup collapsible headers
+  document.querySelectorAll('.collapsible-header').forEach(header => {
+    header.addEventListener('click', function () {
+      const section = this.parentElement;
+      section.classList.toggle('active');
+    });
+  });
+
+  // solved as of 9/14, playback is done in another window
+  let startRecBtn = document.getElementById("startRecording");
+  startRecBtn.addEventListener("click", startRecording);
+  startRecBtn.disabled = false;
+
+  let stopRecBtn = document.getElementById("endRecording");
+  stopRecBtn.addEventListener("click", endRecording);
+  stopRecBtn.disabled = true;
+
+  let createSpecialAgent = document.getElementById("addAgent");
+  
+  // Recording functions
+  function startRecording() {
+    isRecording = true;
+    
+    // UI Element Update
+    document.getElementById("canvasOne").style.border = "5px solid red"; // set the canvas border to red for better visual
+    const recordSimulationLabel = document.getElementById("recordSimulationLabel");
+    recordSimulationLabel.textContent = "Recording in Progress";
+    recordSimulationLabel.style.color = "red"
+    startRecBtn.disabled = true;
+    stopRecBtn.disabled = false;
+    createSpecialAgent.disabled = true;
+    createNormalAgent.disabled = true;
+
+    // Recording mech.
+    recordedFrames = [];
+  }
+
+  function endRecording() {
+    isRecording = false;
+
+    // UI Element Update
+    document.getElementById("canvasOne").style.border = "4px solid black"; // set the canvas border to black again
+    const recordSimulationLabel = document.getElementById("recordSimulationLabel");
+    recordSimulationLabel.textContent = "Record this simulation below (New agent creation should be disabled during recording)";
+    recordSimulationLabel.style.color = "black";
+    startRecBtn.disabled = false;
+    stopRecBtn.disabled = true;
+    createSpecialAgent.disabled = false;
+    createNormalAgent.disabled = false;
+
+    // Debug only
+    console.log("Recording stopped. This recording has " + recordedFrames.length + " frames.");
+    console.log("results: recordedFrames");
+    console.table(recordedFrames[recordedFrames.length - 1]); // showing last frame
+    
+    /*
+    // registering slider event
+    const slider = document.getElementById("simulationSlider");
+    slider.max = recordedFrames.length - 1; // index goes from 0..N-1
+    slider.value = 0; // reset to start
+    */
+
+    openPlaybackWindow();
+  }
+
+  function openPlaybackWindow() {
+    console.log(recordedFrames);
+    const win = window.open("playbackwindow.html", "PlaybackWindow", "width=650,height=700");
+    win.onload = (() => {
+      win.loadRecording(recordedFrames);
+    });
+  }
+
+  function showFrame(frameIndex) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!recordedFrames[frameIndex]) return;
+
+    recordedFrames[frameIndex].forEach(info => {
+      // Draw an agent from saved info
+      ctx.beginPath();
+      ctx.arc(info.x, info.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = info.color;
+      ctx.fill();
+      ctx.closePath();
+    });
+  }
+
+  // have 3 slots & 1 save button, pick 1 and play in a new window. when user clicks 'replay' function keys, must record positions of all agents at that moment.
+
+  function updateGUI() {
+    // If no agent is selected, exit function
+    if (!selectedAgent) return;
+    // Calculate Cartesian coordinates with the desired range.
+    // For X: subtract half the canvas width, then multiply by 2.
+    let cartesianX = ((selectedAgent.position.x - canvas.width / 2) * 2).toFixed(2);
+    // For Y: subtract the canvas y from half the canvas height (to flip the axis),
+    // then multiply by 2.
+    let cartesianY = ((canvas.height / 2 - selectedAgent.position.y) * 2).toFixed(2);
+    
+    // Update JavaScript coordinates (raw canvas coordinates)
+    document.getElementById('popupX').value = selectedAgent.position.x.toFixed(2);
+    document.getElementById('popupY').value = selectedAgent.position.y.toFixed(2);
+
+    // Sync other fields when selecting an agent
+    /*
+    document.getElementById('popupAngle').value = (-selectedAgent.angle * 180 / Math.PI).toFixed(2);
+    const speed = Math.sqrt(selectedAgent.dx ** 2 + selectedAgent.dy ** 2).toFixed(2);
+    document.getElementById('popupSpeed').value = speed;
+    document.getElementById('popupFOV').value = (selectedAgent.fovAngle * 180 / Math.PI).toFixed(2);
+    document.getElementById('popupRadius').value = selectedAgent.fovRadius.toFixed(2);
+    */
+
+    //console.log(selectedAgent);
+  }
+
+  // Periodically update the GUI fields with selected agent's position
+  setInterval(updateGUI, 1); // less number = better.
+
+  // Animation function that updates and draws all circles.
+  function animate() {
+    // Clear the canvas once per frame.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Update position and redraw each circle.
+    setInterval(() => {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Update and draw agents
+    agents.forEach(agent => agent.updatePosition(agents));
+
+    // recording
+    if (isRecording) {
+      // For this frame, gather each agent's info
+      const frameSnapshot = agents.map(agent => agent.reportInformation());
+      recordedFrames.push(frameSnapshot);
+    }
+    }, 1000 / 40); // The number represents controls the framerate. 
+  }
+
+  // Start the animation loop.
+  animate();
+</script>
+
+</body>
+</html>

@@ -117,6 +117,10 @@ function Simulation() {
             <div className="input-group">
               <button onClick={() => window.open('/simulation-legacy/index.html', '_blank', 'noopener,noreferrer')}>Open Legacy Simulation</button>
             </div>
+            <div className="input-group">
+              <label>For Elaine's Collision Time Use Only</label>
+              <button onClick={() => window.open('/collsion-time-simulation/index.html', '_blank', 'noopener,noreferrer')}>Collison Time Simulation</button>
+            </div>
             
           </div>
         </div>
