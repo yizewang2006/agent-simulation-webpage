@@ -75,8 +75,8 @@ export class Agent extends Entity{
         this.ctx.stroke();
         this.ctx.closePath();
         
-        // New as of 9/23
-        if (this.isSpecial) this.drawFOVCones(); // Draw FOV
+        // this.showFOV is attached by Simulation.jsx, by React, not in the Agent class itself. It is a global setting that each agent can access to determine whether to draw FOV or not.
+        if (this.isSpecial && this.showFOV !== false) this.drawFOVCones(); // Draw FOV
     }
 
     // Method to update the position of the circle
