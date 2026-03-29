@@ -5,8 +5,6 @@ These imports ensures the correct styles and components are included for the Sim
 */
 import './simulation.css';
 import { useRef, useEffect, useState } from 'react'; /* To interact with the canvas we have to use useRef and useEffect*/
-import SelectableList from "./components/SelectableList"; // selectable list component
-import Instruction from "./components/instruction"; // instruction component
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
@@ -14,6 +12,7 @@ import { Agent } from "./js_files/agent.js";
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
 const CANVAS_HEIGHT = 500;
+const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
 
 // Meeting Notes (2026-3-16): 
 // Large scale and small scale:
@@ -35,7 +34,8 @@ function Simulation() {
   const [agentsListExpanded, setAgentsListExpanded] = useState(false); // State to toggle agents list visibility
 
   // Follow behavior state
-  const [followBehavior, setFollowBehavior] = useState(true); // State to toggle follow behavior for all agents (currently only show/hide FOV as an example)
+  const [followBehavior, setFollowBehavior] = useState(false); // State to toggle follow behavior for all agents
+  const followBehaviorRef = useRef(followBehavior);
 
   // Add Agent form state
   const [showAddAgent, setShowAddAgent] = useState(false);
@@ -44,6 +44,7 @@ function Simulation() {
   const [multiAgentColor, setMultiAgentColor] = useState('#000000'); // Color when not randomized
   const [multiAgentCount, setMultiAgentCount] = useState('1');
   const [multiAgentCountError, setMultiAgentCountError] = useState(''); // Error message when an invalid count is entered for multiple agents
+  const [agentLimitWarning, setAgentLimitWarning] = useState(''); // Warning when agent limit is reached
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentColor, setNewAgentColor] = useState('#000000');
   const [newAgentX, setNewAgentX] = useState(String(CANVAS_WIDTH / 2));
@@ -62,17 +63,25 @@ function Simulation() {
       console.log("handleAddAgent aborted: canvas or ctx is null");
       return;
     }
+    if (roster.length >= MAX_AGENTS) {
+      setAgentLimitWarning(`Agent limit reached! Maximum ${MAX_AGENTS} agents allowed.`);
+      return;
+    }
+    setAgentLimitWarning('');
 
     const fovAngleRad = (Number(newAgentFovAngle) || 150) * Math.PI / 180;
     const angleRad = - (Number(newAgentAngle) || 0) * Math.PI / 180;
+
+    const randomSpeed = Math.random() * 2 + 0.5; // random speed between 0.5 and 2.5
+    const randomDir = Math.random() * 2 * Math.PI;
 
     new Agent(
       true,                                          // isSpecial
       Number(newAgentX) || CANVAS_WIDTH / 2,           // x, default = center
       Number(newAgentY) || CANVAS_HEIGHT / 2,          // y, default = center
       5,                                              // radius
-      0,                                              // dx (no speed)
-      0,                                              // dy (no speed)
+      Math.cos(randomDir) * randomSpeed,              // dx
+      Math.sin(randomDir) * randomSpeed,              // dy
       newAgentColor,                                  // color
       100,                                            // fovRadius
       fovAngleRad,                                    // fovAngle
@@ -112,8 +121,8 @@ function Simulation() {
 
   function handleAddMultipleAgents() {
     const count = Number(multiAgentCount);
-    if (!multiAgentCount || isNaN(count) || count < 1 || !Number.isInteger(count) || count > 500) {
-      setMultiAgentCountError('Error! Please enter a valid whole number ≥ 1 and ≤ 500!');
+    if (!multiAgentCount || isNaN(count) || count < 1 || !Number.isInteger(count) || count > MAX_AGENTS) {
+      setMultiAgentCountError(`Error! Please enter a valid whole number ≥ 1 and ≤ ${MAX_AGENTS}!`);
       return;
     }
     setMultiAgentCountError('');
@@ -123,18 +132,31 @@ function Simulation() {
     const roster = agentsArrayRef.current;
     if (!canvas || !ctx) return;
 
+    const allowed = Math.min(count, MAX_AGENTS - roster.length);
+    if (allowed <= 0) {
+      setAgentLimitWarning(`Agent limit reached! Maximum ${MAX_AGENTS} agents allowed.`);
+      return;
+    }
+    if (allowed < count) {
+      setAgentLimitWarning(`Only ${allowed} agent(s) added — agent limit of ${MAX_AGENTS} reached.`);
+    } else {
+      setAgentLimitWarning('');
+    }
+
     // Main loop that creates agent
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < allowed; i++) {
       const x = Math.random() * CANVAS_WIDTH;
       const y = Math.random() * CANVAS_HEIGHT;
       const color = multiAgentRandomColor
         ? '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0') // AI suggested random color generation, with padding to ensure 6 digits
         : multiAgentColor;
 
+      const speed = Math.random() * 2 + 0.5; // random speed between 0.5 and 2.5
+      const dir = Math.random() * 2 * Math.PI;
       new Agent(
         newMultiAgentShowFOV, // isSpecial (using this to control FOV visibility for simplicity)
         x, y,
-        5, 0, 0,
+        5, Math.cos(dir) * speed, Math.sin(dir) * speed,
         color,
         100,
         150 * Math.PI / 180,
@@ -161,6 +183,10 @@ function Simulation() {
   useEffect(() => {
     fpsRef.current = Number(targetFPS) || 1; // Update the ref whenever targetFPS state changes, default to 1 if empty/invalid
   }, [targetFPS]);
+
+  useEffect(() => {
+    followBehaviorRef.current = followBehavior;
+  }, [followBehavior]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -198,7 +224,7 @@ function Simulation() {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         agentsArray.forEach(agent => {
-          agent.updatePosition([agent]); // Update it's own position
+          agent.updatePosition(followBehaviorRef.current ? agentsArray : [agent]);
         });
       }
     }
@@ -207,11 +233,42 @@ function Simulation() {
     return () => cancelAnimationFrame(animationId);
   }, []);
 
+  function handleCanvasClick(e) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    // Scale click coords to match internal canvas resolution (CSS size may differ from canvas width/height)
+    // With help of Claude
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clickX = (e.clientX - rect.left) * scaleX;
+    const clickY = (e.clientY - rect.top) * scaleY;
+
+    // Finds the first agent within the click area (agent radius + 4px tolerance) and shows an alert with its details
+    const clicked = agentsArrayRef.current.find(agent => {
+      const dx = clickX - agent.position.x;
+      const dy = clickY - agent.position.y;
+      return Math.sqrt(dx * dx + dy * dy) <= agent.radius + 4; // +4px tolerance so small agents are easier to click
+    });
+
+    // Debug only
+    if (clicked) {
+      alert(
+        `Agent: ${clicked.id}\n` +
+        `Position: (${Math.round(clicked.position.x)}, ${Math.round(clicked.position.y)})\n` +
+        `Color: ${clicked.colorHex}\n` +
+        `Speed: dx=${clicked.dx.toFixed(2)}, dy=${clicked.dy.toFixed(2)}\n` +
+        `Angle: ${(clicked.angle * 180 / Math.PI).toFixed(1)}°\n` +
+        `FOV Radius: ${clicked.fovRadius} | FOV Angle: ${(clicked.fovAngle * 180 / Math.PI).toFixed(1)}°`
+      );
+    }
+  }
+
   return (
     <div className="simulation-page"> 
         <Header />
         <div className="simulation-container">
-          <div className="canvas-section"><canvas ref={canvasRef} className="simulation-canvas"></canvas></div>
+          <div className="canvas-section"><canvas ref={canvasRef} className="simulation-canvas" onClick={handleCanvasClick}></canvas></div>
           <div className="control-panel">
             <h1>Control Panel</h1>
             <div className="panel-card">
@@ -240,7 +297,7 @@ function Simulation() {
                         checked={simulationScale === scale}
                         onChange={() => setSimulationScale(scale)}
                       />
-                      {scale === 'small' ? 'Small Scale' : 'Large Scale'}
+                      {scale === 'small' ? 'Small' : 'Large'}
                     </label>
                   ))}
                 </div>
@@ -249,6 +306,13 @@ function Simulation() {
             
               <div className="panel-card">
               <h2 className="panel-section-title">Agent Settings</h2>
+
+              {agentLimitWarning && (
+                <span style={{ color: '#d32f2f', fontSize: '0.85em', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
+                  {agentLimitWarning}
+                  <button onClick={() => setAgentLimitWarning('')} style={{ background: 'none', border: 'none', color: '#d32f2f', cursor: 'pointer', fontWeight: 'bold', fontSize: '1em', padding: 0, lineHeight: 1 }}>×</button>
+                </span>
+              )}
 
               {simulationScale === 'small' && ( // will only show up if we have small simulation scale selected, which allows for detailed agent settings and creation. Large scale will only allow for mass creation with limited settings to avoid overwhelming the user and the system.
               <div className = "input-group">
@@ -441,6 +505,10 @@ function Simulation() {
                   
               </div>
             )}
+            
+            <div className="panel-card">
+              <h2 className="panel-section-title">Agent Editor</h2>
+            </div>
 
             <div className="panel-card">
               <h2 className="panel-section-title">Simulation Control</h2>
@@ -456,7 +524,6 @@ function Simulation() {
               <div className="btn-row">
                   <button className="btn-secondary" onClick={null}>▶</button>
                   <button className="btn-secondary" onClick={null}>⏸</button>
-                  <button className="btn-secondary" onClick={null}>Open in a new tab</button>
                 </div>
             </div>
 
