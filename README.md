@@ -1,1 +1,2 @@
-Working with Dr. Hai Le to migrate the simulation to a webpage where everyone can open.
+Working under the mentorship of Dr. Hai Le. I am making an agent-based simulation WebApp that is accessible to everyone.
+This WebApp uses React.
