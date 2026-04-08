@@ -7,11 +7,11 @@ export default function Header() {
     <header className="emory-header">
       <div className="emory-header-inner">
         <a href='https://www.oxford.emory.edu' target='_blank' rel='noopener noreferrer'>
-          <img src={oxfordLogo} alt="Emory Logo" className="emory-logo" />
+          <img src={oxfordLogo} alt="Emory Oxford Logo" className="emory-logo" />
         </a>
         <div className="header-text">
           <h1 className="header-title">Agent Simulation Project</h1>
-          <p className="header-subtitle">Dr. Hai Hoang Le | Yize (Kevin) Wang | Hanyi (Elaine) Ding</p>
+          <p className="header-subtitle">Dr. Hai Hoang Le | Yize (Kevin) Wang</p>
         </div>
       </div>
     </header>

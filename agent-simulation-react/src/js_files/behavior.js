@@ -1,151 +1,197 @@
-class Behavior {
-    // another 3-4 components, each components has its own class (action[changing speeds, pos... -> changing properties], 
-    // activation[agents have 1+ behaviors, change the properties of agents], 
-    // filter[filter out what agents focus on, example: avoid obstacles | filter by distances, speed, angle, based on properties])
+// ─── Constants (numeric identifiers used in computation & UI) ────────────────
 
-    filters = [a, b, c]; // list of filters
+export const PROPERTY_TYPE = {
+  POSITION: 0,
+  SPEED:    1,
+  ANGLE:    2,
+};
+
+export const METHOD_TYPE = {
+  CLOSEST:  0,
+  SMALLEST: 1,
+  AVERAGE:  2,
+};
+
+// Human-readable labels for the UI
+export const PROPERTY_LABELS = {
+  [PROPERTY_TYPE.POSITION]: 'Position',
+  [PROPERTY_TYPE.SPEED]:    'Speed',
+  [PROPERTY_TYPE.ANGLE]:    'Angle',
+};
+
+export const METHOD_LABELS = {
+  [METHOD_TYPE.CLOSEST]:  'Closest',
+  [METHOD_TYPE.SMALLEST]: 'Smallest',
+  [METHOD_TYPE.AVERAGE]:  'Average',
+};
+
+// ─── Behaviors ─────────────────────────────────────────────────────────────────
+
+export class Behavior {
+  filters = []; // list of Filter instances
+
+  addFilter(filter) {
+    this.filters.push(filter);
+  }
+
+  removeFilter(index) {
+    this.filters.splice(index, 1);
+  }
+
+  // Applies all filters in sequence and returns surviving agents
+  // TODO: implement chaining logic
+  apply(_self, agents) {
+    return agents;
+  }
 }
 
-class Filter {
-    // Ranged: properties & range [Speed, Position]
-    // Method: property (which property are we modifying) & method (how?) [Follow Closest, Furtherst, Averaged]
+// ─── Filter (base, parent of RangedFilter and MethodFilter) ────────────────────────────────────────────────────────────
 
-    //Property filterProperty = typeOfProperty; // speed, position, or angle
-    //Type:  refer to above ranged/method
-    property = new Property();
+export class Filter {
+  /**
+   * @param {number} propertyType - PROPERTY_TYPE.*
+   */
+  constructor(propertyType) {
+    this.propertyType = propertyType;
+  }
+
+  // Placeholder: subclasses override this
+  apply(_self, agents) {
+    return agents;
+  }
 }
 
-class RangedFilter extends Filter {
-    // Lower/Upper bounds 
-    // Refer to filterProperty
+// ─── RangedFilter ─────────────────────────────────────────────────────────────
 
-    // double lower = ?, upper = ?;
-    // Property filterProperty = super.filterProperty;
-    // We do it with object, speed isn't related to agent's speed
+export class RangedFilter extends Filter {
+  /**
+   * @param {number} propertyType - PROPERTY_TYPE.*
+   * @param {number} low
+   * @param {number} high
+   */
+  constructor(propertyType, low, high) {
+    super(propertyType);
+    this.low  = low;
+    this.high = high;
+  }
+
+  // TODO: filter agents whose property value falls within [low, high]
+  apply(_self, agents) {
+    return agents;
+  }
 }
 
-class MethodFilter extends Filter {
+// ─── MethodFilter ─────────────────────────────────────────────────────────────
 
+export class MethodFilter extends Filter {
+  /**
+   * @param {number} propertyType - PROPERTY_TYPE.*
+   * @param {number} methodType   - METHOD_TYPE.*
+   */
+  constructor(propertyType, methodType) {
+    super(propertyType);
+    this.methodType = methodType;
+  }
+
+  // TODO: select agent(s) based on method (closest, smallest, average)
+  apply(_self, agents) {
+    return agents;
+  }
 }
+
+// ─── Property (base) ──────────────────────────────────────────────────────────
 
 class Property {
-    get(agent) {
+  // Returns the relevant value from an agent
+  get(_agent) {}
 
-    }
-
-    compare(self, target) {
-        // compare self properties with target's properties (i.e. compare my own position with target agent's position)
-    }
+  // Compares self's property with a target agent's property
+  compare(_self, _target) {}
 }
+
+// ─── Speed ────────────────────────────────────────────────────────────────────
 
 export class Speed extends Property {
-    get(agent) {
-
-    }
-
-    compare(self, target) {
-
-    }
+  // TODO
+  get(_agent) {}
+  compare(_self, _target) {}
 }
 
-export class Position extends Property{ // This will be the Position class the agent is using, replaces previous one
-    constructor(x, y) {
-        super(); // call super's constructor
-        this.x = x;
-        this.y = y;
+// ─── Position ─────────────────────────────────────────────────────────────────
+
+export class Position extends Property {
+  constructor(x, y) {
+    super();
+    this.x = x;
+    this.y = y;
+  }
+
+  add(dx, dy) {
+    this.x += dx;
+    this.y += dy;
+  }
+
+  get(_agent) {
+    return _agent.position;
+  }
+
+  findAverage(self, targets) {
+    let avgX = 0, avgY = 0;
+    for (const target of targets) {
+      avgX += target.position.x;
+      avgY += target.position.y;
     }
+    avgX /= targets.length;
+    avgY /= targets.length;
+    return new Position(avgX, avgY);
+  }
 
-    // Method to update the position by adding dx and dy
-    add(dx, dy) {
-        this.x += dx;
-        this.y += dy;
+  findNthClosest(_self, targets, n) {
+    if (!targets || targets.length === 0) {
+      console.log("There are no agents available for detection");
+      return null;
     }
-
-    get(agent) {
-        return agent.position;
+    if (n < 1 || n > targets.length) {
+      console.log("Invalid n");
+      return null;
     }
+    return this.quickSelect([...targets], n - 1, self);
+  }
 
-    findAverage(self, targets) {
-        // Find the central position
-        
-        //?
-        avgX = 0;
-        avgY = 0;
-
-        for (target of targets) { // target = Agent, targets = array of Agent
-            avgX += target.position.x;
-            avgY += target.position.y
-        }
-
-        avgX /= targets.length;
-        avgY /= targets.length;
-
-        return new Position()
-
-        // 
-        
+  quickSelect(targets, n, self) {
+    if (targets.length === 1) return targets[0];
+    const pivot = targets[Math.floor(Math.random() * targets.length)];
+    const pivotDist = self.position.distanceTo(pivot.position);
+    const left = [], equal = [], right = [];
+    for (const agent of targets) {
+      const d = self.position.distanceTo(agent.position);
+      if (d < pivotDist)      left.push(agent);
+      else if (d > pivotDist) right.push(agent);
+      else                    equal.push(agent);
     }
+    if (n < left.length)
+      return this.quickSelect(left, n, self);
+    else if (n < left.length + equal.length)
+      return pivot;
+    else
+      return this.quickSelect(right, n - left.length - equal.length, self);
+  }
 
-    findNthClosest(self, targets, n) { // Will return the Agent that is nth closest to self from targets
-        // self = Agent
-        // targets = Agent Array
-        // n = int, indicating which one
+  distanceTo(position) {
+    let diffX = Math.abs(this.x - position.x);
+    let diffY = Math.abs(this.y - position.y);
+    return Math.sqrt(diffX * diffX + diffY * diffY);
+  }
 
-        // Using Quick Select Algorithm to find nth closest Agent
-
-        if (!targets || targets.length == 0) {
-            console.log("There are no agents available for detection");
-            return null;
-        }
-
-        if (n < 1 || n > targets.length) {
-            console.log("invalid n");
-            return null;
-        }
-
-        return this.quickSelect(targets, n-1, self);
-    }
-    
-    quickSelect(targets, n, self) {
-        if (targets.length === 1) return targets[0]; // if there's only one, return that (that must be the closest)
-
-        const pivot = targets[Math.floor(Math.random() * targets.length)] // select a pivot
-        const pivotDistFromSelf = self.position.distanceTo(pivot.position);
-        
-        const left = [], equal = [], right = [];
-
-        for (let agent of targets) {
-            let d = self.position.distanceTo(agent.position);
-            if (d < pivotDistFromSelf) left.push(agent);
-            else if (d > pivotDistFromSelf) right.push(agent);
-            else equal.push(agent);
-        }
-
-        if (n < left.length) {
-            return this.quickSelect(left, n, self);
-        } else if (n < left.length + equal.length) {
-            return pivot;
-        } else {
-            return this.quickSelect(right, n - left.length - equal.length, self);
-        }
-    }
-
-    distanceTo(position) {
-        var diffX = this.x - position.x;
-        var diffY = this.y - position.y
-        // Corrected by ChatGPT for Warping
-        if (diffX > width / 2) diffX = width - diffX;
-        if (diffY > height / 2) diffY = height - diffY;
-
-        return Math.sqrt(diffX * diffX + diffY * diffY);
-    }
-
+  compare(self, target) {
+    return this.distanceTo(target.position);
+  }
 }
+
+// ─── Angle ────────────────────────────────────────────────────────────────────
 
 export class Angle extends Property {
-
-}
-
-class Offset {
-
+  // TODO
+  get(_agent) {}
+  compare(_self, _target) {}
 }

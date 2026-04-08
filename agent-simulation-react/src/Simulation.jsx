@@ -8,6 +8,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
+import { PROPERTY_TYPE, METHOD_TYPE, PROPERTY_LABELS, METHOD_LABELS } from "./js_files/behavior.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -52,6 +53,16 @@ function Simulation() {
   const [newAgentFovAngle, setNewAgentFovAngle] = useState('150');
   const [newAgentAngle, setNewAgentAngle] = useState(true);
   const [newMultiAgentShowFOV, setNewMultiAgentShowFOV] = useState(false); // Show FOV setting for the agents being created
+
+  // Behavior filter state — each entry is a plain config object matching RangedFilter or MethodFilter
+  const [behaviorFilters, setBehaviorFilters] = useState([]);
+
+  // Agent editor state
+  const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
+  const [editorName, setEditorName] = useState('');
+  const [editorColor, setEditorColor] = useState('#000000');
+  const [editorShowFOV, setEditorShowFOV] = useState(false);
+  const [editorFovAngle, setEditorFovAngle] = useState('150');
 
   // Handler for creating a new agent from the form
   function handleAddAgent() {
@@ -180,6 +191,20 @@ function Simulation() {
     setShowAddMultipleAgents(false);
   }
 
+  // Behavior filter handlers
+  function handleAddFilter() {
+    // With help with Claude, we decided to start with a simple method filter as the default when the user clicks "Add Filter". The user can then customize it as they wish.
+    setBehaviorFilters(prev => [...prev, { filterType: 'method', propertyType: PROPERTY_TYPE.POSITION, methodType: METHOD_TYPE.CLOSEST, rangeLow: '', rangeHigh: '' }]);
+  }
+
+  function handleRemoveFilter(index) {
+    setBehaviorFilters(prev => prev.filter((_, i) => i !== index));
+  }
+
+  function handleUpdateFilter(index, field, value) {
+    setBehaviorFilters(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
+  }
+
   useEffect(() => {
     fpsRef.current = Number(targetFPS) || 1; // Update the ref whenever targetFPS state changes, default to 1 if empty/invalid
   }, [targetFPS]);
@@ -224,7 +249,7 @@ function Simulation() {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         agentsArray.forEach(agent => {
-          agent.updatePosition(followBehaviorRef.current ? agentsArray : [agent]);
+          agent.updatePosition(agentsArray, followBehaviorRef.current); // Pass full roster so agents can detect each other
         });
       }
     }
@@ -244,24 +269,31 @@ function Simulation() {
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
-    // Finds the first agent within the click area (agent radius + 4px tolerance) and shows an alert with its details
+    // Finds the first agent within the click area (agent radius + 4px tolerance) and selects it for editing
     const clicked = agentsArrayRef.current.find(agent => {
       const dx = clickX - agent.position.x;
       const dy = clickY - agent.position.y;
       return Math.sqrt(dx * dx + dy * dy) <= agent.radius + 4; // +4px tolerance so small agents are easier to click
     });
 
-    // Debug only
     if (clicked) {
-      alert(
-        `Agent: ${clicked.id}\n` +
-        `Position: (${Math.round(clicked.position.x)}, ${Math.round(clicked.position.y)})\n` +
-        `Color: ${clicked.colorHex}\n` +
-        `Speed: dx=${clicked.dx.toFixed(2)}, dy=${clicked.dy.toFixed(2)}\n` +
-        `Angle: ${(clicked.angle * 180 / Math.PI).toFixed(1)}°\n` +
-        `FOV Radius: ${clicked.fovRadius} | FOV Angle: ${(clicked.fovAngle * 180 / Math.PI).toFixed(1)}°`
-      );
+      setSelectedAgent(clicked);
+      setEditorName(clicked.id);
+      setEditorColor(clicked.colorHex);
+      setEditorShowFOV(clicked.showFOV);
+      setEditorFovAngle(String(Math.round(clicked.fovAngle * 180 / Math.PI)));
     }
+  }
+
+  function handleApplyEdit() {
+    if (!selectedAgent) return;
+    selectedAgent.id        = editorName;
+    selectedAgent.colorHex  = editorColor;
+    selectedAgent.color     = editorColor;
+    selectedAgent.showFOV   = editorShowFOV;
+    selectedAgent.isSpecial = editorShowFOV; // isSpecial gates FOV drawing in agent.js — must stay in sync with showFOV
+    selectedAgent.fovAngle  = (Number(editorFovAngle) || 150) * Math.PI / 180;
+    setAgents([...agentsArrayRef.current]); // refresh agent list in case name changed
   }
 
   return (
@@ -295,7 +327,16 @@ function Simulation() {
                         name="simulationScale"
                         value={scale}
                         checked={simulationScale === scale}
-                        onChange={() => setSimulationScale(scale)}
+                        onChange={() => { // lambda function to handle scale change.
+                          setSimulationScale(scale);
+                          if (scale === 'large') {
+                            setShowAddAgent(false);
+                            setShowAddMultipleAgents(false);
+                          } else {
+                            setShowAddMultipleAgents(false);
+                            setShowAddAgent(false);
+                          }
+                        }}
                       />
                       {scale === 'small' ? 'Small' : 'Large'}
                     </label>
@@ -345,7 +386,7 @@ function Simulation() {
               </div>
             </div>
             
-            {showAddAgent && ( // The panel-card for adding the new agent, only comes up when the user clicks the "Add an Agent" button and disappears when they click "Cancel" or "Create"
+            {simulationScale == "small" && showAddAgent && ( // The panel-card for adding the new agent, only comes up when the user clicks the "Add an Agent" button and disappears when they click "Cancel" or "Create"
               <div className="panel-card panel-card-highlight" style={{ position: 'relative' }}>
                 <button
                   className="btn-secondary"
@@ -437,7 +478,7 @@ function Simulation() {
               </div>
             )}
 
-            {showAddMultipleAgents && ( // Panel card for adding multiple agents at once. 
+            {simulationScale == "large" && showAddMultipleAgents && ( // Panel card for adding multiple agents at once. 
             /*
               This card contains the following features:
               1. How many agents to create (number input)
@@ -453,7 +494,7 @@ function Simulation() {
                   aria-label="Close"
                   style={{ position: 'absolute', top: 8, right: 10, width: 28, height: 28, padding: 0, fontSize: 16 }}
                 >
-                  ×</button>
+                ×</button>
                 <h2 className="panel-section-title">Create Multiple Agents</h2> 
                 <div className="input-group">
                   <label>Number of Agents</label>
@@ -505,13 +546,112 @@ function Simulation() {
                   
               </div>
             )}
-            
-            <div className="panel-card">
-              <h2 className="panel-section-title">Agent Editor</h2>
-            </div>
 
             <div className="panel-card">
-              <h2 className="panel-section-title">Simulation Control</h2>
+              <h2 className="panel-section-title">Agent Editor</h2>
+              {!selectedAgent && (
+                <p style={{ fontSize: '0.85em', color: '#888' }}>Click an agent on the canvas to select it.</p>
+              )}
+              {selectedAgent && ( // renders only when an agent is selected, allows user to edit the selected agent's name, color, and FOV settings. Changes are applied immediately to the live agent object in the canvas when the user clicks "Apply"
+                <>
+                  <div className="input-group">
+                    <label>Name</label>
+                    <input type="text" value={editorName} onChange={(e) => setEditorName(e.target.value)} />
+                  </div>
+                  <div className="input-group">
+                    <label>Color</label>
+                    <input type="color" value={editorColor} onChange={(e) => setEditorColor(e.target.value)} />
+                  </div>
+                  <div className="input-group">
+                    <label>
+                      <input type="checkbox" checked={editorShowFOV} onChange={(e) => setEditorShowFOV(e.target.checked)} />
+                      {' '}Show FOV
+                    </label>
+                  </div>
+                  <div className="input-group">
+                    <label>FOV Angle (deg)</label>
+                    <input type="number" min="0" max="360" value={editorFovAngle} onChange={(e) => setEditorFovAngle(e.target.value)} />
+                  </div>
+                  <div className="btn-row">
+                    <button className="btn-primary" onClick={handleApplyEdit}>Apply</button>
+                    <button className="btn-secondary" onClick={() => setSelectedAgent(null)}>Deselect</button>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <div className="panel-card">
+              <h2 className="panel-section-title">Behavior Settings (To be Implemented)</h2>
+
+              {behaviorFilters.map((filter, index) => (
+                <div key={index} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 8 }}>
+                  <button
+                    className="btn-secondary"
+                    onClick={() => handleRemoveFilter(index)}
+                    aria-label="Remove filter"
+                    style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
+                  >×</button>
+                  
+                  <div className="input-group">
+                    <label>Type</label>
+                    <div className="radio-group">
+                      {['method', 'range'].map(t => (
+                        <label key={t} className="radio-option">
+                          <input
+                            type="radio"
+                            name={`filter-type-${index}`}
+                            value={t}
+                            checked={filter.filterType === t}
+                            onChange={() => handleUpdateFilter(index, 'filterType', t)}
+                          />
+                          {' '}{t.charAt(0).toUpperCase() + t.slice(1)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {filter.filterType === 'method' && (
+                    <div className="input-group">
+                      <label>Method</label>
+                      <select value={filter.methodType} onChange={(e) => handleUpdateFilter(index, 'methodType', Number(e.target.value))}>
+                        {Object.entries(METHOD_LABELS).map(([val, label]) => (
+                          <option key={val} value={val}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {filter.filterType === 'range' && (
+                    <div className="input-row">
+                      <div className="input-group">
+                        <label>Low</label>
+                        <input type="number" value={filter.rangeLow} onChange={(e) => handleUpdateFilter(index, 'rangeLow', e.target.value)} />
+                      </div>
+                      <div className="input-group">
+                        <label>High</label>
+                        <input type="number" value={filter.rangeHigh} onChange={(e) => handleUpdateFilter(index, 'rangeHigh', e.target.value)} />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="input-group">
+                    <label>Property</label>
+                    <select value={filter.propertyType} onChange={(e) => handleUpdateFilter(index, 'propertyType', Number(e.target.value))}>
+                      {Object.entries(PROPERTY_LABELS).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              ))}
+
+              <button className="btn-primary" onClick={handleAddFilter}>+ Add Filter</button>
+            </div>
+
+            
+
+            <div className="panel-card">
+              <h2 className="panel-section-title">Simulation Control (To be Implemented)</h2>
               <div className="input-group">
                 <label>
                   <input type="checkbox" checked={followBehavior} onChange={(e) => setFollowBehavior(e.target.checked)}></input>
@@ -520,7 +660,7 @@ function Simulation() {
             </div>
 
             <div className="panel-card">
-              <h2 className="panel-section-title">Recording & Replay</h2>
+              <h2 className="panel-section-title">Recording & Replay (To be Implemented)</h2>
               <div className="btn-row">
                   <button className="btn-secondary" onClick={null}>▶</button>
                   <button className="btn-secondary" onClick={null}>⏸</button>

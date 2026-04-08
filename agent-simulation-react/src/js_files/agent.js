@@ -80,14 +80,14 @@ export class Agent extends Entity{
     }
 
     // Method to update the position of the circle
-    updatePosition(allAgents) {
+    updatePosition(allAgents, followBehavior = false) {
         // FIX: Updated to use the Circle's dx and dy, not this.position.dx and this.position.dy.
         this.position.add(this.dx, this.dy);
         if (this.dx !== 0 || this.dy !== 0) {
             this.angle = Math.atan2(this.dy, this.dx);
         }
         this.warpAgent();
-        this.detectAgents(allAgents); // New as of 9/23/25
+        this.detectAgents(allAgents, followBehavior); // New as of 9/23/25
         this.draw();
     }
 
@@ -168,7 +168,7 @@ export class Agent extends Entity{
     }
 
     // Detection system to identify agents inside FOV
-    detectAgents(agents) {
+    detectAgents(agents, followBehavior = false) {
         let currentlyDetected = [];
         
         // Loop through all agents to check if they are within FOV
@@ -222,7 +222,7 @@ export class Agent extends Entity{
             }
         });
 
-        if (currentlyDetected.length > 0) {
+        if (followBehavior && currentlyDetected.length > 0) {
             let target = currentlyDetected.reduce((nearest, agent) => {
                 let dx = agent.position.x - this.position.x;
                 let dy = agent.position.y - this.position.y;
