@@ -1,5 +1,5 @@
-import Header from "./Header";
-import Footer from "./Footer";
+import Header from "./components/Header.jsx";
+import Footer from "./components/Footer.jsx";
 /* 
 These imports ensures the correct styles and components are included for the Simulation page.
 */
@@ -8,17 +8,12 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
-import { PROPERTY_TYPE, METHOD_TYPE, PROPERTY_LABELS, METHOD_LABELS } from "./js_files/behavior.js";
+import { PROPERTY_TYPE, METHOD_TYPE, PROPERTY_LABELS, METHOD_LABELS, ACTION_TYPE, ACTION_LABELS } from "./js_files/behavior.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
 const CANVAS_HEIGHT = 500;
 const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
-
-// Meeting Notes (2026-3-16): 
-// Large scale and small scale:
-// Large scale: may only modify agent's color
-// Small scale: may modify all properties of the agent, but only 1 agent at a time
 
 function Simulation() {
   /* Canvas */
@@ -34,11 +29,8 @@ function Simulation() {
   const [agents, setAgents] = useState([]); // State to hold agents for display in the control panel
   const [agentsListExpanded, setAgentsListExpanded] = useState(false); // State to toggle agents list visibility
 
-  // Follow behavior state
-  const [followBehavior, setFollowBehavior] = useState(false); // State to toggle follow behavior for all agents
-  const followBehaviorRef = useRef(followBehavior);
 
-  // Add Agent form state
+  // Adding Agent States
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [showAddMultipleAgents, setShowAddMultipleAgents] = useState(false); // New state for showing the "Add Multiple Agents" form
   const [multiAgentRandomColor, setMultiAgentRandomColor] = useState(true); // Randomized Color checkbox, default on
@@ -54,8 +46,9 @@ function Simulation() {
   const [newAgentAngle, setNewAgentAngle] = useState(true);
   const [newMultiAgentShowFOV, setNewMultiAgentShowFOV] = useState(false); // Show FOV setting for the agents being created
 
-  // Behavior filter state — each entry is a plain config object matching RangedFilter or MethodFilter
-  const [behaviorFilters, setBehaviorFilters] = useState([]);
+  // Behavior & Filter settings state & Ref
+  const [behaviorList, setBehaviorList] = useState([]); // Behavior
+  const behaviorListRef = useRef([]); // Ref to hold the current behavior list for access in the animation loop
 
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
@@ -64,7 +57,8 @@ function Simulation() {
   const [editorShowFOV, setEditorShowFOV] = useState(false);
   const [editorFovAngle, setEditorFovAngle] = useState('150');
 
-  // Handler for creating a new agent from the form
+  // ---- Handlers ----
+  // ---- Agent Handlers ----
   function handleAddAgent() {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
@@ -119,6 +113,7 @@ function Simulation() {
     setShowAddAgent(false);
   }
 
+  // cancelling agent creation function (reset default values for the form and hide the form))
   function handleCancelAddAgent() {
     setNewAgentName('');
     setNewAgentColor('#000000');
@@ -191,27 +186,64 @@ function Simulation() {
     setShowAddMultipleAgents(false);
   }
 
-  // Behavior filter handlers
-  function handleAddFilter() {
-    // With help with Claude, we decided to start with a simple method filter as the default when the user clicks "Add Filter". The user can then customize it as they wish.
-    setBehaviorFilters(prev => [...prev, { filterType: 'method', propertyType: PROPERTY_TYPE.POSITION, methodType: METHOD_TYPE.CLOSEST, rangeLow: '', rangeHigh: '' }]);
+  // ---- Behavior Handlers ----
+  function handleAddBehavior(behaviorIndex, newBehavior) {
+    // Add a new behavior to the behavior list (or add a behavior if behaviorIndex is null)
+    const newList = [...behaviorList];
+    newList.push(newBehavior);
+    setBehaviorList(newList);
   }
 
-  function handleRemoveFilter(index) {
-    setBehaviorFilters(prev => prev.filter((_, i) => i !== index));
+  function handleUpdateBehavior(behaviorIndex, updatedBehavior) {
+    // Update the behavior at behaviorIndex with the updatedBehavior
+    const newList = [...behaviorList];
+    newList[behaviorIndex] = updatedBehavior;
+    setBehaviorList(newList);
   }
 
-  function handleUpdateFilter(index, field, value) {
-    setBehaviorFilters(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
+  function handleDeleteBehavior(behaviorIndex) {
+    // Delete the behavior at behaviorIndex from the behavior list
+    const newList = [...behaviorList];
+    newList.splice(behaviorIndex, 1);
+    setBehaviorList(newList);
   }
 
+  // ---- Filter Handlers ----
+  function handleAddFilter(behaviorIndex, filterIndex) {
+    // Add a new filter to the behavior at behaviorIndex (or add a filter if filterIndex is null)
+    // using structuredClone to avoid mutating the existing behavior/filter objects (deep copy)
+    const newList = structuredClone(behaviorList);
+    newList[behaviorIndex].filters.push({ filterType: 'method', 
+      propertyType: PROPERTY_TYPE.POSITION, 
+      methodType: METHOD_TYPE.CLOSEST,
+      rangeLow: '', 
+      rangeHigh: '' }); // Add a default filter, user can modify it in the editor
+    setBehaviorList(newList);
+  }
+
+  function handleUpdateFilter(behaviorIndex, filterIndex, updatedFilter) {
+    // Update the filter at filterIndex of the behavior at behaviorIndex with the updatedFilter
+    const newList = structuredClone(behaviorList);
+    newList[behaviorIndex].filters[filterIndex] = updatedFilter;
+    setBehaviorList(newList);
+  }
+
+  function handleDeleteFilter(behaviorIndex, filterIndex) {
+    // Delete the filter at filterIndex of the behavior at behaviorIndex from the behavior list
+    const newList = structuredClone(behaviorList);
+    newList[behaviorIndex].filters.splice(filterIndex, 1);
+    setBehaviorList(newList);
+  }
+
+  // ---- Simulation FPS ----
   useEffect(() => {
     fpsRef.current = Number(targetFPS) || 1; // Update the ref whenever targetFPS state changes, default to 1 if empty/invalid
   }, [targetFPS]);
 
+  // Behavior List Ref Sync (ensuring the latest behavior list is available)
   useEffect(() => {
-    followBehaviorRef.current = followBehavior;
-  }, [followBehavior]);
+    behaviorListRef.current = behaviorList;
+  }, [behaviorList]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -229,11 +261,6 @@ function Simulation() {
     const agentsArray = [];
     agentsArrayRef.current = agentsArray; // Store in ref for access outside useEffect
 
-    // Create 3 agents
-    //const agent = new Agent(true, 375, 375, 5, 2, 2, '#000000', 100, Math.PI/3, 0, "Elaine", ctx, canvas, agentsArray);
-    //const agent2 = new Agent(true, 250, 250, 5, -5, 6, '#000000', 100, Math.PI/3, 0, "Kevin", ctx, canvas, agentsArray);
-    //const agent3 = new Agent(true, 125, 125, 5, -7, -8, '#000000', 100, Math.PI/3, 0, "Robin", ctx, canvas, agentsArray);
-
     // Update state with agents for the control panel
     setAgents(agentsArray); // explained by Claude: ",,," implies a shallow copy of the array, but not required here
 
@@ -249,7 +276,7 @@ function Simulation() {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         agentsArray.forEach(agent => {
-          agent.updatePosition(agentsArray, followBehaviorRef.current); // Pass full roster so agents can detect each other
+          agent.updatePosition(agentsArray, behaviorListRef.current);
         });
       }
     }
@@ -258,6 +285,7 @@ function Simulation() {
     return () => cancelAnimationFrame(animationId);
   }, []);
 
+  // ---- Canvas Interaction Handlers ----
   function handleCanvasClick(e) {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -300,23 +328,16 @@ function Simulation() {
     <div className="simulation-page"> 
         <Header />
         <div className="simulation-container">
+          {/*Canvas Section*/}
           <div className="canvas-section"><canvas ref={canvasRef} className="simulation-canvas" onClick={handleCanvasClick}></canvas></div>
+          {/*Control Panel*/}
           <div className="control-panel">
             <h1>Control Panel</h1>
-            <div className="panel-card">
-              <h2 className="panel-section-title">Simulation Setup</h2>
-              <div className="input-group">
-                <label htmlFor="fps-input">FPS (Frames Per Second)</label>
-                <input
-                  type="number"
-                  id="fps-input"
-                  min="1"
-                  max="60"
-                  value={targetFPS}
-                  onChange={(e) => setTargetFPS(e.target.value)}
-                  onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
-                />
-              </div>
+            
+            
+              <div className="panel-card">
+              <h2 className="panel-section-title">Agent Settings</h2>
+
               <div className="input-group">
                 <label>Simulation Scale</label>
                 <div className="radio-group">
@@ -343,10 +364,9 @@ function Simulation() {
                   ))}
                 </div>
               </div>
-            </div>
-            
-              <div className="panel-card">
-              <h2 className="panel-section-title">Agent Settings</h2>
+
+              {/* A dividing line */}
+              <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
 
               {agentLimitWarning && (
                 <span style={{ color: '#d32f2f', fontSize: '0.85em', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px' }}>
@@ -368,6 +388,7 @@ function Simulation() {
               </div>
               )}
 
+              {/* Agent List */}
               <div className="agents-list-container">
                 <label>Agent List</label>
                 <button
@@ -580,82 +601,154 @@ function Simulation() {
               )}
             </div>
             
+            {/* Where we re-create behavior & filter settings */}
             <div className="panel-card">
-              <h2 className="panel-section-title">Behavior Settings (To be Implemented)</h2>
-
-              {behaviorFilters.map((filter, index) => (
-                <div key={index} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 8 }}>
+              <h2 className="panel-section-title">Behavior & Filter Settings</h2>
+              
+              {behaviorList.map((behavior, behaviorIndex) => (
+                <div key={behaviorIndex} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 6 }}>
                   <button
-                    className="btn-secondary"
-                    onClick={() => handleRemoveFilter(index)}
-                    aria-label="Remove filter"
+                    className="btn-danger"
+                    onClick={() => handleDeleteBehavior(behaviorIndex)}
+                    aria-label="Delete behavior"
                     style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
                   >×</button>
-                  
+                  <h2 className="panel-section-title">{behavior.name}</h2> 
                   <div className="input-group">
-                    <label>Type</label>
-                    <div className="radio-group">
-                      {['method', 'range'].map(t => (
-                        <label key={t} className="radio-option">
-                          <input
-                            type="radio"
-                            name={`filter-type-${index}`}
-                            value={t}
-                            checked={filter.filterType === t}
-                            onChange={() => handleUpdateFilter(index, 'filterType', t)}
-                          />
-                          {' '}{t.charAt(0).toUpperCase() + t.slice(1)}
-                        </label>
-                      ))}
-                    </div>
+                    <label>Name</label>
+                    <input
+                      type="text"
+                      placeholder={`Behavior ${behaviorIndex + 1}`}
+                      value={behavior.name}
+                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, name: e.target.value })}
+                    />
                   </div>
-
-                  {filter.filterType === 'method' && (
-                    <div className="input-group">
-                      <label>Method</label>
-                      <select value={filter.methodType} onChange={(e) => handleUpdateFilter(index, 'methodType', Number(e.target.value))}>
-                        {Object.entries(METHOD_LABELS).map(([val, label]) => (
-                          <option key={val} value={val}>{label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {filter.filterType === 'range' && (
-                    <div className="input-row">
-                      <div className="input-group">
-                        <label>Low</label>
-                        <input type="number" value={filter.rangeLow} onChange={(e) => handleUpdateFilter(index, 'rangeLow', e.target.value)} />
-                      </div>
-                      <div className="input-group">
-                        <label>High</label>
-                        <input type="number" value={filter.rangeHigh} onChange={(e) => handleUpdateFilter(index, 'rangeHigh', e.target.value)} />
-                      </div>
-                    </div>
-                  )}
-
                   <div className="input-group">
-                    <label>Property</label>
-                    <select value={filter.propertyType} onChange={(e) => handleUpdateFilter(index, 'propertyType', Number(e.target.value))}>
+                    <label>Target Property</label>
+                    <select
+                      value={behavior.targetProperty}
+                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, targetProperty: Number(e.target.value) })}
+                    >
                       {Object.entries(PROPERTY_LABELS).map(([val, label]) => (
                         <option key={val} value={val}>{label}</option>
                       ))}
                     </select>
                   </div>
+
+                  <div className="input-group">
+                    <label>Action</label>
+                    <select
+                      value={behavior.action}
+                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, action: Number(e.target.value) })}
+                    >
+                      {Object.entries(ACTION_LABELS).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filters sub-box */}
+                  <div className="panel-card" style={{ marginTop: 8 }}>
+                    <h3 className="panel-section-title" style={{ margin: '2px 0 6px 0' }}>Filters</h3>
+
+                    {behavior.filters.map((filter, filterIndex) => (
+                      <div key={filterIndex} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 6 }}>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => handleDeleteFilter(behaviorIndex, filterIndex)}
+                          aria-label="Remove filter"
+                          style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
+                        >×</button>
+
+                        <div className="input-group">
+                          <label>Type</label>
+                          <div className="radio-group">
+                            {['method', 'ranged'].map(t => ( // method, ranged
+                              <label key={t} className="radio-option">
+                                <input
+                                  type="radio"
+                                  name={`filter-type-${behaviorIndex}-${filterIndex}`}
+                                  value={t}
+                                  checked={filter.filterType === t}
+                                  onChange={() => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, filterType: t })}
+                                />
+                                {' '}{t.charAt(0).toUpperCase() + t.slice(1)}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {filter.filterType === 'method' && (
+                          <div className="input-group">
+                            <label>Method</label>
+                            <select value={filter.methodType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, methodType: Number(e.target.value) })}>
+                              {Object.entries(METHOD_LABELS).map(([val, label]) => (
+                                <option key={val} value={val}>{label}</option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {filter.filterType === 'ranged' && (
+                          <div className="input-row">
+                            <div className="input-group">
+                              <label>Low</label>
+                              <input type="number" value={filter.rangeLow} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeLow: e.target.value })} />
+                            </div>
+                            <div className="input-group">
+                              <label>High</label>
+                              <input type="number" value={filter.rangeHigh} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeHigh: e.target.value })} />
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="input-group">
+                          <label>Property</label>
+                          <select value={filter.propertyType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, propertyType: Number(e.target.value) })}>
+                            {Object.entries(PROPERTY_LABELS).map(([val, label]) => (
+                              <option key={val} value={val}>{label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    ))}
+
+                    <button className="btn-secondary" onClick={() => handleAddFilter(behaviorIndex)}>+ Add Filter</button>
+                  </div>
                 </div>
               ))}
 
-              <button className="btn-primary" onClick={handleAddFilter}>+ Add Filter</button>
+              <div className="btn-row" style={{ marginBottom: 12 }}>
+                <button className="btn-primary" onClick={() => handleAddBehavior(null, { name: `Behavior ${behaviorList.length + 1}`, targetProperty: PROPERTY_TYPE.POSITION, action: ACTION_TYPE.NEIGHBOR_REFERENCE, filters: [] })}>+ Add Behavior</button>
+              </div>
             </div>
-
             
-
+            {/* Following Code Segement is no longer needed*/}
+            {/*
             <div className="panel-card">
               <h2 className="panel-section-title">Simulation Control (To be Implemented)</h2>
               <div className="input-group">
                 <label>
                   <input type="checkbox" checked={followBehavior} onChange={(e) => setFollowBehavior(e.target.checked)}></input>
                   {' '}Everyone Follow Closest Agent</label>
+              </div>
+            </div>
+            */}
+
+            {/*Simulation Setup Card*/}
+            <div className="panel-card">
+              <h2 className="panel-section-title">Simulation Configuration</h2>
+              <div className="input-group">
+                <label htmlFor="fps-input">FPS (Frames Per Second)</label>
+                <input
+                  type="number"
+                  id="fps-input"
+                  min="1"
+                  max="60"
+                  value={targetFPS}
+                  onChange={(e) => setTargetFPS(e.target.value)}
+                  onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
+                />
               </div>
             </div>
 

@@ -1,5 +1,5 @@
 // Renders the footer section with copyright text
-import './layout.css'; // importing the shared CSS for layout styling
+import '../layout.css';
 
 export default function Footer() {
   return (

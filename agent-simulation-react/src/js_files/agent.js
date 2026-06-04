@@ -1,5 +1,6 @@
 import { Entity } from "./entity.js";
 import { Position } from "./behavior.js"
+import { applyBehavior } from './behavior.js'; // will be used to apply whatever behavior defined
 
 class fovOffset {
     constructor(x, y) {
@@ -80,15 +81,22 @@ export class Agent extends Entity{
     }
 
     // Method to update the position of the circle
-    updatePosition(allAgents, followBehavior = false) {
-        // FIX: Updated to use the Circle's dx and dy, not this.position.dx and this.position.dy.
+    updatePosition(allAgents, behaviors = []) { // New 6.3 paaram: behaviors, which is an array of behavior objects defined in Simulation.jsx
         this.position.add(this.dx, this.dy);
         if (this.dx !== 0 || this.dy !== 0) {
             this.angle = Math.atan2(this.dy, this.dx);
         }
         this.warpAgent();
-        this.detectAgents(allAgents, followBehavior); // New as of 9/23/25
+        this.detectAgents(allAgents);
         this.draw();
+        // Apply behaviors:
+        for (const behavior of behaviors) {
+            const target = applyBehavior(behavior, this, this.detectedAgents);
+            if (target) {
+                this.follow({ position: target }); // we'll have it follow just for now
+                break;
+            }
+        }
     }
 
     // Method to draw the FOV Cone
@@ -168,7 +176,7 @@ export class Agent extends Entity{
     }
 
     // Detection system to identify agents inside FOV
-    detectAgents(agents, followBehavior = false) {
+    detectAgents(agents) {
         let currentlyDetected = [];
         
         // Loop through all agents to check if they are within FOV
@@ -222,23 +230,11 @@ export class Agent extends Entity{
             }
         });
 
-        if (followBehavior && currentlyDetected.length > 0) {
-            let target = currentlyDetected.reduce((nearest, agent) => {
-                let dx = agent.position.x - this.position.x;
-                let dy = agent.position.y - this.position.y;
-                let d = Math.sqrt(dx*dx + dy*dy);
-                return d < nearest.dist ? {agent, dist: d} : nearest;
-            }, {agent: currentlyDetected[0], dist: Infinity}).agent;
-
-            this.follow(target);
-            }
-        
         // Update the detectedAgents list for the next update cycle.
         this.detectedAgents = currentlyDetected;
     }
 
     follow(target) {
-        // AI initial solution!!!
         if (!target) return;
 
         // Calculate the vector from this agent to the target

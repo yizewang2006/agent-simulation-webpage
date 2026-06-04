@@ -25,79 +25,89 @@ export const METHOD_LABELS = {
   [METHOD_TYPE.AVERAGE]:  'Average',
 };
 
-// ─── Behaviors ─────────────────────────────────────────────────────────────────
+export const ACTION_TYPE = {
+  NEIGHBOR_REFERENCE: 0,
+  SELF_SPACE:         1,
+};
 
-export class Behavior {
-  filters = []; // list of Filter instances
+export const ACTION_LABELS = {
+  [ACTION_TYPE.NEIGHBOR_REFERENCE]: 'Neighbor Reference',
+  [ACTION_TYPE.SELF_SPACE]:         'Self-Space',
+};
 
-  addFilter(filter) {
-    this.filters.push(filter);
-  }
+// // ─── Behaviors ─────────────────────────────────────────────────────────────────
 
-  removeFilter(index) {
-    this.filters.splice(index, 1);
-  }
+// export class Behavior {
+//   filters = []; // list of Filter instances
 
-  // Applies all filters in sequence and returns surviving agents
-  // TODO: implement chaining logic
-  apply(_self, agents) {
-    return agents;
-  }
-}
+//   addFilter(filter) {
+//     this.filters.push(filter);
+//   }
 
-// ─── Filter (base, parent of RangedFilter and MethodFilter) ────────────────────────────────────────────────────────────
+//   removeFilter(index) {
+//     this.filters.splice(index, 1);
+//   }
 
-export class Filter {
-  /**
-   * @param {number} propertyType - PROPERTY_TYPE.*
-   */
-  constructor(propertyType) {
-    this.propertyType = propertyType;
-  }
+//   // Applies all filters in sequence and returns surviving agents
+//   // TODO: implement chaining logic
+//   apply(_self, agents) {
+//     return agents;
+//   }
+// }
 
-  // Placeholder: subclasses override this
-  apply(_self, agents) {
-    return agents;
-  }
-}
+// // ─── Filter (base, parent of RangedFilter and MethodFilter) ────────────────────────────────────────────────────────────
 
-// ─── RangedFilter ─────────────────────────────────────────────────────────────
+// export class Filter {
+//   /**
+//    * @param {number} propertyType - PROPERTY_TYPE.*
+//    */
+//   constructor(propertyType) {
+//     this.propertyType = propertyType;
+//   }
 
-export class RangedFilter extends Filter {
-  /**
-   * @param {number} propertyType - PROPERTY_TYPE.*
-   * @param {number} low
-   * @param {number} high
-   */
-  constructor(propertyType, low, high) {
-    super(propertyType);
-    this.low  = low;
-    this.high = high;
-  }
+//   // Placeholder: subclasses override this
+//   apply(_self, agents) {
+//     return agents;
+//   }
+// }
 
-  // TODO: filter agents whose property value falls within [low, high]
-  apply(_self, agents) {
-    return agents;
-  }
-}
+// // ─── RangedFilter ─────────────────────────────────────────────────────────────
 
-// ─── MethodFilter ─────────────────────────────────────────────────────────────
+// export class RangedFilter extends Filter {
+//   /**
+//    * @param {number} propertyType - PROPERTY_TYPE.*
+//    * @param {number} low
+//    * @param {number} high
+//    */
+//   constructor(propertyType, low, high) {
+//     super(propertyType);
+//     this.low  = low;
+//     this.high = high;
+//   }
 
-export class MethodFilter extends Filter {
-  /**
-   * @param {number} propertyType - PROPERTY_TYPE.*
-   * @param {number} methodType   - METHOD_TYPE.*
-   */
-  constructor(propertyType, methodType) {
-    super(propertyType);
-    this.methodType = methodType;
-  }
+//   // TODO: filter agents whose property value falls within [low, high]
+//   apply(_self, agents) {
+//     return agents;
+//   }
+// }
 
-  // TODO: select agent(s) based on method (closest, smallest, average)
-  apply(_self, agents) {
-    return agents;
-  }
-}
+// // ─── MethodFilter ─────────────────────────────────────────────────────────────
+
+// export class MethodFilter extends Filter {
+//   /**
+//    * @param {number} propertyType - PROPERTY_TYPE.*
+//    * @param {number} methodType   - METHOD_TYPE.*
+//    */
+//   constructor(propertyType, methodType) {
+//     super(propertyType);
+//     this.methodType = methodType;
+//   }
+
+//   // TODO: select agent(s) based on method (closest, smallest, average)
+//   apply(_self, agents) {
+//     return agents;
+//   }
+// }
 
 // ─── Property (base) ──────────────────────────────────────────────────────────
 
@@ -195,3 +205,101 @@ export class Angle extends Property {
   get(_agent) {}
   compare(_self, _target) {}
 }
+
+// // New Code start from here. June 2 2026
+/* 
+  Behaviors should have a name, targetProperty, and filters.
+  Filters class (can be added to behaviors) should have a targetProperty and parameters specific to the filter type (e.g., low/high for RangedFilter, methodType for MethodFilter).
+*/
+
+export class Behavior {
+  constructor(name, targetProperty) {
+    this.name = name;
+    this.targetProperty = targetProperty; // PROPERTY_TYPE.*
+    this.filters = []; // list of Filter instances (inside that particular behavior.)
+  }
+
+  // Will push new filter to the filters list.
+  addFilter(filter) {
+    this.filters.push(filter);
+  }
+
+  // Will remove the filter at the specified index from the filters list.
+  removeFilter(index) {
+    this.filters.splice(index, 1);
+  }
+
+  apply(targetAgents){ // defines who this behavior is being applied to.
+
+  }
+}
+
+export class Filter {
+  constructor(targetProperty, filterType, parameters) {
+    this.targetProperty = targetProperty; // PROPERTY_TYPE.*
+    this.filterType = filterType; // ranged, method
+    this.parameters = parameters; // i.e. low/high for ranged, methodType for method
+  }
+
+  apply(targetAgents) { // defines who this filter is being applied to.
+  }
+}
+
+function applyFilters(agentFilter, self, agents) { // agents is the list of agents that we are applying the filter to, self is the agent for which we are applying the behavior
+  if (agentFilter.filterType === 'range') {
+    switch (agentFilter.propertyType) {
+      case PROPERTY_TYPE.SPEED: {
+        return agents.filter(agent => {
+          const speed = Math.sqrt(agent.dx ** 2 + agent.dy ** 2);
+          return speed >= Number(agentFilter.rangeLow) && speed <= Number(agentFilter.rangeHigh);
+        });
+      }
+      case PROPERTY_TYPE.ANGLE: return agents; // TODO
+      case PROPERTY_TYPE.POSITION: {
+        return agents.filter(agent => {
+          const distance = self.position.distanceTo(agent.position);
+          return distance >= Number(agentFilter.rangeLow) && distance <= Number(agentFilter.rangeHigh);
+        });
+      }
+    }
+  }
+  if (agentFilter.filterType === 'method') {
+    switch (agentFilter.propertyType) {
+      case PROPERTY_TYPE.SPEED: return agents; // TODO
+      case PROPERTY_TYPE.ANGLE: return agents; // TODO
+      case PROPERTY_TYPE.POSITION: {
+        if (agentFilter.methodType === METHOD_TYPE.CLOSEST) {
+          let closestAgent = null;
+          let closestDist = Infinity;
+          for (const agent of agents) {
+            const dist = self.position.distanceTo(agent.position);
+            if (dist < closestDist) {
+              closestDist = dist;
+              closestAgent = agent;
+            }
+          }
+          return closestAgent ? [closestAgent] : [];
+        }
+        return agents; // TODO: SMALLEST & AVERAGE
+      }
+    }
+  }
+  return agents; // fallback: return unchanged if no case matched
+}
+
+export function applyBehavior(behavior, self, detectedAgents) {
+    let detAgents = [...detectedAgents]; // All detected agents before filtering
+
+    for (const filter of behavior.filters) {
+      detAgents = applyFilters(filter, self, detAgents);
+      if (detAgents.length === 0) return null;
+    }
+
+    if (detAgents.length > 0)
+      switch (behavior.targetProperty) {
+        case PROPERTY_TYPE.POSITION: return detAgents[0].position;
+        case PROPERTY_TYPE.SPEED: return Math.sqrt(detAgents[0].dx ** 2 + detAgents[0].dy ** 2);
+        case PROPERTY_TYPE.ANGLE: return detAgents[0].angle;
+      }
+    return null;
+  }
