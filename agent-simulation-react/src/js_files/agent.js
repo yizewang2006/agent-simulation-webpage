@@ -1,6 +1,5 @@
 import { Entity } from "./entity.js";
-import { Position } from "./behavior.js"
-import { applyBehavior } from './behavior.js'; // will be used to apply whatever behavior defined
+import { Position, applyBehavior, PROPERTY_TYPE } from "./behavior.js";
 
 class fovOffset {
     constructor(x, y) {
@@ -22,7 +21,7 @@ export class Agent extends Entity{
         // 25.2.17 FIX: ANGLE INDEPENDENT OF dy & dx
         this.angle = angle; // We have now set the angle to be independent of dy & dx
         this.colorHex = colorHex;  // Default color
-        this.originalColor = colorHex; // Store original color: won't change, final in java
+        this.originalColor = colorHex; // Store original color: won't change, java
         this.fovRadius = fovRadius; // FOV range of detection
         this.fovAngle = fovAngle;
         // Initialize an empty array to hold detected agents
@@ -80,8 +79,8 @@ export class Agent extends Entity{
         if (this.isSpecial && this.showFOV !== false) this.drawFOVCones(); // Draw FOV
     }
 
-    // Method to update the position of the circle
-    updatePosition(allAgents, behaviors = []) { // New 6.3 paaram: behaviors, which is an array of behavior objects defined in Simulation.jsx
+    // equaivalent to Update() in Unity, will run each frame
+    update(allAgents, behaviors = []) { // New 6.3 param: behaviors, which is an array of behavior objects defined in Simulation.jsx
         this.position.add(this.dx, this.dy);
         if (this.dx !== 0 || this.dy !== 0) {
             this.angle = Math.atan2(this.dy, this.dx);
@@ -92,9 +91,38 @@ export class Agent extends Entity{
         // Apply behaviors:
         for (const behavior of behaviors) {
             const target = applyBehavior(behavior, this, this.detectedAgents);
-            if (target) {
-                this.follow({ position: target }); // we'll have it follow just for now
-                break;
+            if (target !== null && target !== undefined) {
+                console.log(`Behavior "${behavior.name}" target:`, target, "for agent ID:", this.id);
+            }
+            if (target !== null && target !== undefined) {
+                switch (behavior.targetProperty) {
+                    case PROPERTY_TYPE.SPEED: {
+                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+                        const newSpeed = Math.max(0, currentSpeed + (parseFloat(behavior.offset) || 0));
+                        this.dx = Math.cos(this.angle) * newSpeed;
+                        this.dy = Math.sin(this.angle) * newSpeed;
+                        break;
+                    }
+                    case PROPERTY_TYPE.ANGLE: {
+                        this.angle += (parseFloat(behavior.offset) || 0) * Math.PI / 180; // Convert offset from degrees to radians
+                        
+                        // Re-calculate the agent's heading
+                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+                        this.dx = Math.cos(this.angle) * currentSpeed;
+                        this.dy = Math.sin(this.angle) * currentSpeed;
+                        break;
+                    }
+                    case PROPERTY_TYPE.POSITION: {
+                        // target is the bearing (radians) to the detected agent; steer toward it with optional degree offset
+                        this.angle = target + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
+                        
+                        // Re-calculate the agent's heading
+                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+                        this.dx = Math.cos(this.angle) * currentSpeed;
+                        this.dy = Math.sin(this.angle) * currentSpeed;
+                        break;
+                    }
+                }
             }
         }
     }
@@ -178,7 +206,7 @@ export class Agent extends Entity{
     // Detection system to identify agents inside FOV
     detectAgents(agents) {
         let currentlyDetected = [];
-        
+
         // Loop through all agents to check if they are within FOV
         agents.forEach(agent => {
             if (agent !== this) { // Don't detect self
@@ -226,7 +254,7 @@ export class Agent extends Entity{
         // reset its color to original.
         this.detectedAgents.forEach(agent => {
             if (!currentlyDetected.includes(agent)) {
-                agent.colorHex = agent.originalColor;
+                agent.colorHex = agent.originalColor; // Line changing color to red is in behavior.js
             }
         });
 

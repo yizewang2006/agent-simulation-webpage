@@ -12,12 +12,26 @@ export const METHOD_TYPE = {
   AVERAGE:  2,
 };
 
+export const FILTER_TYPE = {
+  DISTANCE: 0,
+  SPEED:    1,
+  RELATIVE_ANGLE:    2,
+  HEADING:           3,
+}
+
 // Human-readable labels for the UI
 export const PROPERTY_LABELS = {
-  [PROPERTY_TYPE.POSITION]: 'Position',
+  [PROPERTY_TYPE.POSITION]: 'Position', // Definition: Bearing
   [PROPERTY_TYPE.SPEED]:    'Speed',
   [PROPERTY_TYPE.ANGLE]:    'Angle',
 };
+
+export const FILTER_LABELS = {
+  [FILTER_TYPE.DISTANCE]: 'Distance',
+  [FILTER_TYPE.SPEED] : 'Speed',
+  [FILTER_TYPE.RELATIVE_ANGLE] : 'Relative Angle',
+  [FILTER_TYPE.HEADING] : 'Heading',
+}
 
 export const METHOD_LABELS = {
   [METHOD_TYPE.CLOSEST]:  'Closest',
@@ -240,22 +254,22 @@ export class Filter {
     this.filterType = filterType; // ranged, method
     this.parameters = parameters; // i.e. low/high for ranged, methodType for method
   }
-
-  apply(targetAgents) { // defines who this filter is being applied to.
-  }
 }
 
 function applyFilters(agentFilter, self, agents) { // agents is the list of agents that we are applying the filter to, self is the agent for which we are applying the behavior
-  if (agentFilter.filterType === 'range') {
+  if (agentFilter.filterType === 'ranged') {
     switch (agentFilter.propertyType) {
-      case PROPERTY_TYPE.SPEED: {
+      case FILTER_TYPE.SPEED: {
         return agents.filter(agent => {
           const speed = Math.sqrt(agent.dx ** 2 + agent.dy ** 2);
           return speed >= Number(agentFilter.rangeLow) && speed <= Number(agentFilter.rangeHigh);
         });
       }
-      case PROPERTY_TYPE.ANGLE: return agents; // TODO
-      case PROPERTY_TYPE.POSITION: {
+      case FILTER_TYPE.RELATIVE_ANGLE: return agents; // TODO
+
+      case FILTER_TYPE.HEADING: return agents; // TODO
+
+      case FILTER_TYPE.DISTANCE: {
         return agents.filter(agent => {
           const distance = self.position.distanceTo(agent.position);
           return distance >= Number(agentFilter.rangeLow) && distance <= Number(agentFilter.rangeHigh);
@@ -265,9 +279,11 @@ function applyFilters(agentFilter, self, agents) { // agents is the list of agen
   }
   if (agentFilter.filterType === 'method') {
     switch (agentFilter.propertyType) {
-      case PROPERTY_TYPE.SPEED: return agents; // TODO
-      case PROPERTY_TYPE.ANGLE: return agents; // TODO
-      case PROPERTY_TYPE.POSITION: {
+      case FILTER_TYPE.SPEED: return agents; // TODO
+      case FILTER_TYPE.RELATIVE_ANGLE: return agents; // TODO
+      case FILTER_TYPE.HEADING: return agents; // TODO
+
+      case FILTER_TYPE.DISTANCE: {
         if (agentFilter.methodType === METHOD_TYPE.CLOSEST) {
           let closestAgent = null;
           let closestDist = Infinity;
@@ -292,14 +308,23 @@ export function applyBehavior(behavior, self, detectedAgents) {
 
     for (const filter of behavior.filters) {
       detAgents = applyFilters(filter, self, detAgents);
-      if (detAgents.length === 0) return null;
+      if (detAgents.length === 0) {
+        detectedAgents.forEach(agent => agent.colorHex = '#FF0000'); // failed filter but still in FOV — reset to red
+        return null;
+      }
     }
 
-    if (detAgents.length > 0)
+    if (detAgents.length > 0) {
+      detAgents[0].colorHex = '#00FF00'; // Filtered agent turns green (red color change in agent.js)
       switch (behavior.targetProperty) {
-        case PROPERTY_TYPE.POSITION: return detAgents[0].position;
+        case PROPERTY_TYPE.POSITION: { // return the relative angle
+          let diffX = detAgents[0].position.x - self.position.x;
+          let diffY = detAgents[0].position.y - self.position.y;
+          return Math.atan2(diffY, diffX);
+        }
         case PROPERTY_TYPE.SPEED: return Math.sqrt(detAgents[0].dx ** 2 + detAgents[0].dy ** 2);
         case PROPERTY_TYPE.ANGLE: return detAgents[0].angle;
       }
+    }
     return null;
   }

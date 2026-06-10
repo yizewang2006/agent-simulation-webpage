@@ -8,7 +8,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
-import { PROPERTY_TYPE, METHOD_TYPE, PROPERTY_LABELS, METHOD_LABELS, ACTION_TYPE, ACTION_LABELS } from "./js_files/behavior.js";
+import { PROPERTY_TYPE, METHOD_TYPE, PROPERTY_LABELS, METHOD_LABELS, FILTER_LABELS, ACTION_TYPE, ACTION_LABELS, FILTER_TYPE } from "./js_files/behavior.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -113,18 +113,6 @@ function Simulation() {
     setShowAddAgent(false);
   }
 
-  // cancelling agent creation function (reset default values for the form and hide the form))
-  function handleCancelAddAgent() {
-    setNewAgentName('');
-    setNewAgentColor('#000000');
-    setNewAgentX(String(CANVAS_WIDTH / 2));
-    setNewAgentY(String(CANVAS_HEIGHT / 2));
-    setNewAgentFovAngle('150');
-    setNewAgentAngle('0');
-    setNewAgentShowFOV(true);
-    setShowAddAgent(false);
-  }
-
   function handleAddMultipleAgents() {
     const count = Number(multiAgentCount);
     if (!multiAgentCount || isNaN(count) || count < 1 || !Number.isInteger(count) || count > MAX_AGENTS) {
@@ -175,7 +163,18 @@ function Simulation() {
     setAgents([...roster]);
     handleCancelAddMultipleAgents();
   }
-
+  // cancelling agent creation function (reset default values for the form and hide the form))
+  function handleCancelAddAgent() {
+    setNewAgentName('');
+    setNewAgentColor('#000000');
+    setNewAgentX(String(CANVAS_WIDTH / 2));
+    setNewAgentY(String(CANVAS_HEIGHT / 2));
+    setNewAgentFovAngle('150');
+    setNewAgentAngle('0');
+    setNewAgentShowFOV(true);
+    setShowAddAgent(false);
+  }
+  
   // Cancels adding multiple agents and resets the form to default values
   function handleCancelAddMultipleAgents() {
     setMultiAgentCount('1');
@@ -214,9 +213,9 @@ function Simulation() {
     // using structuredClone to avoid mutating the existing behavior/filter objects (deep copy)
     const newList = structuredClone(behaviorList);
     newList[behaviorIndex].filters.push({ filterType: 'method', 
-      propertyType: PROPERTY_TYPE.POSITION, 
+      propertyType: FILTER_TYPE.DISTANCE, 
       methodType: METHOD_TYPE.CLOSEST,
-      rangeLow: '', 
+      rangeLow: '',
       rangeHigh: '' }); // Add a default filter, user can modify it in the editor
     setBehaviorList(newList);
   }
@@ -233,6 +232,31 @@ function Simulation() {
     const newList = structuredClone(behaviorList);
     newList[behaviorIndex].filters.splice(filterIndex, 1);
     setBehaviorList(newList);
+  }
+
+  // ---- Offset Handlers ----
+  // used to update the value of the offset for that behavior when the user changes the input in the editor
+  function handleUpdateOffset(behaviorIndex, targetProperty, parameters) {
+    // Depending on the targetProperty, updating the corresponding parameters in the behavior's filters
+    // Calls handleUpdateBehavior 
+    const behavior = behaviorList[behaviorIndex];
+    switch (targetProperty) {
+      case PROPERTY_TYPE.SPEED: {
+        // SINGLE VALUE
+        handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
+        break;
+      }
+      case PROPERTY_TYPE.ANGLE: {
+        // SINGLE VALUE (in degrees, agent.js converts to radians when applying)
+        handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
+        break;
+      }
+      case PROPERTY_TYPE.POSITION: {
+        // TWO VALUES (x and y offsets)
+        handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
+        break;
+      }
+    }
   }
 
   // ---- Simulation FPS ----
@@ -276,7 +300,7 @@ function Simulation() {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         agentsArray.forEach(agent => {
-          agent.updatePosition(agentsArray, behaviorListRef.current);
+          agent.update(agentsArray, behaviorListRef.current);
         });
       }
     }
@@ -315,9 +339,9 @@ function Simulation() {
 
   function handleApplyEdit() {
     if (!selectedAgent) return;
-    selectedAgent.id        = editorName;
+    selectedAgent.id = editorName;
+    selectedAgent.originalColor  = editorColor;
     selectedAgent.colorHex  = editorColor;
-    selectedAgent.color     = editorColor;
     selectedAgent.showFOV   = editorShowFOV;
     selectedAgent.isSpecial = editorShowFOV; // isSpecial gates FOV drawing in agent.js — must stay in sync with showFOV
     selectedAgent.fovAngle  = (Number(editorFovAngle) || 150) * Math.PI / 180;
@@ -455,7 +479,6 @@ function Simulation() {
                       max={CANVAS_WIDTH}
                       value={newAgentX}
                       onChange={(e) => setNewAgentX(e.target.value)}
-                      onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
                     />
                   </div>
                   <div className="input-group">
@@ -601,7 +624,7 @@ function Simulation() {
               )}
             </div>
             
-            {/* Where we re-create behavior & filter settings */}
+            {/* Behavior & Filter Settings*/}
             <div className="panel-card">
               <h2 className="panel-section-title">Behavior & Filter Settings</h2>
               
@@ -614,8 +637,9 @@ function Simulation() {
                     style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
                   >×</button>
                   <h2 className="panel-section-title">{behavior.name}</h2> 
+                  {/* Names */}
                   <div className="input-group">
-                    <label>Name</label>
+                    <label>Behavior Name</label>
                     <input
                       type="text"
                       placeholder={`Behavior ${behaviorIndex + 1}`}
@@ -623,6 +647,7 @@ function Simulation() {
                       onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, name: e.target.value })}
                     />
                   </div>
+                  {/* Target Property Dropdown*/}
                   <div className="input-group">
                     <label>Target Property</label>
                     <select
@@ -634,7 +659,18 @@ function Simulation() {
                       ))}
                     </select>
                   </div>
-
+                  
+                  {/* Position: Relative Angle*/}
+                  <div className="input-group">
+                    <label>Offset {(behavior.targetProperty === PROPERTY_TYPE.ANGLE || behavior.targetProperty === PROPERTY_TYPE.POSITION) ? '(degrees)' : ''}</label> {/* Bearing and Angle both use degree offsets */}
+                    <input
+                      type="number"
+                      value={behavior.offset}
+                      onChange={(e) => handleUpdateOffset(behaviorIndex, behavior.targetProperty, e.target.value)}
+                    />
+                  </div>
+                  
+                  {/* 
                   <div className="input-group">
                     <label>Action</label>
                     <select
@@ -646,6 +682,7 @@ function Simulation() {
                       ))}
                     </select>
                   </div>
+                  */}
 
                   {/* Filters sub-box */}
                   <div className="panel-card" style={{ marginTop: 8 }}>
@@ -705,7 +742,7 @@ function Simulation() {
                         <div className="input-group">
                           <label>Property</label>
                           <select value={filter.propertyType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, propertyType: Number(e.target.value) })}>
-                            {Object.entries(PROPERTY_LABELS).map(([val, label]) => (
+                            {Object.entries(FILTER_LABELS).map(([val, label]) => (
                               <option key={val} value={val}>{label}</option>
                             ))}
                           </select>
@@ -746,7 +783,7 @@ function Simulation() {
                   min="1"
                   max="60"
                   value={targetFPS}
-                  onChange={(e) => setTargetFPS(e.target.value)}
+                  onChange={(e) => setTargeKtFPS(e.target.value)}
                   onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
                 />
               </div>
