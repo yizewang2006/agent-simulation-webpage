@@ -1,18 +1,18 @@
 // ─── Constants (numeric identifiers used in computation & UI) ────────────────
 
-export const PROPERTY_TYPE = {
+export const TARGET_PROPERTIES = {
   POSITION: 0,
   SPEED:    1,
   ANGLE:    2,
 };
 
-export const METHOD_TYPE = {
+export const METHOD_TYPES = {
   CLOSEST:  0,
-  SMALLEST: 1,
-  AVERAGE:  2,
+  AVERAGE:  1,
+  FARTHEST: 2,
 };
 
-export const FILTER_TYPE = {
+export const FILTER_TYPES = {
   DISTANCE: 0,
   SPEED:    1,
   RELATIVE_ANGLE:    2,
@@ -21,22 +21,22 @@ export const FILTER_TYPE = {
 
 // Human-readable labels for the UI
 export const PROPERTY_LABELS = {
-  [PROPERTY_TYPE.POSITION]: 'Position', // Definition: Bearing
-  [PROPERTY_TYPE.SPEED]:    'Speed',
-  [PROPERTY_TYPE.ANGLE]:    'Angle',
+  [TARGET_PROPERTIES.POSITION]: 'Position', // Definition: Bearing
+  [TARGET_PROPERTIES.SPEED]:    'Speed',
+  [TARGET_PROPERTIES.ANGLE]:    'Angle',
 };
 
 export const FILTER_LABELS = {
-  [FILTER_TYPE.DISTANCE]: 'Distance',
-  [FILTER_TYPE.SPEED] : 'Speed',
-  [FILTER_TYPE.RELATIVE_ANGLE] : 'Relative Angle',
-  [FILTER_TYPE.HEADING] : 'Heading',
+  [FILTER_TYPES.DISTANCE]: 'Distance',
+  [FILTER_TYPES.SPEED] : 'Speed',
+  [FILTER_TYPES.RELATIVE_ANGLE] : 'Relative Angle',
+  [FILTER_TYPES.HEADING] : 'Heading',
 }
 
 export const METHOD_LABELS = {
-  [METHOD_TYPE.CLOSEST]:  'Closest',
-  [METHOD_TYPE.SMALLEST]: 'Smallest',
-  [METHOD_TYPE.AVERAGE]:  'Average',
+  [METHOD_TYPES.CLOSEST]:  'Closest',
+  [METHOD_TYPES.FARTHEST]: 'Farthest',
+  [METHOD_TYPES.AVERAGE]:  'Average',
 };
 
 export const ACTION_TYPE = {
@@ -48,80 +48,6 @@ export const ACTION_LABELS = {
   [ACTION_TYPE.NEIGHBOR_REFERENCE]: 'Neighbor Reference',
   [ACTION_TYPE.SELF_SPACE]:         'Self-Space',
 };
-
-// // ─── Behaviors ─────────────────────────────────────────────────────────────────
-
-// export class Behavior {
-//   filters = []; // list of Filter instances
-
-//   addFilter(filter) {
-//     this.filters.push(filter);
-//   }
-
-//   removeFilter(index) {
-//     this.filters.splice(index, 1);
-//   }
-
-//   // Applies all filters in sequence and returns surviving agents
-//   // TODO: implement chaining logic
-//   apply(_self, agents) {
-//     return agents;
-//   }
-// }
-
-// // ─── Filter (base, parent of RangedFilter and MethodFilter) ────────────────────────────────────────────────────────────
-
-// export class Filter {
-//   /**
-//    * @param {number} propertyType - PROPERTY_TYPE.*
-//    */
-//   constructor(propertyType) {
-//     this.propertyType = propertyType;
-//   }
-
-//   // Placeholder: subclasses override this
-//   apply(_self, agents) {
-//     return agents;
-//   }
-// }
-
-// // ─── RangedFilter ─────────────────────────────────────────────────────────────
-
-// export class RangedFilter extends Filter {
-//   /**
-//    * @param {number} propertyType - PROPERTY_TYPE.*
-//    * @param {number} low
-//    * @param {number} high
-//    */
-//   constructor(propertyType, low, high) {
-//     super(propertyType);
-//     this.low  = low;
-//     this.high = high;
-//   }
-
-//   // TODO: filter agents whose property value falls within [low, high]
-//   apply(_self, agents) {
-//     return agents;
-//   }
-// }
-
-// // ─── MethodFilter ─────────────────────────────────────────────────────────────
-
-// export class MethodFilter extends Filter {
-//   /**
-//    * @param {number} propertyType - PROPERTY_TYPE.*
-//    * @param {number} methodType   - METHOD_TYPE.*
-//    */
-//   constructor(propertyType, methodType) {
-//     super(propertyType);
-//     this.methodType = methodType;
-//   }
-
-//   // TODO: select agent(s) based on method (closest, smallest, average)
-//   apply(_self, agents) {
-//     return agents;
-//   }
-// }
 
 // ─── Property (base) ──────────────────────────────────────────────────────────
 
@@ -248,62 +174,115 @@ export class Behavior {
   }
 }
 
+// Parent class of all Filters
 export class Filter {
   constructor(targetProperty, filterType, parameters) {
     this.targetProperty = targetProperty; // PROPERTY_TYPE.*
     this.filterType = filterType; // ranged, method
     this.parameters = parameters; // i.e. low/high for ranged, methodType for method
   }
+
+  apply(self, agents) {
+    return agents; // OVERRIDES by subclasses
+  }
 }
 
-function applyFilters(agentFilter, self, agents) { // agents is the list of agents that we are applying the filter to, self is the agent for which we are applying the behavior
-  if (agentFilter.filterType === 'ranged') {
-    switch (agentFilter.propertyType) {
-      case FILTER_TYPE.SPEED: {
-        return agents.filter(agent => {
-          const speed = Math.sqrt(agent.dx ** 2 + agent.dy ** 2);
-          return speed >= Number(agentFilter.rangeLow) && speed <= Number(agentFilter.rangeHigh);
+// RANGED FILTER
+export class RangedFilter extends Filter {
+  constructor(propertyType, low, high) {
+    super();
+    this.propertyType = propertyType;
+    this.low = Number(low) || 0;
+    this.high = Number(high) || 0;
+  }
+
+  apply(self, agents) {
+    switch (this.propertyType) {
+      case FILTER_TYPES.SPEED: {
+        return agents.filter(filteredAgent => {
+          const speed = Math.sqrt(filteredAgent.dx**2 + filteredAgent.dy**2);
+          return speed >= this.low && speed <= this.high
+        })
+      }
+      case FILTER_TYPES.RELATIVE_ANGLE: {
+        return agents.filter(filteredAgent => {
+          const { diffX, diffY } = offsetCorrection((filteredAgent.position.x - self.position.x), (filteredAgent.position.y - self.position.y), self.canvas);
+          const bearing = (Math.atan2(diffY, diffX) * 180 / Math.PI + 360) % 360;
+          return bearing >= this.low && bearing <= this.high;
+        })
+      }
+      case FILTER_TYPES.HEADING: {
+        return agents.filter(filteredAgent => {
+          const heading = (filteredAgent.angle * 180 / Math.PI + 360) % 360;
+          return heading >= this.low && heading <= this.high;
         });
       }
-      case FILTER_TYPE.RELATIVE_ANGLE: return agents; // TODO
-
-      case FILTER_TYPE.HEADING: return agents; // TODO
-
-      case FILTER_TYPE.DISTANCE: {
-        return agents.filter(agent => {
-          const distance = self.position.distanceTo(agent.position);
-          return distance >= Number(agentFilter.rangeLow) && distance <= Number(agentFilter.rangeHigh);
+      case FILTER_TYPES.DISTANCE: {
+        return agents.filter(filteredAgent => {
+          const { diffX, diffY } = offsetCorrection(filteredAgent.position.x - self.position.x, filteredAgent.position.y - self.position.y, self.canvas);
+          return Math.sqrt(diffX**2 + diffY**2) >= this.low && Math.sqrt(diffX**2 + diffY**2) <= this.high;
         });
       }
+      default: return agents;
     }
   }
-  if (agentFilter.filterType === 'method') {
-    switch (agentFilter.propertyType) {
-      case FILTER_TYPE.SPEED: return agents; // TODO
-      case FILTER_TYPE.RELATIVE_ANGLE: return agents; // TODO
-      case FILTER_TYPE.HEADING: return agents; // TODO
-
-      case FILTER_TYPE.DISTANCE: {
-        if (agentFilter.methodType === METHOD_TYPE.CLOSEST) {
-          let closestAgent = null;
-          let closestDist = Infinity;
-          for (const agent of agents) {
-            const dist = self.position.distanceTo(agent.position);
-            if (dist < closestDist) {
-              closestDist = dist;
-              closestAgent = agent;
-            }
-          }
-          return closestAgent ? [closestAgent] : [];
-        }
-        return agents; // TODO: SMALLEST & AVERAGE
-      }
-    }
-  }
-  return agents; // fallback: return unchanged if no case matched
 }
 
-export function applyBehavior(behavior, self, detectedAgents) {
+// METHOD FILTER
+export class MethodFilter extends Filter {
+  constructor(propertyType, methodType) {
+    super();
+    this.propertyType = propertyType;
+    this.methodType = methodType;
+  }
+
+  apply(self, agents) {
+    if (agents.length === 0) return [];
+
+    // AVERAGE: pass all agents through — applyBehavior computes the average across them
+    if (this.methodType === METHOD_TYPES.AVERAGE) return agents;
+
+    const getVal = (a) => { // Calculate values based on the filtered property
+      if (this.propertyType === FILTER_TYPES.SPEED)
+        return Math.sqrt(a.dx**2 + a.dy**2);
+      if (this.propertyType === FILTER_TYPES.HEADING)
+        return (a.angle * 180 / Math.PI + 360) % 360;
+      // DISTANCE and RELATIVE_ANGLE: wrap-corrected distance from self
+      const { diffX, diffY } = offsetCorrection(
+        a.position.x - self.position.x,
+        a.position.y - self.position.y,
+        self.canvas
+      );
+      return Math.sqrt(diffX**2 + diffY**2);
+    };
+
+    let best = agents[0];
+    let bestVal = getVal(agents[0]);
+    for (const a of agents) {
+      const val = getVal(a);
+      if (this.methodType === METHOD_TYPES.CLOSEST && val < bestVal) { best = a; bestVal = val; }
+      if (this.methodType === METHOD_TYPES.FARTHEST && val > bestVal) { best = a; bestVal = val; }
+    }
+    return [best];
+  }
+}
+
+// OBSTACLE FILTER?
+export class ObstacleFilter extends Filter {
+
+}
+
+// Returns a list of agents — delegates to RangedFilter or MethodFilter class
+function applyFilters(agentFilter, self, agents) {
+  if (agentFilter.filterType === 'ranged')
+    return new RangedFilter(agentFilter.propertyType, agentFilter.rangeLow, agentFilter.rangeHigh).apply(self, agents);
+  if (agentFilter.filterType === 'method')
+    return new MethodFilter(agentFilter.propertyType, agentFilter.methodType).apply(self, agents);
+  return agents; // fallback
+}
+
+// Return a target value depending on the behavior
+export function getBehaviorTarget(behavior, self, detectedAgents) {
     let detAgents = [...detectedAgents]; // All detected agents before filtering
 
     for (const filter of behavior.filters) {
@@ -315,16 +294,42 @@ export function applyBehavior(behavior, self, detectedAgents) {
     }
 
     if (detAgents.length > 0) {
-      detAgents[0].colorHex = '#00FF00'; // Filtered agent turns green (red color change in agent.js)
+      detAgents.forEach(a => a.colorHex = "#00FF00"); // ALL Filtered agent turns green (red color change in agent.js)
+
+      // Behavior value calculation
       switch (behavior.targetProperty) {
-        case PROPERTY_TYPE.POSITION: { // return the relative angle
-          let diffX = detAgents[0].position.x - self.position.x;
-          let diffY = detAgents[0].position.y - self.position.y;
-          return Math.atan2(diffY, diffX);
+        case TARGET_PROPERTIES.POSITION: {
+          let sinSum = 0, cosSum = 0;
+          for (const a of detAgents) {
+            const {diffX, diffY} = offsetCorrection(a.position.x - self.position.x, a.position.y - self.position.y, self.canvas);
+            const bearing = Math.atan2(diffY, diffX);
+            sinSum += Math.sin(bearing);
+            cosSum += Math.cos(bearing);
+          }
+          return Math.atan2(sinSum, cosSum);
         }
-        case PROPERTY_TYPE.SPEED: return Math.sqrt(detAgents[0].dx ** 2 + detAgents[0].dy ** 2);
-        case PROPERTY_TYPE.ANGLE: return detAgents[0].angle;
+        case TARGET_PROPERTIES.SPEED: {
+          let total = 0;
+          for (const a of detAgents) total += Math.sqrt(a.dx**2 + a.dy**2);
+          return total / detAgents.length;
+        }
+        case TARGET_PROPERTIES.ANGLE: {
+          let sinSum = 0, cosSum = 0;
+          for (const a of detAgents) {
+            sinSum += Math.sin(a.angle);
+            cosSum += Math.cos(a.angle);
+          }
+          return Math.atan2(sinSum, cosSum);
+        }
       }
     }
     return null;
   }
+
+export function offsetCorrection(diffX, diffY, canvas) {
+  if (diffX > canvas.width / 2)        diffX -= canvas.width;
+  else if (diffX < -canvas.width / 2)  diffX += canvas.width;
+  if (diffY > canvas.height / 2)        diffY -= canvas.height;
+  else if (diffY < -canvas.height / 2)  diffY += canvas.height;
+  return { diffX, diffY };
+}

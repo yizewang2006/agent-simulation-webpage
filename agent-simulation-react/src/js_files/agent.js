@@ -1,5 +1,5 @@
 import { Entity } from "./entity.js";
-import { Position, applyBehavior, PROPERTY_TYPE } from "./behavior.js";
+import { Position, Angle, Speed, getBehaviorTarget, TARGET_PROPERTIES } from "./behavior.js";
 
 class fovOffset {
     constructor(x, y) {
@@ -89,41 +89,48 @@ export class Agent extends Entity{
         this.detectAgents(allAgents);
         this.draw();
         // Apply behaviors:
+        // POSITION and ANGLE both control heading, so collect all desired angles first,
+        // then apply a circular mean so no single behavior just overwrites the others.
+        let sinSum = 0, cosSum = 0, angleCount = 0;
         for (const behavior of behaviors) {
-            const target = applyBehavior(behavior, this, this.detectedAgents);
-            if (target !== null && target !== undefined) {
-                console.log(`Behavior "${behavior.name}" target:`, target, "for agent ID:", this.id);
-            }
+            const target = getBehaviorTarget(behavior, this, this.detectedAgents); // target is a value calculated by applyBehavior after the filters
+
             if (target !== null && target !== undefined) {
                 switch (behavior.targetProperty) {
-                    case PROPERTY_TYPE.SPEED: {
+                    case TARGET_PROPERTIES.SPEED: {
+                        // Speed doesn't affect heading — apply immediately
                         const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
                         const newSpeed = Math.max(0, currentSpeed + (parseFloat(behavior.offset) || 0));
                         this.dx = Math.cos(this.angle) * newSpeed;
                         this.dy = Math.sin(this.angle) * newSpeed;
                         break;
                     }
-                    case PROPERTY_TYPE.ANGLE: {
-                        this.angle += (parseFloat(behavior.offset) || 0) * Math.PI / 180; // Convert offset from degrees to radians
-                        
-                        // Re-calculate the agent's heading
-                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
-                        this.dx = Math.cos(this.angle) * currentSpeed;
-                        this.dy = Math.sin(this.angle) * currentSpeed;
+                    case TARGET_PROPERTIES.ANGLE: {
+                        // Collect desired angle: current angle + offset
+                        const desired = this.angle + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
+                        sinSum += Math.sin(desired);
+                        cosSum += Math.cos(desired);
+                        angleCount++;
                         break;
                     }
-                    case PROPERTY_TYPE.POSITION: {
-                        // target is the bearing (radians) to the detected agent; steer toward it with optional degree offset
-                        this.angle = target + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
-                        
-                        // Re-calculate the agent's heading
-                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
-                        this.dx = Math.cos(this.angle) * currentSpeed;
-                        this.dy = Math.sin(this.angle) * currentSpeed;
+                    case TARGET_PROPERTIES.POSITION: {
+                        // Collect desired angle: bearing to detected agent + offset
+                        const desired = target + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
+                        sinSum += Math.sin(desired);
+                        cosSum += Math.cos(desired);
+                        angleCount++;
                         break;
                     }
                 }
             }
+        }
+        // Apply circular mean of all collected heading angles
+        if (angleCount > 0) { // If we deal with angles AT ALL!
+            this.angle = Math.atan2(sinSum / angleCount, cosSum / angleCount);
+            // Re-calculation, as always
+            const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+            this.dx = Math.cos(this.angle) * currentSpeed;
+            this.dy = Math.sin(this.angle) * currentSpeed;
         }
     }
 
