@@ -1,5 +1,5 @@
 import { Entity } from "./entity.js";
-import { Position, Angle, Speed, getBehaviorTarget, TARGET_PROPERTIES } from "./behavior.js";
+import { Position, Angle, Speed, getBehaviorTarget, TARGET_PROPERTIES, REFERENCE_TYPES } from "./behavior.js";
 
 class fovOffset {
     constructor(x, y) {
@@ -93,21 +93,27 @@ export class Agent extends Entity{
         // then apply a circular mean so no single behavior just overwrites the others.
         let sinSum = 0, cosSum = 0, angleCount = 0;
         for (const behavior of behaviors) {
-            const target = getBehaviorTarget(behavior, this, this.detectedAgents); // target is a value calculated by applyBehavior after the filters
+            const targetVal = getBehaviorTarget(behavior, this, this.detectedAgents); // target is a value calculated by applyBehavior after the filters
 
-            if (target !== null && target !== undefined) {
+            if (targetVal !== null && targetVal !== undefined) {
                 switch (behavior.targetProperty) {
                     case TARGET_PROPERTIES.SPEED: {
                         // Speed doesn't affect heading — apply immediately
                         const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
-                        const newSpeed = Math.max(0, currentSpeed + (parseFloat(behavior.offset) || 0));
+
+                        // Ternary | Neighbor : Self Reference
+                        const base = (behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE) ? targetVal : currentSpeed;
+
+                        const newSpeed = Math.max(0, base + (parseFloat(behavior.offset) || 0));
                         this.dx = Math.cos(this.angle) * newSpeed;
                         this.dy = Math.sin(this.angle) * newSpeed;
                         break;
                     }
                     case TARGET_PROPERTIES.ANGLE: {
                         // Collect desired angle: current angle + offset
-                        const desired = this.angle + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
+                        // Ternary | Neighbor : Self Reference
+                        const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
+                        const desired = base + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
                         sinSum += Math.sin(desired);
                         cosSum += Math.cos(desired);
                         angleCount++;
@@ -115,7 +121,9 @@ export class Agent extends Entity{
                     }
                     case TARGET_PROPERTIES.POSITION: {
                         // Collect desired angle: bearing to detected agent + offset
-                        const desired = target + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
+                        // Ternary | Neighbor : Self Reference
+                        const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
+                        const desired = base + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
                         sinSum += Math.sin(desired);
                         cosSum += Math.cos(desired);
                         angleCount++;
@@ -269,6 +277,7 @@ export class Agent extends Entity{
         this.detectedAgents = currentlyDetected;
     }
 
+    // DEMO ONLY. DISUSED
     follow(target) {
         if (!target) return;
 

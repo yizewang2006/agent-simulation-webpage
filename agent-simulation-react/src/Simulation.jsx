@@ -29,7 +29,6 @@ function Simulation() {
   const [agents, setAgents] = useState([]); // State to hold agents for display in the control panel
   const [agentsListExpanded, setAgentsListExpanded] = useState(false); // State to toggle agents list visibility
 
-
   // Adding Agent States
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [showAddMultipleAgents, setShowAddMultipleAgents] = useState(false); // New state for showing the "Add Multiple Agents" form
@@ -213,8 +212,8 @@ function Simulation() {
     // using structuredClone to avoid mutating the existing behavior/filter objects (deep copy)
     const newList = structuredClone(behaviorList);
     newList[behaviorIndex].filters.push({ filterType: 'method', 
-      propertyType: FILTER_TYPE.DISTANCE, 
-      methodType: METHOD_TYPE.CLOSEST,
+      propertyType: FILTER_TYPES.DISTANCE, 
+      methodType: METHOD_TYPES.CLOSEST,
       rangeLow: '',
       rangeHigh: '' }); // Add a default filter, user can modify it in the editor
     setBehaviorList(newList);
@@ -241,17 +240,17 @@ function Simulation() {
     // Calls handleUpdateBehavior 
     const behavior = behaviorList[behaviorIndex];
     switch (targetProperty) {
-      case PROPERTY_TYPE.SPEED: {
+      case TARGET_PROPERTIES.SPEED: {
         // SINGLE VALUE
         handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
         break;
       }
-      case PROPERTY_TYPE.ANGLE: {
+      case TARGET_PROPERTIES.ANGLE: {
         // SINGLE VALUE (in degrees, agent.js converts to radians when applying)
         handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
         break;
       }
-      case PROPERTY_TYPE.POSITION: {
+      case TARGET_PROPERTIES.POSITION: {
         // TWO VALUES (x and y offsets)
         handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
         break;
@@ -647,6 +646,19 @@ function Simulation() {
                       onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, name: e.target.value })}
                     />
                   </div>
+
+                  <div className="input-group">
+                    <label>Option</label>
+                    <select
+                      value={behavior.action}
+                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, action: Number(e.target.value) })}
+                    >
+                      {Object.entries(REFERENCE_LABELS).map(([val, label]) => (
+                        <option key={val} value={val}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
                   {/* Target Property Dropdown*/}
                   <div className="input-group">
                     <label>Target Property</label>
@@ -662,24 +674,12 @@ function Simulation() {
                   
                   {/* Position: Relative Angle*/}
                   <div className="input-group">
-                    <label>Offset {(behavior.targetProperty === PROPERTY_TYPE.ANGLE || behavior.targetProperty === PROPERTY_TYPE.POSITION) ? '(degrees)' : ''}</label> {/* Bearing and Angle both use degree offsets */}
+                    <label>Offset {(behavior.targetProperty === TARGET_PROPERTIES.ANGLE || behavior.targetProperty === TARGET_PROPERTIES.POSITION) ? '(degrees)' : ''}</label> {/* Bearing and Angle both use degree offsets */}
                     <input
                       type="number"
                       value={behavior.offset}
                       onChange={(e) => handleUpdateOffset(behaviorIndex, behavior.targetProperty, e.target.value)}
                     />
-                  </div>
-                  
-                  <div className="input-group">
-                    <label>Action</label>
-                    <select
-                      value={behavior.action}
-                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, action: Number(e.target.value) })}
-                    >
-                      {Object.entries(REFERENCE_LABELS).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </select>
                   </div>
 
                   {/* Filters sub-box */}
