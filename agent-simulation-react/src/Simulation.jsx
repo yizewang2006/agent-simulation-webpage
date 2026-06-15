@@ -8,7 +8,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, PROPERTY_LABELS, METHOD_LABELS, FILTER_LABELS, ACTION_TYPE, ACTION_LABELS } from "./js_files/behavior.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, PROPERTY_LABELS, METHOD_LABELS, FILTER_TYPES, FILTER_LABELS, REFERENCE_TYPES, REFERENCE_LABELS } from "./js_files/behavior.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -213,8 +213,8 @@ function Simulation() {
     // using structuredClone to avoid mutating the existing behavior/filter objects (deep copy)
     const newList = structuredClone(behaviorList);
     newList[behaviorIndex].filters.push({ filterType: 'method', 
-      propertyType: FILTER_TYPES.DISTANCE, 
-      methodType: METHOD_TYPES.CLOSEST,
+      propertyType: FILTER_TYPE.DISTANCE, 
+      methodType: METHOD_TYPE.CLOSEST,
       rangeLow: '',
       rangeHigh: '' }); // Add a default filter, user can modify it in the editor
     setBehaviorList(newList);
@@ -241,17 +241,17 @@ function Simulation() {
     // Calls handleUpdateBehavior 
     const behavior = behaviorList[behaviorIndex];
     switch (targetProperty) {
-      case TARGET_PROPERTIES.SPEED: {
+      case PROPERTY_TYPE.SPEED: {
         // SINGLE VALUE
         handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
         break;
       }
-      case TARGET_PROPERTIES.ANGLE: {
+      case PROPERTY_TYPE.ANGLE: {
         // SINGLE VALUE (in degrees, agent.js converts to radians when applying)
         handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
         break;
       }
-      case TARGET_PROPERTIES.POSITION: {
+      case PROPERTY_TYPE.POSITION: {
         // TWO VALUES (x and y offsets)
         handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
         break;
@@ -662,7 +662,7 @@ function Simulation() {
                   
                   {/* Position: Relative Angle*/}
                   <div className="input-group">
-                    <label>Offset {(behavior.targetProperty === TARGET_PROPERTIES.ANGLE || behavior.targetProperty === TARGET_PROPERTIES.POSITION) ? '(degrees)' : ''}</label> {/* Bearing and Angle both use degree offsets */}
+                    <label>Offset {(behavior.targetProperty === PROPERTY_TYPE.ANGLE || behavior.targetProperty === PROPERTY_TYPE.POSITION) ? '(degrees)' : ''}</label> {/* Bearing and Angle both use degree offsets */}
                     <input
                       type="number"
                       value={behavior.offset}
@@ -670,19 +670,17 @@ function Simulation() {
                     />
                   </div>
                   
-                  {/* 
                   <div className="input-group">
                     <label>Action</label>
                     <select
                       value={behavior.action}
                       onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, action: Number(e.target.value) })}
                     >
-                      {Object.entries(ACTION_LABELS).map(([val, label]) => (
+                      {Object.entries(REFERENCE_LABELS).map(([val, label]) => (
                         <option key={val} value={val}>{label}</option>
                       ))}
                     </select>
                   </div>
-                  */}
 
                   {/* Filters sub-box */}
                   <div className="panel-card" style={{ marginTop: 8 }}>
@@ -717,7 +715,7 @@ function Simulation() {
 
                         <div className="input-group">
                           <label>Property</label>
-                          <select value={filter.propertyType ?? FILTER_TYPES.DISTANCE} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, propertyType: Number(e.target.value) })}>
+                          <select value={filter.propertyType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, propertyType: Number(e.target.value) })}>
                             {Object.entries(FILTER_LABELS).map(([val, label]) => (
                               <option key={val} value={val}>{label}</option>
                             ))}
@@ -727,7 +725,7 @@ function Simulation() {
                         {filter.filterType === 'method' && (
                           <div className="input-group">
                             <label>Method</label>
-                            <select value={filter.methodType ?? METHOD_TYPES.CLOSEST} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, methodType: Number(e.target.value) })}>
+                            <select value={filter.methodType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, methodType: Number(e.target.value) })}>
                               {Object.entries(METHOD_LABELS).map(([val, label]) => (
                                 <option key={val} value={val}>{label}</option>
                               ))}
@@ -739,11 +737,11 @@ function Simulation() {
                           <div className="input-row">
                             <div className="input-group">
                               <label>Low</label>
-                              <input type="number" value={filter.rangeLow ?? ''} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeLow: e.target.value })} />
+                              <input type="number" value={filter.rangeLow} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeLow: e.target.value })} />
                             </div>
                             <div className="input-group">
                               <label>High</label>
-                              <input type="number" value={filter.rangeHigh ?? ''} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeHigh: e.target.value })} />
+                              <input type="number" value={filter.rangeHigh} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeHigh: e.target.value })} />
                             </div>
                           </div>
                         )}
@@ -758,7 +756,7 @@ function Simulation() {
               ))}
 
               <div className="btn-row" style={{ marginBottom: 12 }}>
-                <button className="btn-primary" onClick={() => handleAddBehavior(null, { name: `Behavior ${behaviorList.length + 1}`, targetProperty: TARGET_PROPERTIES.POSITION, action: ACTION_TYPE.NEIGHBOR_REFERENCE, filters: [] })}>+ Add Behavior</button>
+                <button className="btn-primary" onClick={() => handleAddBehavior(null, { name: `Behavior ${behaviorList.length + 1}`, targetProperty: TARGET_PROPERTIES.POSITION, action: REFERENCE_TYPES.NEIGHBOR_REFERENCE, filters: [] })}>+ Add Behavior</button>
               </div>
             </div>
             

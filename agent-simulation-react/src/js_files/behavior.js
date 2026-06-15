@@ -2,21 +2,21 @@
 
 export const TARGET_PROPERTIES = {
   POSITION: 0,
-  SPEED:    1,
-  ANGLE:    2,
+  SPEED: 1,
+  ANGLE: 2,
 };
 
 export const METHOD_TYPES = {
-  CLOSEST:  0,
-  AVERAGE:  1,
+  CLOSEST: 0,
+  AVERAGE: 1,
   FARTHEST: 2,
 };
 
 export const FILTER_TYPES = {
   DISTANCE: 0,
-  SPEED:    1,
-  RELATIVE_ANGLE:    2,
-  HEADING:           3,
+  SPEED: 1,
+  RELATIVE_ANGLE: 2,
+  HEADING: 3,
 }
 
 // Human-readable labels for the UI
@@ -39,14 +39,14 @@ export const METHOD_LABELS = {
   [METHOD_TYPES.AVERAGE]:  'Average',
 };
 
-export const ACTION_TYPE = {
+export const REFERENCE_TYPES = {
   NEIGHBOR_REFERENCE: 0,
-  SELF_SPACE:         1,
+  SELF_SPACE: 1,
 };
 
-export const ACTION_LABELS = {
-  [ACTION_TYPE.NEIGHBOR_REFERENCE]: 'Neighbor Reference',
-  [ACTION_TYPE.SELF_SPACE]:         'Self-Space',
+export const REFERENCE_LABELS = {
+  [REFERENCE_TYPES.NEIGHBOR_REFERENCE]: 'Neighbor Reference',
+  [REFERENCE_TYPES.SELF_SPACE]: 'Self-Space',
 };
 
 // ─── Property (base) ──────────────────────────────────────────────────────────
