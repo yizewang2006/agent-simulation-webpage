@@ -206,9 +206,10 @@ export class RangedFilter extends Filter {
       }
       case FILTER_TYPES.RELATIVE_ANGLE: {
         return agents.filter(filteredAgent => {
-          const { diffX, diffY } = offsetCorrection((filteredAgent.position.x - self.position.x), (filteredAgent.position.y - self.position.y), self.canvas);
-          const bearing = (Math.atan2(diffY, diffX) * 180 / Math.PI + 360) % 360;
-          return bearing >= this.low && bearing <= this.high;
+          const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
+          const neighborHeading = (filteredAgent.angle * 180 / Math.PI + 360) % 360;
+          const headingDiff = ((neighborHeading - selfHeading) + 360) % 360;
+          return headingDiff >= this.low && headingDiff <= this.high;
         })
       }
       case FILTER_TYPES.HEADING: {
