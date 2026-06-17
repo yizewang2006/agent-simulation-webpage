@@ -29,7 +29,7 @@ export const PROPERTY_LABELS = {
 export const FILTER_LABELS = {
   [FILTER_TYPES.DISTANCE]: 'Distance',
   [FILTER_TYPES.SPEED] : 'Speed',
-  [FILTER_TYPES.RELATIVE_ANGLE] : 'Relative Angle',
+  [FILTER_TYPES.RELATIVE_ANGLE] : 'Angle Difference',
   [FILTER_TYPES.HEADING] : 'Heading',
 }
 
@@ -37,6 +37,13 @@ export const METHOD_LABELS = {
   [METHOD_TYPES.CLOSEST]:  'Closest',
   [METHOD_TYPES.FARTHEST]: 'Farthest',
   [METHOD_TYPES.AVERAGE]:  'Average',
+};
+
+export const METHOD_LABELS_BY_PROPERTY = {
+  [FILTER_TYPES.DISTANCE]:       { [METHOD_TYPES.CLOSEST]: 'Closest',      [METHOD_TYPES.FARTHEST]: 'Farthest',      [METHOD_TYPES.AVERAGE]: 'Average' },
+  [FILTER_TYPES.SPEED]:          { [METHOD_TYPES.CLOSEST]: 'Slowest',      [METHOD_TYPES.FARTHEST]: 'Fastest',       [METHOD_TYPES.AVERAGE]: 'Average' },
+  [FILTER_TYPES.RELATIVE_ANGLE]: { [METHOD_TYPES.CLOSEST]: 'Smallest',     [METHOD_TYPES.FARTHEST]: 'Largest',       [METHOD_TYPES.AVERAGE]: 'Average' },
+  [FILTER_TYPES.HEADING]:        { [METHOD_TYPES.CLOSEST]: 'Most Aligned', [METHOD_TYPES.FARTHEST]: 'Least Aligned', [METHOD_TYPES.AVERAGE]: 'Average' },
 };
 
 export const REFERENCE_TYPES = {

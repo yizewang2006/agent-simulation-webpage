@@ -79,39 +79,34 @@ export class Agent extends Entity{
         if (this.isSpecial && this.showFOV !== false) this.drawFOVCones(); // Draw FOV
     }
 
-    // equaivalent to Update() in Unity, will run each frame
-    update(allAgents, behaviors = []) { // New 6.3 param: behaviors, which is an array of behavior objects defined in Simulation.jsx
+    // Phase 1: move, warp, and draw — all agents run this before any behavior is applied
+    move() {
         this.position.add(this.dx, this.dy);
         if (this.dx !== 0 || this.dy !== 0) {
             this.angle = Math.atan2(this.dy, this.dx);
         }
         this.warpAgent();
-        this.detectAgents(allAgents);
         this.draw();
-        // Apply behaviors:
-        // POSITION and ANGLE both control heading, so collect all desired angles first,
-        // then apply a circular mean so no single behavior just overwrites the others.
+    }
+
+    // Phase 2: detect and apply behaviors using consistent post-move positions
+    behave(allAgents, behaviors = []) {
+        this.detectAgents(allAgents);
         let sinSum = 0, cosSum = 0, angleCount = 0;
         for (const behavior of behaviors) {
-            const targetVal = getBehaviorTarget(behavior, this, this.detectedAgents); // target is a value calculated by applyBehavior after the filters
+            const targetVal = getBehaviorTarget(behavior, this, this.detectedAgents);
 
             if (targetVal !== null && targetVal !== undefined) {
                 switch (behavior.targetProperty) {
                     case TARGET_PROPERTIES.SPEED: {
-                        // Speed doesn't affect heading — apply immediately
                         const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
-
-                        // Ternary | Neighbor : Self Reference
                         const base = (behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE) ? targetVal : currentSpeed;
-
                         const newSpeed = Math.max(0, base + (parseFloat(behavior.offset) || 0));
                         this.dx = Math.cos(this.angle) * newSpeed;
                         this.dy = Math.sin(this.angle) * newSpeed;
                         break;
                     }
                     case TARGET_PROPERTIES.ANGLE: {
-                        // Collect desired angle: current angle + offset
-                        // Ternary | Neighbor : Self Reference
                         const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
                         const desired = base + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
                         sinSum += Math.sin(desired);
@@ -120,8 +115,6 @@ export class Agent extends Entity{
                         break;
                     }
                     case TARGET_PROPERTIES.POSITION: {
-                        // Collect desired angle: bearing to detected agent + offset
-                        // Ternary | Neighbor : Self Reference
                         const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
                         const desired = base + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
                         sinSum += Math.sin(desired);
@@ -132,10 +125,8 @@ export class Agent extends Entity{
                 }
             }
         }
-        // Apply circular mean of all collected heading angles
-        if (angleCount > 0) { // If we deal with angles AT ALL!
+        if (angleCount > 0) {
             this.angle = Math.atan2(sinSum / angleCount, cosSum / angleCount);
-            // Re-calculation, as always
             const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
             this.dx = Math.cos(this.angle) * currentSpeed;
             this.dy = Math.sin(this.angle) * currentSpeed;
@@ -245,7 +236,7 @@ export class Agent extends Entity{
                 let distanceBetweenAgents = Math.sqrt(diffX * diffX + diffY * diffY);
                 
                 // Check if within FOV radius
-                if (distanceBetweenAgents <= this.fovRadius) {
+                if (distanceBetweenAgents <= this.fovRadius + agent.radius) {
                     let targetAngle = Math.atan2(diffY, diffX);
                     // 2.17 FIX: ANGLE INDEPENDENT OF dy & dx
                     let currentAgentAngle = this.angle;

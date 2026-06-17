@@ -8,7 +8,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, PROPERTY_LABELS, METHOD_LABELS, FILTER_TYPES, FILTER_LABELS, REFERENCE_TYPES, REFERENCE_LABELS } from "./js_files/behavior.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, PROPERTY_LABELS, METHOD_LABELS_BY_PROPERTY, FILTER_TYPES, FILTER_LABELS, REFERENCE_TYPES, REFERENCE_LABELS } from "./js_files/behavior.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -263,6 +263,9 @@ function Simulation() {
     fpsRef.current = Number(targetFPS) || 1; // Update the ref whenever targetFPS state changes, default to 1 if empty/invalid
   }, [targetFPS]);
 
+  // ---- MAX SPEED ----
+  // TODO
+
   // Behavior List Ref Sync (ensuring the latest behavior list is available)
   useEffect(() => {
     behaviorListRef.current = behaviorList;
@@ -298,9 +301,8 @@ function Simulation() {
       if (elapsed >= frameInterval) {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        agentsArray.forEach(agent => {
-          agent.update(agentsArray, behaviorListRef.current);
-        });
+        agentsArray.forEach(agent => agent.move());
+        agentsArray.forEach(agent => agent.behave(agentsArray, behaviorListRef.current));
       }
     }
     animate(0);
@@ -678,7 +680,7 @@ function Simulation() {
                     <input
                       type="number"
                       value={behavior.offset}
-                      onChange={(e) => handleUpdateOffset(behaviorIndex, behavior.targetProperty, e.target.value)}
+                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, offset: e.target.value })}
                     />
                   </div>
 
@@ -726,7 +728,7 @@ function Simulation() {
                           <div className="input-group">
                             <label>Method</label>
                             <select value={filter.methodType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, methodType: Number(e.target.value) })}>
-                              {Object.entries(METHOD_LABELS).map(([val, label]) => (
+                              {Object.entries(METHOD_LABELS_BY_PROPERTY[filter.propertyType] ?? METHOD_LABELS).map(([val, label]) => (
                                 <option key={val} value={val}>{label}</option>
                               ))}
                             </select>
@@ -785,6 +787,12 @@ function Simulation() {
                   value={targetFPS}
                   onChange={(e) => setTargetFPS(e.target.value)}
                   onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
+                />
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="fps-input">Maxiumum Speed</label>
+                <input
                 />
               </div>
             </div>
