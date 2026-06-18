@@ -22,7 +22,7 @@ function Simulation() {
   const agentsArrayRef = useRef([]); // Ref to hold the internal agents array (used by animation loop & Agent constructor)
 
   const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
-  const [simulationScale, setSimulationScale] = useState('small'); // State to hold the simulation scale (small or large), default to small
+  const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
   const fpsRef = useRef(targetFPS); // Ref to hold the current FPS value, reference this value without the need of rendering
 
   const [newAgentShowFOV, setNewAgentShowFOV] = useState(true); // Show FOV setting for the agent being created
@@ -361,7 +361,7 @@ function Simulation() {
             
             
               <div className="panel-card">
-              <h2 className="panel-section-title">Agent Settings</h2>
+              <h2 className="panel-section-title">Agent Configuration</h2>
 
               <div className="input-group">
                 <label>Simulation Scale</label>
@@ -430,8 +430,17 @@ function Simulation() {
                   </ul>
                 )}
               </div>
+
+              {/*  */}
+              <div className="input-group">
+                <label htmlFor="max-speed">Maximum Speed</label>
+                <input
+                />
+              </div>
+
             </div>
             
+            {/* Add Agent Cards*/}
             {simulationScale == "small" && showAddAgent && ( // The panel-card for adding the new agent, only comes up when the user clicks the "Add an Agent" button and disappears when they click "Cancel" or "Create"
               <div className="panel-card panel-card-highlight" style={{ position: 'relative' }}>
                 <button
@@ -790,11 +799,6 @@ function Simulation() {
                 />
               </div>
 
-              <div className="input-group">
-                <label htmlFor="fps-input">Maxiumum Speed</label>
-                <input
-                />
-              </div>
             </div>
 
             <div className="panel-card">
