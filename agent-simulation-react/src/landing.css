@@ -8,6 +8,16 @@
   gap: 2.5rem;
 }
 
+.landing-subtitle {
+  font-size: 1rem;
+  font-weight: 400;
+  font-family: 'Montserrat', sans-serif;
+  color: #002878;
+  text-align: center;
+  margin: 0;
+  margin-top: -2rem;
+}
+
 .landing-title {
   font-size: 2.5rem;
   font-weight: 700;
@@ -43,6 +53,14 @@
   color: #aaa;
   font-size: 0.85em;
   border: 2px dashed #ccc;
+}
+
+.landing-photo {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ccc;
 }
 
 .landing-name {

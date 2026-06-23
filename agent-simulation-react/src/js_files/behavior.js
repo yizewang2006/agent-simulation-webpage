@@ -297,13 +297,13 @@ export function getBehaviorTarget(behavior, self, detectedAgents) {
     for (const filter of behavior.filters) {
       detAgents = applyFilters(filter, self, detAgents);
       if (detAgents.length === 0) {
-        detectedAgents.forEach(agent => agent.colorHex = '#FF0000'); // failed filter but still in FOV — reset to red
+        // detectedAgents.forEach(agent => agent.colorHex = '#FF0000'); // failed filter but still in FOV — reset to red
         return null;
       }
     }
 
     if (detAgents.length > 0) {
-      detAgents.forEach(a => a.colorHex = "#00FF00"); // ALL Filtered agent turns green (red color change in agent.js)
+      // detAgents.forEach(a => a.colorHex = "#00FF00"); // ALL Filtered agent turns green (red color change in agent.js)
 
       // Behavior value calculation
       switch (behavior.targetProperty) {

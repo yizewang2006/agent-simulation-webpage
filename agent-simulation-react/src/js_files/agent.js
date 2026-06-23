@@ -270,9 +270,9 @@ export class Agent extends Entity{
                     if (angleDifference <= this.fovAngle / 2) {
                         currentlyDetected.push(agent);
                         // Only change to red if this agent wasn't detected in the previous update
-                        if (!this.detectedAgents.includes(agent)) {
-                            agent.colorHex = '#FF0000';
-                        }
+                        // if (!this.detectedAgents.includes(agent)) {
+                        //     agent.colorHex = '#FF0000';
+                        // }
                     }
                 }
             }
@@ -282,7 +282,7 @@ export class Agent extends Entity{
         // reset its color to original.
         this.detectedAgents.forEach(agent => {
             if (!currentlyDetected.includes(agent)) {
-                agent.colorHex = agent.originalColor; // Line changing color to red is in behavior.js
+                // agent.colorHex = agent.originalColor; // Line changing color to red is in behavior.js
             }
         });
 

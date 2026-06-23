@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Agent Simulation Project</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+  <h1 class="title">Agent Collision Prediction</h1>
+  <h2 class="subtitle">by Elaine Ding</h2>
+</header>
+
+<div class="container">
+
+  <canvas id="canvasOne" width="1000" height="1000"></canvas>
+
+  <div class="gui-panel">
+
+    <div class="agent-controls">
+      <h2>Controls</h2>
+
+      <label>Prediction Angle:</label>
+      <input type="range" id="predictAngle" min="0" max="360" value="45" style="width:100%">
+      <div id="angleVal" style="text-align:right">45°</div>
+
+      <label>Agent Radius:</label>
+      <input type="range" id="radiusSlider" min="20" max="30" value="30" style="width:100%">
+      <div id="radiusVal" style="text-align:right; font-weight:bold;">40px</div>     
+
+      <!-- Prediction Results -->
+      <div id="predictionResults">
+
+        <div class="data-row">
+          <b>Collision Position:</b> 
+          <span id="hitCoords">---</span>
+        </div>
+
+        <div class="data-row">
+          <b>Distance to the obstacle:</b> 
+          <span id="hitDist">0px</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script type="module">
+
+  import { Agent } from "./collision_agent.js";
+  import { ObstacleManager, Obstacle } from "./obstacle.js";
+
+  const radiusSlider = document.getElementById('radiusSlider');
+  const radiusLabel = document.getElementById('radiusVal');
+
+  radiusSlider.oninput = () => {
+    const newRadius = parseInt(radiusSlider.value);
+    myAgent.radius = newRadius;
+    radiusLabel.innerText = `${newRadius}px`;
+  };
+
+  const canvas = document.getElementById('canvasOne');
+  const ctx = canvas.getContext('2d');
+
+  const myAgent = new Agent(300, 300, 40, "#D28E00", "Agent_01", ctx, canvas);
+  const manager = new ObstacleManager();
+
+  manager.add(new Obstacle("Rock", [
+    {x:720,y:260},{x:820,y:280},{x:860,y:340},
+    {x:830,y:410},{x:760,y:430},{x:700,y:380},{x:690,y:310}
+  ], "#59412D", ctx));
+
+  manager.add(new Obstacle("Wall", [
+    {x:100,y:500},{x:800,y:500},{x:800,y:520},{x:100,y:520}
+  ], "#ACAD9D", ctx));
+
+  let isDragging = false;
+
+  canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    if (Math.hypot(
+      e.clientX - rect.left - myAgent.position.x,
+      e.clientY - rect.top - myAgent.position.y
+    ) < myAgent.radius) {
+      isDragging = true;
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    myAgent.position.x = e.clientX - rect.left;
+    myAgent.position.y = e.clientY - rect.top;
+  });
+
+  window.addEventListener('mouseup', () => isDragging = false);
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    manager.update(myAgent);
+    myAgent.update();
+
+    const angle = (document.getElementById('predictAngle').value * Math.PI) / 180;
+    document.getElementById('angleVal').textContent =
+      document.getElementById('predictAngle').value + "°";
+
+    let closestHit = null;
+    let minT = Infinity;
+
+    manager.obstacles.forEach(obs => {
+      const hit = obs.getLinearCollision(myAgent, angle);
+      if (hit && hit.t < minT) {
+        minT = hit.t;
+        closestHit = hit;
+      }
+    });
+
+    // Draw ray
+    ctx.beginPath();
+    ctx.setLineDash([5, 5]);
+    ctx.moveTo(myAgent.position.x, myAgent.position.y);
+    ctx.lineTo(
+      myAgent.position.x + Math.cos(angle) * 1000,
+      myAgent.position.y + Math.sin(angle) * 1000
+    );
+    ctx.strokeStyle = "rgba(0,0,0,0.3)";
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw collision
+    if (closestHit) {
+
+      ctx.beginPath();
+      ctx.arc(closestHit.x, closestHit.y, myAgent.radius, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255,0,0,0.5)";
+      ctx.stroke();
+
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(closestHit.x, closestHit.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      document.getElementById('hitCoords').textContent =
+        `(${Math.round(closestHit.x)}, ${Math.round(closestHit.y)})`;
+
+      document.getElementById('hitDist').textContent =
+        `${Math.round(minT)}px`;
+
+    } else {
+      document.getElementById('hitCoords').textContent = "---";
+      document.getElementById('hitDist').textContent = "0px";
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+
+</script>
+
+</body>
+</html>
