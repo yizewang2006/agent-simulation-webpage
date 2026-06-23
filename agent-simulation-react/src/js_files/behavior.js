@@ -392,6 +392,5 @@ export function turnTowardAngle(initial, final, maxAngle) {
   let diff = final - initial;
   if (diff > Math.PI) diff -= 2 * Math.PI;
   if (diff < -Math.PI) diff += 2 * Math.PI;
-
   return initial + Math.sign(diff) * Math.min(Math.abs(diff), maxAngle);
 }
