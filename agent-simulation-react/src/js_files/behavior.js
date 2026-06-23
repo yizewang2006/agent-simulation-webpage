@@ -30,7 +30,7 @@ export const FILTER_LABELS = {
   [FILTER_TYPES.DISTANCE]: 'Distance',
   [FILTER_TYPES.SPEED] : 'Speed',
   [FILTER_TYPES.RELATIVE_ANGLE] : 'Angle Difference',
-  [FILTER_TYPES.HEADING] : 'Heading',
+  [FILTER_TYPES.HEADING] : 'Neighbor Heading',
 }
 
 export const METHOD_LABELS = {
@@ -42,8 +42,8 @@ export const METHOD_LABELS = {
 export const METHOD_LABELS_BY_PROPERTY = {
   [FILTER_TYPES.DISTANCE]:       { [METHOD_TYPES.CLOSEST]: 'Closest',      [METHOD_TYPES.FARTHEST]: 'Farthest',      [METHOD_TYPES.AVERAGE]: 'Average' },
   [FILTER_TYPES.SPEED]:          { [METHOD_TYPES.CLOSEST]: 'Slowest',      [METHOD_TYPES.FARTHEST]: 'Fastest',       [METHOD_TYPES.AVERAGE]: 'Average' },
-  [FILTER_TYPES.RELATIVE_ANGLE]: { [METHOD_TYPES.CLOSEST]: 'Smallest',     [METHOD_TYPES.FARTHEST]: 'Largest',       [METHOD_TYPES.AVERAGE]: 'Average' },
-  [FILTER_TYPES.HEADING]:        { [METHOD_TYPES.CLOSEST]: 'Most Aligned', [METHOD_TYPES.FARTHEST]: 'Least Aligned', [METHOD_TYPES.AVERAGE]: 'Average' },
+  [FILTER_TYPES.RELATIVE_ANGLE]: { [METHOD_TYPES.CLOSEST]: 'Smallest Difference', [METHOD_TYPES.FARTHEST]: 'Largest Difference', [METHOD_TYPES.AVERAGE]: 'Average' },
+  [FILTER_TYPES.HEADING]:        { [METHOD_TYPES.CLOSEST]: 'Lowest Heading', [METHOD_TYPES.FARTHEST]: 'Highest Heading', [METHOD_TYPES.AVERAGE]: 'Average' },
 };
 
 export const REFERENCE_TYPES = {
@@ -199,8 +199,8 @@ export class RangedFilter extends Filter {
   constructor(propertyType, low, high) {
     super();
     this.propertyType = propertyType;
-    this.low = Number(low) || 0;
-    this.high = Number(high) || 0;
+    this.low = parseRangeBound(low, 0);
+    this.high = parseRangeBound(high, getDefaultRangeHigh(propertyType));
   }
 
   apply(self, agents) {
@@ -213,21 +213,19 @@ export class RangedFilter extends Filter {
       }
       case FILTER_TYPES.RELATIVE_ANGLE: {
         return agents.filter(filteredAgent => {
-          const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
-          const neighborHeading = (filteredAgent.angle * 180 / Math.PI + 360) % 360;
-          const headingDiff = ((neighborHeading - selfHeading) + 360) % 360;
-          return headingDiff >= this.low && headingDiff <= this.high;
+          const headingDiff = getHeadingDifferenceDeg(self, filteredAgent);
+          return isAngleInRange(headingDiff, this.low, this.high);
         })
       }
       case FILTER_TYPES.HEADING: {
         return agents.filter(filteredAgent => {
           const heading = (filteredAgent.angle * 180 / Math.PI + 360) % 360;
-          return heading >= this.low && heading <= this.high;
+          return isAngleInRange(heading, this.low, this.high);
         });
       }
       case FILTER_TYPES.DISTANCE: {
         return agents.filter(filteredAgent => {
-          const { diffX, diffY } = offsetCorrection(filteredAgent.position.x - self.position.x, filteredAgent.position.y - self.position.y, self.canvas);
+          const { diffX, diffY } = getWrappedOffset(self.position, filteredAgent.position, self.canvas);
           return Math.sqrt(diffX**2 + diffY**2) >= this.low && Math.sqrt(diffX**2 + diffY**2) <= this.high;
         });
       }
@@ -251,17 +249,20 @@ export class MethodFilter extends Filter {
     if (this.methodType === METHOD_TYPES.AVERAGE) return agents;
 
     const getVal = (a) => { // Calculate values based on the filtered property
-      if (this.propertyType === FILTER_TYPES.SPEED)
-        return Math.sqrt(a.dx**2 + a.dy**2);
-      if (this.propertyType === FILTER_TYPES.HEADING)
-        return (a.angle * 180 / Math.PI + 360) % 360;
-      // DISTANCE and RELATIVE_ANGLE: wrap-corrected distance from self
-      const { diffX, diffY } = offsetCorrection(
-        a.position.x - self.position.x,
-        a.position.y - self.position.y,
-        self.canvas
-      );
-      return Math.sqrt(diffX**2 + diffY**2);
+      switch (this.propertyType) {
+        case FILTER_TYPES.SPEED:
+          return Math.sqrt(a.dx**2 + a.dy**2);
+        case FILTER_TYPES.HEADING:
+          return (a.angle * 180 / Math.PI + 360) % 360;
+        case FILTER_TYPES.RELATIVE_ANGLE:
+          return getHeadingDifferenceDeg(self, a);
+        case FILTER_TYPES.DISTANCE: {
+          const { diffX, diffY } = getWrappedOffset(self.position, a.position, self.canvas);
+          return Math.sqrt(diffX**2 + diffY**2);
+        }
+        default: // otherwise, return infinity value
+          return Infinity;
+      }
     };
 
     let best = agents[0];
@@ -309,7 +310,7 @@ export function getBehaviorTarget(behavior, self, detectedAgents) {
         case TARGET_PROPERTIES.POSITION: {
           let sinSum = 0, cosSum = 0;
           for (const a of detAgents) {
-            const {diffX, diffY} = offsetCorrection(a.position.x - self.position.x, a.position.y - self.position.y, self.canvas);
+            const { diffX, diffY } = getWrappedOffset(self.position, a.position, self.canvas);
             const bearing = Math.atan2(diffY, diffX);
             sinSum += Math.sin(bearing);
             cosSum += Math.cos(bearing);
@@ -335,9 +336,62 @@ export function getBehaviorTarget(behavior, self, detectedAgents) {
   }
 
 export function offsetCorrection(diffX, diffY, canvas) {
-  if (diffX > canvas.width / 2)        diffX -= canvas.width;
-  else if (diffX < -canvas.width / 2)  diffX += canvas.width;
-  if (diffY > canvas.height / 2)        diffY -= canvas.height;
-  else if (diffY < -canvas.height / 2)  diffY += canvas.height;
+  if (!canvas) return { diffX, diffY };
+  if (canvas.width <= 0 || canvas.height <= 0) return { diffX, diffY };
+  while (diffX > canvas.width / 2) diffX -= canvas.width;
+  while (diffX < -canvas.width / 2) diffX += canvas.width;
+  while (diffY > canvas.height / 2) diffY -= canvas.height;
+  while (diffY < -canvas.height / 2) diffY += canvas.height;
   return { diffX, diffY };
+}
+
+export function getWrappedOffset(fromPosition, toPosition, canvas) {
+  return offsetCorrection(
+    toPosition.x - fromPosition.x,
+    toPosition.y - fromPosition.y,
+    canvas
+  );
+}
+
+export function getHeadingDifferenceDeg(self, neighbor) {
+  const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
+  const neighborHeading = (neighbor.angle * 180 / Math.PI + 360) % 360;
+  const headingDiff = Math.abs(neighborHeading - selfHeading);
+  return headingDiff > 180 ? 360 - headingDiff : headingDiff;
+}
+
+export function isAngleInRange(value, low, high) {
+  if (low <= high) return value >= low && value <= high;
+  return value >= low || value <= high;
+}
+
+function parseRangeBound(value, fallback) {
+  if (value === '' || value === null || value === undefined) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+// Some default high/low values
+function getDefaultRangeHigh(propertyType) {
+  if (propertyType === FILTER_TYPES.RELATIVE_ANGLE) return 180;
+  if (propertyType === FILTER_TYPES.HEADING) return 360;
+  return Infinity;
+}
+
+// Smoothing Calculator (based on smoothing factor)
+export function smoothTowardAngle(initial, final, smoothingFactor) {
+  let diff = final - initial;
+  if (diff > Math.PI) diff -= 2 * Math.PI;
+  if (diff < -Math.PI) diff += 2 * Math.PI;
+
+  return initial + diff * smoothingFactor;
+}
+
+// Smoothing Calculator (based on max angle)
+export function turnTowardAngle(initial, final, maxAngle) {
+  let diff = final - initial;
+  if (diff > Math.PI) diff -= 2 * Math.PI;
+  if (diff < -Math.PI) diff += 2 * Math.PI;
+
+  return initial + Math.sign(diff) * Math.min(Math.abs(diff), maxAngle);
 }

@@ -1,11 +1,23 @@
 import { Entity } from "./entity.js";
-import { Position, Angle, Speed, getBehaviorTarget, TARGET_PROPERTIES, REFERENCE_TYPES } from "./behavior.js";
+import { Position, Angle, Speed, getBehaviorTarget, getWrappedOffset, smoothTowardAngle, turnTowardAngle, TARGET_PROPERTIES, REFERENCE_TYPES } from "./behavior.js";
 
 class fovOffset {
     constructor(x, y) {
         this.x = x;
         this.y = y;
     }
+}
+
+function parseNumberCap(value) {
+    if (value === '' || value === null || value === undefined) return Infinity;
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : Infinity;
+}
+
+function parseNumberOrDefault(value, fallback) {
+    if (value === '' || value === null || value === undefined) return fallback;
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 export class Agent extends Entity{
@@ -20,6 +32,8 @@ export class Agent extends Entity{
         this.dy = dy;
         // 25.2.17 FIX: ANGLE INDEPENDENT OF dy & dx
         this.angle = angle; // We have now set the angle to be independent of dy & dx
+        this.steeringAngle = angle;
+        this.turnSmoothing = 0.15;
         this.colorHex = colorHex;  // Default color
         this.originalColor = colorHex; // Store original color: won't change, java
         this.fovRadius = fovRadius; // FOV range of detection
@@ -54,9 +68,36 @@ export class Agent extends Entity{
 
     // Method to draw the circle
     draw() {
+        // this.showFOV is attached by Simulation.jsx, by React, not in the Agent class itself. It is a global setting that each agent can access to determine whether to draw FOV or not.
+        const shouldDrawFOV = this.isSpecial && this.showFOV !== false;
+        const virtualRange = this.radius + (shouldDrawFOV ? this.fovRadius : 0);
+        const virtualOffsets = this.getVirtualOffsets(virtualRange);
+
+        for (const offset of virtualOffsets) {
+            this.drawVirtualCopyAtOffset(offset, shouldDrawFOV);
+        }
+        this.drawVirtualCopyAtOffset(new fovOffset(0, 0), shouldDrawFOV);
+    }
+
+    drawVirtualCopyAtOffset(offset, drawFOV = false) {
+        const x = this.position.x + offset.x;
+        const y = this.position.y + offset.y;
+
+        if (drawFOV) {
+            const startAngle = this.angle - this.fovAngle / 2;
+            const endAngle = this.angle + this.fovAngle / 2;
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, y);
+            this.ctx.arc(x, y, this.fovRadius, startAngle, endAngle);
+            this.ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
+            this.ctx.fill();
+            this.ctx.closePath();
+        }
+
         // Draw the circle itself and hollow.
         this.ctx.beginPath();
-        this.ctx.arc(this.position.x, this.position.y, this.radius, 0, Math.PI * 2);
+        this.ctx.arc(x, y, this.radius, 0, Math.PI * 2);
         this.ctx.strokeStyle = this.colorHex;
         this.ctx.lineWidth = 2;
         this.ctx.stroke();
@@ -66,34 +107,88 @@ export class Agent extends Entity{
         const angle = this.angle;
         const segmentLength = this.radius * 2
 
-        const endX = this.position.x + Math.cos(angle) * segmentLength;
-        const endY = this.position.y + Math.sin(angle) * segmentLength;
+        const endX = x + Math.cos(angle) * segmentLength;
+        const endY = y + Math.sin(angle) * segmentLength;
 
         this.ctx.beginPath();
-        this.ctx.moveTo(this.position.x, this.position.y);
+        this.ctx.moveTo(x, y);
         this.ctx.lineTo(endX, endY);
         this.ctx.stroke();
         this.ctx.closePath();
-        
-        // this.showFOV is attached by Simulation.jsx, by React, not in the Agent class itself. It is a global setting that each agent can access to determine whether to draw FOV or not.
-        if (this.isSpecial && this.showFOV !== false) this.drawFOVCones(); // Draw FOV
+    }
+
+    getVirtualOffsets(range) {
+        let horizontalOffset = 0, verticalOffset = 0;
+
+        if (this.position.x + range > this.canvas.width) {
+            horizontalOffset = -this.canvas.width;
+        } else if (this.position.x - range < 0) {
+            horizontalOffset = this.canvas.width;
+        }
+
+        if (this.position.y + range > this.canvas.height) {
+            verticalOffset = -this.canvas.height;
+        } else if (this.position.y - range < 0) {
+            verticalOffset = this.canvas.height;
+        }
+
+        const offsets = [];
+        if (horizontalOffset !== 0) offsets.push(new fovOffset(horizontalOffset, 0));
+        if (verticalOffset !== 0) offsets.push(new fovOffset(0, verticalOffset));
+        if (horizontalOffset !== 0 && verticalOffset !== 0) offsets.push(new fovOffset(horizontalOffset, verticalOffset));
+        return offsets;
     }
 
     // Phase 1: move, warp, and draw — all agents run this before any behavior is applied
-    move() {
+    move(maxSpeed = null) {
         this.position.add(this.dx, this.dy);
         if (this.dx !== 0 || this.dy !== 0) {
             this.angle = Math.atan2(this.dy, this.dx);
+        }
+        if (maxSpeed !== null) {
+            const speedCap = parseNumberCap(maxSpeed);
+            const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+            if (currentSpeed > speedCap) {
+                const scale = speedCap / currentSpeed;
+                this.dx *= scale;
+                this.dy *= scale;
+            }
         }
         this.warpAgent();
         this.draw();
     }
 
     // Phase 2: detect and apply behaviors using consistent post-move positions
-    behave(allAgents, behaviors = []) {
+    behave(allAgents, behaviors = [], maxSpeed = null, maxAngle = null) {
         this.detectAgents(allAgents);
         let sinSum = 0, cosSum = 0, angleCount = 0;
+        const speedCap = parseNumberCap(maxSpeed);
+        const angleCap = parseNumberCap(maxAngle) * Math.PI / 180;
+
         for (const behavior of behaviors) {
+            const offset = parseNumberOrDefault(behavior.offset, 0);
+
+            if (behavior.action === REFERENCE_TYPES.SELF_SPACE) {
+                switch (behavior.targetProperty) {
+                    case TARGET_PROPERTIES.SPEED: {
+                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+                        const newSpeed = Math.min(Math.max(0, currentSpeed + offset), speedCap);
+                        this.dx = Math.cos(this.angle) * newSpeed;
+                        this.dy = Math.sin(this.angle) * newSpeed;
+                        break;
+                    }
+                    case TARGET_PROPERTIES.ANGLE:
+                    case TARGET_PROPERTIES.POSITION: {
+                        const desired = this.angle + offset * Math.PI / 180;
+                        sinSum += Math.sin(desired);
+                        cosSum += Math.cos(desired);
+                        angleCount++;
+                        break;
+                    }
+                }
+                continue;
+            }
+
             const targetVal = getBehaviorTarget(behavior, this, this.detectedAgents);
 
             if (targetVal !== null && targetVal !== undefined) {
@@ -101,14 +196,14 @@ export class Agent extends Entity{
                     case TARGET_PROPERTIES.SPEED: {
                         const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
                         const base = (behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE) ? targetVal : currentSpeed;
-                        const newSpeed = Math.max(0, base + (parseFloat(behavior.offset) || 0));
+                        const newSpeed = Math.min(Math.max(0, base + offset), speedCap);
                         this.dx = Math.cos(this.angle) * newSpeed;
                         this.dy = Math.sin(this.angle) * newSpeed;
                         break;
                     }
                     case TARGET_PROPERTIES.ANGLE: {
                         const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
-                        const desired = base + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
+                        const desired = base + offset * Math.PI / 180;
                         sinSum += Math.sin(desired);
                         cosSum += Math.cos(desired);
                         angleCount++;
@@ -116,7 +211,7 @@ export class Agent extends Entity{
                     }
                     case TARGET_PROPERTIES.POSITION: {
                         const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
-                        const desired = base + (parseFloat(behavior.offset) || 0) * Math.PI / 180;
+                        const desired = base + offset * Math.PI / 180;
                         sinSum += Math.sin(desired);
                         cosSum += Math.cos(desired);
                         angleCount++;
@@ -126,87 +221,29 @@ export class Agent extends Entity{
             }
         }
         if (angleCount > 0) {
-            this.angle = Math.atan2(sinSum / angleCount, cosSum / angleCount);
-            const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+            const desiredAngle = Math.atan2(sinSum / angleCount, cosSum / angleCount);
+            this.steeringAngle = smoothTowardAngle(this.steeringAngle, desiredAngle, this.turnSmoothing);
+            this.angle = turnTowardAngle(this.angle, this.steeringAngle, angleCap);
+
+            const currentSpeed = Math.min(Math.sqrt(this.dx ** 2 + this.dy ** 2), speedCap);
             this.dx = Math.cos(this.angle) * currentSpeed;
             this.dy = Math.sin(this.angle) * currentSpeed;
         }
     }
 
-    // Method to draw the FOV Cone
-    drawFOVCones() {
-        // First, draw the virtual FOV if needed.
-        let horizontalOffset = 0, verticalOffset = 0;
-
-        // Horizontal
-        if (this.position.x + (this.radius + this.fovRadius) > this.canvas.width) {
-            // The FOV is extending past the right edge;
-            // virtual copy should appear on the left.
-            horizontalOffset = -this.canvas.width - 2 * this.radius; // Tweaked about this a little bit, now has a smooth transition.
-        } else if (this.position.x - (this.radius + this.fovRadius) < 0) {
-            // The FOV is extending past the left edge;
-            // virtual copy should appear on the right.
-            horizontalOffset = this.canvas.width + 2 * this.radius;
-        }
-
-        // Vertical
-        if (this.position.y + this.radius + this.fovRadius > this.canvas.height) {
-            verticalOffset = -this.canvas.height - 2 * this.radius; // virtual copy should appear at the top
-        } else if (this.position.y - (this.radius + this.fovRadius) < 0) {
-            verticalOffset = this.canvas.height + 2 * this.radius; // virtual copy should appear at the bottom.
-        }
-        
-        // Debug step, allows me to see the offset value in real time. This is no longer needed.
-        // console.log(horizontalOffset, verticalOffset);
-
-        // Check offset in both directions.
-        if (horizontalOffset !== 0) {
-            // Draw the virtual FOV first.
-            this.drawFOVAtOffset(new fovOffset(horizontalOffset, 0)); // Left or Right copy
-        }
-        if (verticalOffset !== 0) {
-            this.drawFOVAtOffset(new fovOffset(0, verticalOffset)); // Top or Bottom copy
-        }
-        if (horizontalOffset !== 0 && verticalOffset !== 0) {
-            this.drawFOVAtOffset(new fovOffset(horizontalOffset, verticalOffset)); // Diagonal copy
-        }
-        
-        // Then draw the real FOV on top so it overwrites any overlapping parts.
-        this.drawFOVAtOffset(new fovOffset(0, 0));
-    }
-
     // Wrap to the other side of the canvas if out of bounds
     warpAgent() {
-        if (this.position.x - this.radius >= this.canvas.width) {
-            this.position.x = -this.radius // Used to be -this.radius. Here is where the lag is fixed. If in the future we have to fix something, come back here.
-        } else if (this.position.x + this.radius <= 0) {
-            this.position.x = this.canvas.width + this.radius;
+        if (this.position.x >= this.canvas.width) {
+            this.position.x -= this.canvas.width;
+        } else if (this.position.x < 0) {
+            this.position.x += this.canvas.width;
         }
 
-        if (this.position.y - this.radius >= this.canvas.height) {
-            this.position.y = -this.radius;
-        } else if (this.position.y + this.radius <= 0) {
-            this.position.y = this.canvas.height + this.radius;
+        if (this.position.y >= this.canvas.height) {
+            this.position.y -= this.canvas.height;
+        } else if (this.position.y < 0) {
+            this.position.y += this.canvas.height;
         }
-    }
-
-    drawFOVAtOffset(offset) { // offset = FOV OFFSET
-        // Calculate the new position where the FOV should be drawn. These are based on agent's position, plus an "offset"
-        // Calculate the new position where the FOV should be drawn.
-        const x = this.position.x + offset.x;
-        const y = this.position.y + offset.y;
-
-        // Get movement direction
-        let angle = this.angle;
-        let startAngle = angle - this.fovAngle / 2; 
-        let endAngle = angle + this.fovAngle / 2; 
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, y); // Use offset-adjusted position
-        this.ctx.arc(x, y, this.fovRadius, startAngle, endAngle);
-        this.ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
-        this.ctx.fill();
-        this.ctx.closePath();
     }
 
     // Detection system to identify agents inside FOV
@@ -216,22 +253,7 @@ export class Agent extends Entity{
         // Loop through all agents to check if they are within FOV
         agents.forEach(agent => {
             if (agent !== this) { // Don't detect self
-                let diffX = agent.position.x - this.position.x;
-                let diffY = agent.position.y - this.position.y;
-    
-                // Adjust for wrapping on the x-axis
-                if (diffX > this.canvas.width / 2) {
-                    diffX -= this.canvas.width;
-                } else if (diffX < -this.canvas.width / 2) {
-                    diffX += this.canvas.width;
-                }
-
-                // Adjust for wrapping on the y-axis
-                if (diffY > this.canvas.height / 2) {
-                    diffY -= this.canvas.height;
-                } else if (diffY < -this.canvas.height / 2) {
-                    diffY += this.canvas.height;
-                }
+                const { diffX, diffY } = getWrappedOffset(this.position, agent.position, this.canvas);
     
                 let distanceBetweenAgents = Math.sqrt(diffX * diffX + diffY * diffY);
                 
@@ -273,15 +295,7 @@ export class Agent extends Entity{
         if (!target) return;
 
         // Calculate the vector from this agent to the target
-        let diffX = target.position.x - this.position.x;
-        let diffY = target.position.y - this.position.y;
-
-        // Adjust for wrapping on canvas (so agents don't "see" across the wrong side)
-        if (diffX > this.canvas.width / 2) diffX -= this.canvas.width;
-        else if (diffX < -this.canvas.width / 2) diffX += this.canvas.width;
-
-        if (diffY > this.canvas.height / 2) diffY -= this.canvas.height;
-        else if (diffY < -this.canvas.height / 2) diffY += this.canvas.height;
+        let { diffX, diffY } = getWrappedOffset(this.position, target.position, this.canvas);
 
         // Normalize the vector
         let dist = Math.sqrt(diffX * diffX + diffY * diffY);

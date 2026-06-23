@@ -1,10 +1,15 @@
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Simulation from "./Simulation";
+import LandingPage from "./LandingPage";
 
-// Main App component that renders the Simulation
-// Required for routing (later)
-function App() {  
+function App() {
   return (
-    <Simulation />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/simulation" element={<Simulation />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
