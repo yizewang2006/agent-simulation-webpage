@@ -4,6 +4,7 @@ import AddAgentCard from "./components/AddAgentCard.jsx";
 import AddMultipleAgentsCard from "./components/AddMultipleAgentsCard.jsx";
 import AgentEditor from "./components/AgentEditor.jsx";
 import MiscPanel from "./components/MiscPanel.jsx";
+import BehaviorCard from "./components/BehaviorCard.jsx";
 /* 
 These imports ensures the correct styles and components are included for the Simulation page.
 */
@@ -12,7 +13,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
-import { TARGET_PROPERTIES, METHOD_LABELS, METHOD_TYPES, PROPERTY_LABELS, METHOD_LABELS_BY_PROPERTY, FILTER_TYPES, FILTER_LABELS, REFERENCE_TYPES, REFERENCE_LABELS } from "./js_files/behavior.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, REFERENCE_TYPES } from "./js_files/behavior.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -42,6 +43,7 @@ function Simulation() {
 
   // Behavior & Filter settings state & Ref
   const [behaviorList, setBehaviorList] = useState([]); // Behavior
+  const [collapsedBehaviorIds, setCollapsedBehaviorIds] = useState(new Set());
   const behaviorListRef = useRef([]); // Ref to hold the current behavior list for access in the animation loop
 
   // Agent editor state
@@ -49,77 +51,173 @@ function Simulation() {
 
   // ---- Handlers ----
   // ---- Behavior Handlers ----
-  function handleAddBehavior(behaviorIndex, newBehavior) {
-    // Add a new behavior to the behavior list (or add a behavior if behaviorIndex is null)
-    const newList = [...behaviorList];
-    newList.push(newBehavior);
-    setBehaviorList(newList);
+  function handleAddBehavior() {
+    // Add a new behavior to the behavior list.
+    setBehaviorList((currentList) => [...currentList, createBehavior(currentList)]);
   }
 
-  function handleUpdateBehavior(behaviorIndex, updatedBehavior) {
-    // Update the behavior at behaviorIndex with the updatedBehavior
-    const newList = [...behaviorList];
-    newList[behaviorIndex] = updatedBehavior;
-    setBehaviorList(newList);
+  function handleUpdateBehavior(behaviorId, updates) {
+    // Update the behavior with the matching behaviorId.
+    setBehaviorList((currentList) => currentList.map((behavior) => (
+      behavior.id === behaviorId ? { ...behavior, ...updates } : behavior
+    )));
   }
 
-  function handleDeleteBehavior(behaviorIndex) {
-    // Delete the behavior at behaviorIndex from the behavior list
-    const newList = [...behaviorList];
-    newList.splice(behaviorIndex, 1);
-    setBehaviorList(newList);
+  function handleDeleteBehavior(behaviorId) {
+    // Delete the behavior with the matching behaviorId from the behavior list.
+    setBehaviorList((currentList) => currentList.filter((behavior) => behavior.id !== behaviorId));
+    // Also remove that behavior from the collapsed card set, so deleted IDs do not stay in UI state.
+    setCollapsedBehaviorIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      nextIds.delete(behaviorId);
+      return nextIds;
+    });
+  }
+
+  function handleLoadBehaviorPreset(presetData) {
+    // Add behaviors loaded from a preset JSON file.
+    setBehaviorList((currentList) => {
+      const presetBehaviors = getPresetBehaviorArray(presetData);
+      const nextList = [...currentList];
+
+      presetBehaviors.forEach((behavior) => {
+        nextList.push(createBehaviorFromPreset(behavior, nextList));
+      });
+
+      return nextList;
+    });
+  }
+
+  function handleToggleBehaviorCollapsed(behaviorId) {
+    // Toggle whether the behavior card is expanded or collapsed.
+    setCollapsedBehaviorIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (nextIds.has(behaviorId)) {
+        nextIds.delete(behaviorId);
+      } else {
+        nextIds.add(behaviorId);
+      }
+      return nextIds;
+    });
+  }
+
+  function createBehavior(existingBehaviors) {
+    return {
+      id: createStableId(),
+      name: getUniqueBehaviorName(existingBehaviors, 'Behavior'),
+      targetProperty: TARGET_PROPERTIES.POSITION,
+      action: REFERENCE_TYPES.NEIGHBOR_REFERENCE,
+      offset: '',
+      filters: [],
+    };
+  }
+
+  function createBehaviorFromPreset(behavior, existingBehaviors) {
+    return {
+      id: createStableId(),
+      name: getUniqueBehaviorName(existingBehaviors, getPresetName(behavior.name)),
+      targetProperty: getValidValue(behavior.targetProperty, TARGET_PROPERTIES, TARGET_PROPERTIES.POSITION),
+      action: getValidValue(behavior.option, REFERENCE_TYPES, REFERENCE_TYPES.NEIGHBOR_REFERENCE),
+      offset: behavior.offset ?? '',
+      filters: Array.isArray(behavior.filters)
+        ? behavior.filters.map((filter) => createFilterFromPreset(filter))
+        : [],
+    };
+  }
+
+  function createFilter() {
+    return {
+      id: createStableId(),
+      filterType: 'method',
+      propertyType: FILTER_TYPES.DISTANCE,
+      methodType: METHOD_TYPES.CLOSEST,
+      rangeLow: '',
+      rangeHigh: '',
+    };
+  }
+
+  function createFilterFromPreset(filter) {
+    return {
+      id: createStableId(),
+      filterType: filter.filterType === 'ranged' ? 'ranged' : 'method',
+      propertyType: getValidValue(filter.filteredProperty, FILTER_TYPES, FILTER_TYPES.DISTANCE),
+      methodType: getValidValue(filter.methodType, METHOD_TYPES, METHOD_TYPES.CLOSEST),
+      rangeLow: filter.low ?? '',
+      rangeHigh: filter.high ?? '',
+    };
+  }
+
+  function createStableId() {
+    if (globalThis.crypto?.randomUUID) {
+      return globalThis.crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+
+  function getPresetBehaviorArray(presetData) {
+    if (Array.isArray(presetData)) return presetData;
+    if (Array.isArray(presetData?.behaviors)) return presetData.behaviors;
+    throw new Error('Preset must be an array or an object with a behaviors array.');
+  }
+
+  function getPresetName(name) {
+    if (typeof name === 'string' && name.trim() !== '') return name.trim();
+    return 'Behavior';
+  }
+
+  function getValidValue(value, valueSet, fallback) {
+    const numericValue = Number(value);
+    return Object.values(valueSet).includes(numericValue) ? numericValue : fallback;
+  }
+
+  // Give each behavior a unique default name when it is created.
+  function getUniqueBehaviorName(behaviors, baseName) {
+    const existingNames = new Set(behaviors.map((b) => b.name));
+
+    if (!existingNames.has(baseName)) return baseName;
+
+    let suffix = 1;
+    let candidate = `${baseName} ${suffix}`;
+
+    while (existingNames.has(candidate)) {
+      suffix += 1;
+      candidate = `${baseName} ${suffix}`;
+    }
+
+    return candidate;
   }
 
   // ---- Filter Handlers ----
-  function handleAddFilter(behaviorIndex, filterIndex) {
-    // Add a new filter to the behavior at behaviorIndex (or add a filter if filterIndex is null)
-    // using structuredClone to avoid mutating the existing behavior/filter objects (deep copy)
-    const newList = structuredClone(behaviorList);
-    newList[behaviorIndex].filters.push({ filterType: 'method', 
-      propertyType: FILTER_TYPES.DISTANCE, 
-      methodType: METHOD_TYPES.CLOSEST,
-      rangeLow: '',
-      rangeHigh: '' }); // Add a default filter, user can modify it in the editor
-    setBehaviorList(newList);
+  function handleAddFilter(behaviorId) {
+    // Add a new filter to the behavior with the matching behaviorId.
+    setBehaviorList((currentList) => currentList.map((behavior) => (
+      behavior.id === behaviorId
+        ? { ...behavior, filters: [...behavior.filters, createFilter()] }
+        : behavior
+    )));
   }
 
-  function handleUpdateFilter(behaviorIndex, filterIndex, updatedFilter) {
-    // Update the filter at filterIndex of the behavior at behaviorIndex with the updatedFilter
-    const newList = structuredClone(behaviorList);
-    newList[behaviorIndex].filters[filterIndex] = updatedFilter;
-    setBehaviorList(newList);
+  function handleUpdateFilter(behaviorId, filterId, updates) {
+    // Update the filter with the matching filterId inside the matching behavior.
+    setBehaviorList((currentList) => currentList.map((behavior) => (
+      behavior.id === behaviorId
+        ? {
+            ...behavior,
+            filters: behavior.filters.map((filter) => (
+              filter.id === filterId ? { ...filter, ...updates } : filter
+            )),
+          }
+        : behavior
+    )));
   }
 
-  function handleDeleteFilter(behaviorIndex, filterIndex) {
-    // Delete the filter at filterIndex of the behavior at behaviorIndex from the behavior list
-    const newList = structuredClone(behaviorList);
-    newList[behaviorIndex].filters.splice(filterIndex, 1);
-    setBehaviorList(newList);
-  }
-
-  // ---- Offset Handlers ----
-  // used to update the value of the offset for that behavior when the user changes the input in the editor
-  function handleUpdateOffset(behaviorIndex, targetProperty, parameters) {
-    // Depending on the targetProperty, updating the corresponding parameters in the behavior's filters
-    // Calls handleUpdateBehavior 
-    const behavior = behaviorList[behaviorIndex];
-    switch (targetProperty) {
-      case TARGET_PROPERTIES.SPEED: {
-        // SINGLE VALUE
-        handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
-        break;
-      }
-      case TARGET_PROPERTIES.ANGLE: {
-        // SINGLE VALUE (in degrees, agent.js converts to radians when applying)
-        handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
-        break;
-      }
-      case TARGET_PROPERTIES.POSITION: {
-        // TWO VALUES (x and y offsets)
-        handleUpdateBehavior(behaviorIndex, { ...behavior, offset: Number(parameters) });
-        break;
-      }
-    }
+  function handleDeleteFilter(behaviorId, filterId) {
+    // Delete the filter with the matching filterId from the matching behavior.
+    setBehaviorList((currentList) => currentList.map((behavior) => (
+      behavior.id === behaviorId
+        ? { ...behavior, filters: behavior.filters.filter((filter) => filter.id !== filterId) }
+        : behavior
+    )));
   }
 
   // ---- Simulation FPS ----
@@ -198,6 +296,7 @@ function Simulation() {
     }
   }
 
+  // Main Simulation
   return (
     <div className="simulation-page"> 
         <Header />
@@ -239,9 +338,6 @@ function Simulation() {
                 </div>
               </div>
 
-              {/* A dividing line */}
-              <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
-
               {simulationScale === 'small' && ( // will only show up if we have small simulation scale selected, which allows for detailed agent settings and creation. Large scale will only allow for mass creation with limited settings to avoid overwhelming the user and the system.
               <div className = "input-group">
                   <label htmlFor="agent-count-input">Click here to add a new agent:</label>
@@ -279,8 +375,11 @@ function Simulation() {
                 )}
               </div>
 
-              {/* A dividing line */}
-              <hr style={{ border: 'none', borderTop: '1px solid #e0e0e0', margin: '4px 0' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0' }}>
+                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #d0d0d0' }} />
+                <span style={{ color: '#888', fontSize: 11, fontWeight: 600 }}>Speed & Angle Limits</span>
+                <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #d0d0d0' }} />
+              </div>
 
               {/* Max Speed Text Box*/}
               <div className="input-group">
@@ -351,142 +450,18 @@ function Simulation() {
               onDeselect={() => setSelectedAgent(null)}
             />
             
-            {/* Behavior & Filter Settings*/}
-            <div className="panel-card">
-              <h2 className="panel-section-title">Behavior & Filter Settings</h2>
-              
-              {behaviorList.map((behavior, behaviorIndex) => (
-                <div key={behaviorIndex} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 6 }}>
-                  <button
-                    className="btn-danger"
-                    onClick={() => handleDeleteBehavior(behaviorIndex)}
-                    aria-label="Delete behavior"
-                    style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
-                  >×</button>
-                  <h2 className="panel-section-title">{behavior.name}</h2> 
-                  {/* Names */}
-                  <div className="input-group">
-                    <label>Behavior Name</label>
-                    <input
-                      type="text"
-                      placeholder={`Behavior ${behaviorIndex + 1}`}
-                      value={behavior.name}
-                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, name: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="input-group">
-                    <label>Option</label>
-                    <select
-                      value={behavior.action}
-                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, action: Number(e.target.value) })}
-                    >
-                      {Object.entries(REFERENCE_LABELS).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Target Property Dropdown*/}
-                  <div className="input-group">
-                    <label>Target Property</label>
-                    <select
-                      value={behavior.targetProperty}
-                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, targetProperty: Number(e.target.value) })}
-                    >
-                      {Object.entries(PROPERTY_LABELS).map(([val, label]) => (
-                        <option key={val} value={val}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  
-                  {/* Position: Relative Angle*/}
-                  <div className="input-group">
-                    <label>Offset {(behavior.targetProperty === TARGET_PROPERTIES.ANGLE || behavior.targetProperty === TARGET_PROPERTIES.POSITION) ? '(degrees)' : ''}</label> {/* Bearing and Angle both use degree offsets */}
-                    <input
-                      type="number"
-                      value={behavior.offset}
-                      onChange={(e) => handleUpdateBehavior(behaviorIndex, { ...behavior, offset: e.target.value })}
-                    />
-                  </div>
-
-                  {/* Filters sub-box */}
-                  <div className="panel-card" style={{ marginTop: 8 }}>
-                    <h3 className="panel-section-title" style={{ margin: '2px 0 6px 0' }}>Filters</h3>
-
-                    {behavior.filters.map((filter, filterIndex) => (
-                      <div key={filterIndex} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 6 }}>
-                        <button
-                          className="btn-secondary"
-                          onClick={() => handleDeleteFilter(behaviorIndex, filterIndex)}
-                          aria-label="Remove filter"
-                          style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
-                        >×</button>
-
-                        <div className="input-group">
-                          <label>Type</label>
-                          <div className="radio-group">
-                            {['method', 'ranged'].map(t => ( // method, ranged
-                              <label key={t} className="radio-option">
-                                <input
-                                  type="radio"
-                                  name={`filter-type-${behaviorIndex}-${filterIndex}`}
-                                  value={t}
-                                  checked={filter.filterType === t}
-                                  onChange={() => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, filterType: t })}
-                                />
-                                {' '}{t.charAt(0).toUpperCase() + t.slice(1)}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="input-group">
-                          <label>Property</label>
-                          <select value={filter.propertyType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, propertyType: Number(e.target.value) })}>
-                            {Object.entries(FILTER_LABELS).map(([val, label]) => (
-                              <option key={val} value={val}>{label}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {filter.filterType === 'method' && (
-                          <div className="input-group">
-                            <label>Method</label>
-                            <select value={filter.methodType} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, methodType: Number(e.target.value) })}>
-                              {Object.entries(METHOD_LABELS_BY_PROPERTY[filter.propertyType] ?? METHOD_LABELS).map(([val, label]) => (
-                                <option key={val} value={val}>{label}</option>
-                              ))}
-                            </select>
-                          </div>
-                        )}
-
-                        {filter.filterType === 'ranged' && (
-                          <div className="input-row">
-                            <div className="input-group">
-                              <label>Low</label>
-                              <input type="number" value={filter.rangeLow} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeLow: e.target.value })} />
-                            </div>
-                            <div className="input-group">
-                              <label>High</label>
-                              <input type="number" value={filter.rangeHigh} onChange={(e) => handleUpdateFilter(behaviorIndex, filterIndex, { ...filter, rangeHigh: e.target.value })} />
-                            </div>
-                          </div>
-                        )}
-
-                        
-                      </div>
-                    ))}
-
-                    <button className="btn-secondary" onClick={() => handleAddFilter(behaviorIndex)}>+ Add Filter</button>
-                  </div>
-                </div>
-              ))}
-
-              <div className="btn-row" style={{ marginBottom: 12 }}>
-                <button className="btn-primary" onClick={() => handleAddBehavior(null, { name: `Behavior ${behaviorList.length + 1}`, targetProperty: TARGET_PROPERTIES.POSITION, action: REFERENCE_TYPES.NEIGHBOR_REFERENCE, filters: [] })}>+ Add Behavior</button>
-              </div>
-            </div>
+            <BehaviorCard
+              behaviorList={behaviorList}
+              collapsedBehaviorIds={collapsedBehaviorIds}
+              onAddBehavior={handleAddBehavior}
+              onUpdateBehavior={handleUpdateBehavior}
+              onDeleteBehavior={handleDeleteBehavior}
+              onLoadBehaviorPreset={handleLoadBehaviorPreset}
+              onToggleBehaviorCollapsed={handleToggleBehaviorCollapsed}
+              onAddFilter={handleAddFilter}
+              onUpdateFilter={handleUpdateFilter}
+              onDeleteFilter={handleDeleteFilter}
+            />
             
             {/* Following Code Segement is no longer needed*/}
             {/*
