@@ -20,6 +20,14 @@ function parseNumberOrDefault(value, fallback) {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function getCanvasLogicalWidth(canvas) {
+    return canvas?.logicalWidth ?? canvas?.width ?? 0;
+}
+
+function getCanvasLogicalHeight(canvas) {
+    return canvas?.logicalHeight ?? canvas?.height ?? 0;
+}
+
 export class Agent extends Entity{
     constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, ctx, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + id + " has been created");
@@ -119,17 +127,19 @@ export class Agent extends Entity{
 
     getVirtualOffsets(range) {
         let horizontalOffset = 0, verticalOffset = 0;
+        const canvasWidth = getCanvasLogicalWidth(this.canvas);
+        const canvasHeight = getCanvasLogicalHeight(this.canvas);
 
-        if (this.position.x + range > this.canvas.width) {
-            horizontalOffset = -this.canvas.width;
+        if (this.position.x + range > canvasWidth) {
+            horizontalOffset = -canvasWidth;
         } else if (this.position.x - range < 0) {
-            horizontalOffset = this.canvas.width;
+            horizontalOffset = canvasWidth;
         }
 
-        if (this.position.y + range > this.canvas.height) {
-            verticalOffset = -this.canvas.height;
+        if (this.position.y + range > canvasHeight) {
+            verticalOffset = -canvasHeight;
         } else if (this.position.y - range < 0) {
-            verticalOffset = this.canvas.height;
+            verticalOffset = canvasHeight;
         }
 
         const offsets = [];
@@ -233,16 +243,19 @@ export class Agent extends Entity{
 
     // Wrap to the other side of the canvas if out of bounds
     warpAgent() {
-        if (this.position.x >= this.canvas.width) {
-            this.position.x -= this.canvas.width;
+        const canvasWidth = getCanvasLogicalWidth(this.canvas);
+        const canvasHeight = getCanvasLogicalHeight(this.canvas);
+
+        if (this.position.x >= canvasWidth) {
+            this.position.x -= canvasWidth;
         } else if (this.position.x < 0) {
-            this.position.x += this.canvas.width;
+            this.position.x += canvasWidth;
         }
 
-        if (this.position.y >= this.canvas.height) {
-            this.position.y -= this.canvas.height;
+        if (this.position.y >= canvasHeight) {
+            this.position.y -= canvasHeight;
         } else if (this.position.y < 0) {
-            this.position.y += this.canvas.height;
+            this.position.y += canvasHeight;
         }
     }
 

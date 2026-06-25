@@ -5,6 +5,7 @@ import AddMultipleAgentsCard from "./components/AddMultipleAgentsCard.jsx";
 import AgentEditor from "./components/AgentEditor.jsx";
 import MiscPanel from "./components/MiscPanel.jsx";
 import BehaviorCard from "./components/BehaviorCard.jsx";
+import ObstacleCard from "./components/ObstacleCard.jsx";
 /* 
 These imports ensures the correct styles and components are included for the Simulation page.
 */
@@ -20,11 +21,31 @@ const CANVAS_WIDTH = 500;
 const CANVAS_HEIGHT = 500;
 const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
 
+function getCanvasLogicalWidth(canvas) {
+  return canvas?.logicalWidth ?? canvas?.width ?? CANVAS_WIDTH;
+}
+
+function getCanvasLogicalHeight(canvas) {
+  return canvas?.logicalHeight ?? canvas?.height ?? CANVAS_HEIGHT;
+}
+
+function configureHighDpiCanvas(canvas, ctx) {
+  const pixelRatio = window.devicePixelRatio || 1;
+  canvas.logicalWidth = CANVAS_WIDTH;
+  canvas.logicalHeight = CANVAS_HEIGHT;
+  canvas.width = Math.round(CANVAS_WIDTH * pixelRatio);
+  canvas.height = Math.round(CANVAS_HEIGHT * pixelRatio);
+  canvas.style.width = `${CANVAS_WIDTH}px`;
+  canvas.style.height = `${CANVAS_HEIGHT}px`;
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+}
+
 function Simulation() {
   /* Canvas */
   const canvasRef = useRef(null);
   const ctxRef = useRef(null); // Ref to hold the canvas context
   const agentsArrayRef = useRef([]); // Ref to hold the internal agents array (used by animation loop & Agent constructor)
+  const obstaclesArrayRef = useRef([]); // Ref to hold obstacle objects used by the animation loop
 
   const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
   const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
@@ -36,10 +57,13 @@ function Simulation() {
 
   const [agents, setAgents] = useState([]); // State to hold agents for display in the control panel
   const [agentsListExpanded, setAgentsListExpanded] = useState(false); // State to toggle agents list visibility
+  const [obstacles, setObstacles] = useState([]); // State to hold obstacles for display in the control panel
+  const [obstaclesListExpanded, setObstaclesListExpanded] = useState(false); // State to toggle obstacles list visibility
 
   // Adding Agent States
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [showAddMultipleAgents, setShowAddMultipleAgents] = useState(false);
+  const [showAddObstacle, setShowAddObstacle] = useState(false);
 
   // Behavior & Filter settings state & Ref
   const [behaviorList, setBehaviorList] = useState([]); // Behavior
@@ -241,9 +265,7 @@ function Simulation() {
     const ctx = canvas.getContext('2d'); // same thing as the HTML version
     ctxRef.current = ctx; // Store in ref for access outside useEffect
 
-    // Change canvas dimensions here
-    canvas.width = CANVAS_WIDTH;
-    canvas.height = CANVAS_HEIGHT;
+    configureHighDpiCanvas(canvas, ctx);
 
     // Array to hold all agents
     const agentsArray = [];
@@ -262,7 +284,8 @@ function Simulation() {
       const elapsed = currentTime - lastFrameTime;
       if (elapsed >= frameInterval) {
         lastFrameTime = currentTime - (elapsed % frameInterval);
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
+        obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
         agentsArray.forEach(agent => agent.move(maxSpeedRef.current));
         agentsArray.forEach(agent => agent.behave(agentsArray, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
       }
@@ -277,10 +300,9 @@ function Simulation() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    // Scale click coords to match internal canvas resolution (CSS size may differ from canvas width/height)
-    // With help of Claude
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
+    // Scale click coords to match the logical simulation size.
+    const scaleX = getCanvasLogicalWidth(canvas) / rect.width;
+    const scaleY = getCanvasLogicalHeight(canvas) / rect.height;
     const clickX = (e.clientX - rect.left) * scaleX;
     const clickY = (e.clientY - rect.top) * scaleY;
 
@@ -449,6 +471,58 @@ function Simulation() {
               }}
               onDeselect={() => setSelectedAgent(null)}
             />
+
+            {/* Obstacle Dashboard */}
+            <div className="panel-card">
+              <h2 className="panel-section-title">Obstacle Dashboard</h2>
+
+              <div className="input-group">
+                <button className="btn-primary" disabled={showAddObstacle} onClick={() => setShowAddObstacle(true)}>Create Obstacle</button>
+              </div>
+
+              {obstacles.length > 0 && (
+                <div className="input-group">
+                  <button
+                    className="btn-danger"
+                    onClick={() => {
+                      obstaclesArrayRef.current.length = 0;
+                      setObstacles([]);
+                    }}
+                  >Delete All Obstacles</button>
+                </div>
+              )}
+
+              <div className="agents-list-container">
+                <label>Obstacle List</label>
+                <button
+                  className="agents-list-toggle"
+                  onClick={() => setObstaclesListExpanded(!obstaclesListExpanded)}
+                >
+                  {obstacles.length} {obstacles.length === 1 ? 'Obstacle' : 'Obstacles'} {obstaclesListExpanded ? '▲' : '▼'} {obstaclesListExpanded ? '(Click to Collapse)' : '(Click to Expand)'}
+                </button>
+                {obstaclesListExpanded && (
+                  <ul className="agents-list">
+                    {obstacles.map((obstacle, index) => (
+                      <li key={`${obstacle.ID}-${index}`} className="agent-item">
+                        <span className="agent-color" style={{ backgroundColor: obstacle.color }}></span>
+                        {obstacle.ID} ({obstacle.shapeType === 'circle' ? 'Circle' : 'Polygon'})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            {showAddObstacle && (
+              <ObstacleCard
+                ctxRef={ctxRef}
+                obstaclesArrayRef={obstaclesArrayRef}
+                canvasWidth={CANVAS_WIDTH}
+                canvasHeight={CANVAS_HEIGHT}
+                onObstaclesChanged={(updatedObstacles) => setObstacles(updatedObstacles)}
+                onClose={() => setShowAddObstacle(false)}
+              />
+            )}
             
             <BehaviorCard
               behaviorList={behaviorList}

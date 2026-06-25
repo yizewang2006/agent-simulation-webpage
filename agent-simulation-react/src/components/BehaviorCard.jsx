@@ -121,10 +121,10 @@ function BehaviorCard({
                     className="btn-danger"
                     onClick={() => onDeleteBehavior(behavior.id)}
                     aria-label="Delete behavior"
-                    style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
-                  >×</button>
+                    style={{ position: 'absolute', top: 6, right: 8, width: 62, height: 26, padding: 0, fontSize: 12 }}
+                  >Delete</button>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 28 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 72 }}>
                     <button
                       className="btn-secondary"
                       onClick={() => onToggleBehaviorCollapsed(behavior.id)}
@@ -198,8 +198,8 @@ function BehaviorCard({
                               className="btn-secondary"
                               onClick={() => onDeleteFilter(behavior.id, filter.id)}
                               aria-label="Remove filter"
-                              style={{ position: 'absolute', top: 6, right: 8, width: 24, height: 24, padding: 0, fontSize: 14 }}
-                            >×</button>
+                              style={{ position: 'absolute', top: 6, right: 8, width: 66, height: 26, padding: 0, fontSize: 12 }}
+                            >Remove</button>
 
                             <div className="input-group">
                               <label>Type</label>

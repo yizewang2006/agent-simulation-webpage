@@ -29,7 +29,7 @@ export const PROPERTY_LABELS = {
 export const FILTER_LABELS = {
   [FILTER_TYPES.DISTANCE]: 'Distance',
   [FILTER_TYPES.SPEED] : 'Speed',
-  [FILTER_TYPES.RELATIVE_ANGLE] : 'Angle Difference',
+  [FILTER_TYPES.RELATIVE_ANGLE] : 'Heading Difference (0-360)',
   [FILTER_TYPES.HEADING] : 'Neighbor Heading',
 }
 
@@ -42,7 +42,7 @@ export const METHOD_LABELS = {
 export const METHOD_LABELS_BY_PROPERTY = {
   [FILTER_TYPES.DISTANCE]:       { [METHOD_TYPES.CLOSEST]: 'Closest',      [METHOD_TYPES.FARTHEST]: 'Farthest',      [METHOD_TYPES.AVERAGE]: 'Average' },
   [FILTER_TYPES.SPEED]:          { [METHOD_TYPES.CLOSEST]: 'Slowest',      [METHOD_TYPES.FARTHEST]: 'Fastest',       [METHOD_TYPES.AVERAGE]: 'Average' },
-  [FILTER_TYPES.RELATIVE_ANGLE]: { [METHOD_TYPES.CLOSEST]: 'Smallest Difference', [METHOD_TYPES.FARTHEST]: 'Largest Difference', [METHOD_TYPES.AVERAGE]: 'Average' },
+  [FILTER_TYPES.RELATIVE_ANGLE]: { [METHOD_TYPES.CLOSEST]: 'Smallest Heading Difference', [METHOD_TYPES.FARTHEST]: 'Largest Heading Difference', [METHOD_TYPES.AVERAGE]: 'Average' },
   [FILTER_TYPES.HEADING]:        { [METHOD_TYPES.CLOSEST]: 'Lowest Heading', [METHOD_TYPES.FARTHEST]: 'Highest Heading', [METHOD_TYPES.AVERAGE]: 'Average' },
 };
 
@@ -337,11 +337,13 @@ export function getBehaviorTarget(behavior, self, detectedAgents) {
 
 export function offsetCorrection(diffX, diffY, canvas) {
   if (!canvas) return { diffX, diffY };
-  if (canvas.width <= 0 || canvas.height <= 0) return { diffX, diffY };
-  while (diffX > canvas.width / 2) diffX -= canvas.width;
-  while (diffX < -canvas.width / 2) diffX += canvas.width;
-  while (diffY > canvas.height / 2) diffY -= canvas.height;
-  while (diffY < -canvas.height / 2) diffY += canvas.height;
+  const canvasWidth = canvas.logicalWidth ?? canvas.width;
+  const canvasHeight = canvas.logicalHeight ?? canvas.height;
+  if (canvasWidth <= 0 || canvasHeight <= 0) return { diffX, diffY };
+  while (diffX > canvasWidth / 2) diffX -= canvasWidth;
+  while (diffX < -canvasWidth / 2) diffX += canvasWidth;
+  while (diffY > canvasHeight / 2) diffY -= canvasHeight;
+  while (diffY < -canvasHeight / 2) diffY += canvasHeight;
   return { diffX, diffY };
 }
 
@@ -356,8 +358,7 @@ export function getWrappedOffset(fromPosition, toPosition, canvas) {
 export function getHeadingDifferenceDeg(self, neighbor) {
   const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
   const neighborHeading = (neighbor.angle * 180 / Math.PI + 360) % 360;
-  const headingDiff = Math.abs(neighborHeading - selfHeading);
-  return headingDiff > 180 ? 360 - headingDiff : headingDiff;
+  return (neighborHeading - selfHeading + 360) % 360;
 }
 
 export function isAngleInRange(value, low, high) {
@@ -373,7 +374,7 @@ function parseRangeBound(value, fallback) {
 
 // Some default high/low values
 function getDefaultRangeHigh(propertyType) {
-  if (propertyType === FILTER_TYPES.RELATIVE_ANGLE) return 180;
+  if (propertyType === FILTER_TYPES.RELATIVE_ANGLE) return 360;
   if (propertyType === FILTER_TYPES.HEADING) return 360;
   return Infinity;
 }

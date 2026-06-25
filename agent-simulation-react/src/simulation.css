@@ -107,9 +107,9 @@
 }
 
 .control-panel input,
-.control-panel select {
+.control-panel select,
+.control-panel textarea {
   width: 100%;
-  height: 40px;
   box-sizing: border-box;
   padding: 0 12px;
   border: 1px solid #ccc;
@@ -118,6 +118,16 @@
   font-size: 14px;
   background-color: #ffffff;
   color: #303030;
+}
+
+.control-panel input,
+.control-panel select {
+  height: 40px;
+}
+
+.control-panel textarea {
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 /* Controls the checkbox's style*/
@@ -168,7 +178,8 @@
 }
 
 .control-panel input:focus,
-.control-panel select:focus {
+.control-panel select:focus,
+.control-panel textarea:focus {
   outline: none;
   border-color: #888;
 }

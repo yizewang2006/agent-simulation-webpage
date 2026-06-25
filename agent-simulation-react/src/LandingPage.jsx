@@ -36,9 +36,8 @@ export default function LandingPage() {
             <span className="landing-btn-badge">Sandbox</span>
           </button>
 
-          <button className="btn-secondary landing-btn" disabled>
+          <button className="btn-secondary landing-btn" onClick={() => navigate('/tutorial')}>
             Tutorial / Manual
-            <span className="landing-btn-badge">Coming Soon</span>
           </button>
 
           <button

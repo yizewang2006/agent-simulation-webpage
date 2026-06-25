@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Simulation from "./Simulation";
 import LandingPage from "./LandingPage";
+import Tutorial from "./Tutorial"
 
 function App() {
   return (
@@ -8,6 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/simulation" element={<Simulation />} />
+        <Route path="/tutorial" element={<Tutorial />} />
       </Routes>
     </BrowserRouter>
   );
