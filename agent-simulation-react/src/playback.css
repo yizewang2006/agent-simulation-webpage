@@ -1,0 +1,144 @@
+.playback-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.playback-main {
+  flex: 1;
+  box-sizing: border-box;
+  padding: 24px;
+  background: #f0f0f0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.playback-shell {
+  width: min(100%, 560px);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.playback-canvas-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.playback-canvas {
+  width: 500px;
+  height: 500px;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  display: block;
+  background: #ffffff;
+  border: 5px solid #000000;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.playback-controls {
+  background: #ffffff;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.playback-control-header,
+.playback-frame-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.playback-title {
+  margin: 0;
+  color: #303030;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.playback-title-icon {
+  flex: 0 0 auto;
+}
+
+.playback-status {
+  min-width: 132px;
+  height: 30px;
+  border-radius: 4px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.playback-status.ready {
+  background: #2e7d32;
+}
+
+.playback-status.empty {
+  background: #5b5c5e;
+}
+
+.playback-frame-label,
+.playback-frame-count {
+  color: #303030;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.playback-button-row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 8px;
+}
+
+.playback-button {
+  height: 40px;
+  padding: 0;
+  border-radius: 8px;
+  border: none;
+  background: #e0e0e0;
+  color: #303030;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playback-button:hover {
+  background: #d0d0d0;
+}
+
+.playback-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.playback-button-main {
+  background: #d4a017;
+  color: #ffffff;
+}
+
+.playback-button-main:hover {
+  background: #b8890f;
+}
+
+.playback-slider {
+  width: 100%;
+  accent-color: #d4a017;
+}

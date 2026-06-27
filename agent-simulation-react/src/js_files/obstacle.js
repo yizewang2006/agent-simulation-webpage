@@ -12,6 +12,16 @@ function drawObstacleLabel(ctx, label, x, y) {
   ctx.textBaseline = "alphabetic";
 }
 
+/* Have properties: 
+Speed, Heading, Position
+Only Self-Space
+Change Size
+Able to drag around
+
+When selected "entity type", disable the "method type"
+
+*/
+
 // Obstacle collision implementation written by Elaine Ding.
 // Supports polygon obstacles, drawing, current collision checks, and linear collision prediction.
 export class Obstacle extends Entity {

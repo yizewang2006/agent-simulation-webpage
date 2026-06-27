@@ -18,7 +18,7 @@
 }
 
 .canvas-section {
-  background-color: #ffffff;
+  background-color: transparent;
   overflow: hidden;
 }
 
@@ -26,8 +26,13 @@
   width: 500px;
   height: 500px;
   display: block;
+  background-color: #ffffff;
   border: 5px solid #000000;
   border-radius: 8px;
+}
+
+.simulation-canvas-recording {
+  border-color: #ff0000;
 }
 
 /* for all control panels*/
@@ -97,6 +102,17 @@
   font-size: 17px;
   font-weight: 600;
 }
+
+.title-with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title-icon {
+  flex: 0 0 auto;
+}
+
 /* Unified input control styles */
 .control-panel label {
   font-family: 'Montserrat', sans-serif;
@@ -308,11 +324,170 @@
   background-color: #f5c6c0;
 }
 
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.button-icon {
+  flex: 0 0 auto;
+}
+
+.icon-only-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* Add/Remove Agent Little Area*/
 .btn-row {
   display: flex;
   flex-direction: row;
   gap: 8px;
+}
+
+/* Playback System */
+.recording-card {
+  gap: 12px;
+}
+
+.recording-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.recording-status-label {
+  color: #303030;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.recording-status-badge {
+  min-width: 148px;
+  height: 30px;
+  border-radius: 4px;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.recording-status-badge.standby {
+  background-color: #2e7d32;
+}
+
+.recording-status-badge.recording {
+  background-color: #c62828;
+}
+
+.recording-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.recording-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.recording-btn-icon {
+  flex: 0 0 auto;
+}
+
+.recording-inline-message {
+  margin: -4px 0 0 0;
+  color: #c62828;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.recording-section-divider {
+  border-top: 1px solid #d0d0d0;
+  height: 0;
+}
+
+.recording-list-section {
+  padding-top: 2px;
+}
+
+.recording-list-heading {
+  color: #303030;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.recording-summary {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.recording-summary-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recording-summary-name,
+.recording-summary-frames {
+  font-family: 'Montserrat', sans-serif;
+  color: #303030;
+}
+
+.recording-summary-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recording-summary-frames {
+  font-size: 12px;
+  font-weight: 500;
+  color: #888;
+}
+
+.recording-summary-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.recording-summary-button {
+  width: auto;
+  height: 30px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+}
+
+.recording-empty-state {
+  margin: 6px 0 0 0;
+  color: #888;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
 }
 
 /* Agents List Styles */
@@ -340,6 +515,12 @@
 
 .agents-list-toggle:hover {
   background-color: #6d6e70;
+}
+
+.toggle-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .agents-list {

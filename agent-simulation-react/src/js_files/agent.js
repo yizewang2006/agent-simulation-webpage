@@ -324,22 +324,5 @@ export class Agent extends Entity{
 
         // Update facing angle
         this.angle = Math.atan2(this.dy, this.dx);
-        }
-    
-    // for simulation - we report both important properties and attributes
-    reportInformation() {
-        return {
-            _drawFOV: this.drawFOV,
-            _x: this.position.x,
-            _y: this.position.y,
-            _radius : this.radius,
-            _dx: this.dx,
-            _dy: this.dy,
-            _colorHex: this.colorHex,
-            _fovRadius: this.fovRadius,
-            _fovAngle: this.fovAngle,
-            _angle: this.angle,
-            _id: this.id
-        }
     }
 }

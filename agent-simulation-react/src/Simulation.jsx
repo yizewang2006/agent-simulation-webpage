@@ -6,6 +6,8 @@ import AgentEditor from "./components/AgentEditor.jsx";
 import MiscPanel from "./components/MiscPanel.jsx";
 import BehaviorCard from "./components/BehaviorCard.jsx";
 import ObstacleCard from "./components/ObstacleCard.jsx";
+import RecordingCard from "./components/RecordingCard.jsx";
+import { Blocks, ChevronDown, ChevronUp, CopyPlus, Settings, SquarePlus, UserCog } from 'lucide-react';
 /* 
 These imports ensures the correct styles and components are included for the Simulation page.
 */
@@ -29,6 +31,7 @@ function getCanvasLogicalHeight(canvas) {
   return canvas?.logicalHeight ?? canvas?.height ?? CANVAS_HEIGHT;
 }
 
+// Better image quality
 function configureHighDpiCanvas(canvas, ctx) {
   const pixelRatio = window.devicePixelRatio || 1;
   canvas.logicalWidth = CANVAS_WIDTH;
@@ -38,6 +41,28 @@ function configureHighDpiCanvas(canvas, ctx) {
   canvas.style.width = `${CANVAS_WIDTH}px`;
   canvas.style.height = `${CANVAS_HEIGHT}px`;
   ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+}
+
+// Capture one JSON-friendly frame. Playback can redraw from this data without running behavior again.
+function createFrameSnapshot(agentsArray, frameIndex, recordingStartTime) {
+  return {
+    frameIndex,
+    timestamp: performance.now() - recordingStartTime,
+    agents: agentsArray.map((agent) => ({
+      id: agent.id,
+      x: agent.position.x,
+      y: agent.position.y,
+      radius: agent.radius,
+      dx: agent.dx,
+      dy: agent.dy,
+      angle: agent.angle,
+      colorHex: agent.colorHex,
+      fovRadius: agent.fovRadius,
+      fovAngle: agent.fovAngle,
+      // Store the final visual FOV decision, matching Agent.draw().
+      showFOV: agent.isSpecial && agent.showFOV !== false,
+    })),
+  };
 }
 
 function Simulation() {
@@ -73,7 +98,108 @@ function Simulation() {
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
 
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordings, setRecordings] = useState([]);
+  const [recordingMessage, setRecordingMessage] = useState('');
+  const hasRecording = recordings.length > 0;
+
+  const isRecordingRef = useRef(false);
+  const recordedFramesRef = useRef([]);
+  const recordingStartTimeRef = useRef(0);
+  const recordedFrameIndexRef = useRef(0);
+
   // ---- Handlers ----
+  // ---- Recording Handlers ----
+  function handleStartRecording() {
+    if (agentsArrayRef.current.length === 0) {
+      setRecordingMessage('Please create at least one agent before recording.');
+      return;
+    }
+
+    // Start from a clean recording buffer so a new take never mixes with old frames.
+    recordedFramesRef.current = [];
+    recordingStartTimeRef.current = performance.now();
+    recordedFrameIndexRef.current = 0;
+
+    // clean out recording message, update states
+    setRecordingMessage('');
+    setShowAddAgent(false);
+    setShowAddMultipleAgents(false);
+    setShowAddObstacle(false);
+    setIsRecording(true);
+    isRecordingRef.current = true;
+  }
+
+  function handleStopRecording() {
+    setRecordingMessage('');
+    setIsRecording(false);
+    isRecordingRef.current = false;
+
+    // Package the captured frames with enough metadata for the playback window.
+    setRecordings((currentRecordings) => [
+      ...currentRecordings,
+      {
+        id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
+        name: `Recording ${currentRecordings.length + 1}`,
+        createdAt: Date.now(),
+        fps: fpsRef.current,
+        canvas: {
+          width: CANVAS_WIDTH,
+          height: CANVAS_HEIGHT,
+        },
+        frames: recordedFramesRef.current, // frames being recorded
+      },
+    ]);
+  }
+
+  function handleOpenPlayback(recording) {
+    const recWin = window.open(
+      '/playback',
+      'AgentSimulationPlayback',
+      'width=700,height=820'
+    );
+    // If no window, display error message
+    if (!recWin) {
+      setRecordingMessage('Playback window was blocked by the browser.');
+      return;
+    }
+
+    // Wait until the playback page has registered window.loadRecording, then send this recording.
+    const timer = window.setInterval(() => {
+      if (recWin.closed) {
+        window.clearInterval(timer);
+        return;
+      }
+
+      if (typeof recWin.loadRecording === 'function') {
+          recWin.loadRecording(recording);
+          recWin.focus();
+          window.clearInterval(timer);
+      }
+    }, 50);
+  }
+
+  function handleDownloadPlayback(recording) {
+    // Convert the recording object into readable JSON text, then wrap it as file-like browser data.
+    const blob = new Blob(
+      [JSON.stringify(recording, null, 2)],
+      { type: 'application/json' }
+    );
+
+    // Create a temporary URL that points to the in-memory JSON file.
+    const url = URL.createObjectURL(blob);
+
+    // Build a temporary download link and trigger it without adding visible UI.
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${recording.name.replace(/\s+/g, '_').toLowerCase()}.json`;
+    link.click();
+
+    // Release the temporary URL after the browser starts the download.
+    URL.revokeObjectURL(url);
+  }
+
   // ---- Behavior Handlers ----
   function handleAddBehavior() {
     // Add a new behavior to the behavior list.
@@ -288,6 +414,17 @@ function Simulation() {
         obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
         agentsArray.forEach(agent => agent.move(maxSpeedRef.current));
         agentsArray.forEach(agent => agent.behave(agentsArray, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
+        // Record the post-behavior state that should be reproduced during playback.
+        if (isRecordingRef.current) {
+          recordedFramesRef.current.push(
+            createFrameSnapshot(
+              agentsArray,
+              recordedFrameIndexRef.current,
+              recordingStartTimeRef.current
+            )
+          );
+          recordedFrameIndexRef.current += 1;
+        }
       }
     }
     animate(0);
@@ -324,14 +461,23 @@ function Simulation() {
         <Header />
         <div className="simulation-container">
           {/*Canvas Section*/}
-          <div className="canvas-section"><canvas ref={canvasRef} className="simulation-canvas" onClick={handleCanvasClick}></canvas></div>
+          <div className="canvas-section">
+            <canvas
+              ref={canvasRef}
+              className={`simulation-canvas ${isRecording ? 'simulation-canvas-recording' : ''}`}
+              onClick={handleCanvasClick}
+            ></canvas>
+          </div>
           {/*Control Panel*/}
           <div className="control-panel">
             <h1>Control Panel</h1>
             
             
               <div className="panel-card">
-              <h2 className="panel-section-title">Agent Configuration</h2>
+              <h2 className="panel-section-title title-with-icon">
+                <UserCog className="section-title-icon" size={18} aria-hidden="true" />
+                Agent Configuration
+              </h2>
 
               <div className="input-group">
                 <label>Simulation Scale</label>
@@ -363,19 +509,25 @@ function Simulation() {
               {simulationScale === 'small' && ( // will only show up if we have small simulation scale selected, which allows for detailed agent settings and creation. Large scale will only allow for mass creation with limited settings to avoid overwhelming the user and the system.
               <div className = "input-group">
                   <label htmlFor="agent-count-input">Click here to add a new agent:</label>
-                  <button className="btn-primary" disabled={showAddAgent || showAddMultipleAgents} onClick={() => setShowAddAgent(true)}>Create an Agent</button>
+                  <button className="btn-primary icon-button" disabled={isRecording || showAddAgent || showAddMultipleAgents} onClick={() => setShowAddAgent(true)}>
+                    <SquarePlus className="button-icon" size={16} aria-hidden="true" />
+                    Create an Agent
+                  </button>
               </div>
               )}
               {simulationScale === 'large' && (
               <div className = "input-group">
                 <label htmlFor="agent-count-input">Click here to add multiple agents at once:</label>
-                <button className="btn-primary" disabled={showAddAgent || showAddMultipleAgents} onClick={() => setShowAddMultipleAgents(true)}>Create Multiple Agents</button>
+                <button className="btn-primary icon-button" disabled={isRecording || showAddAgent || showAddMultipleAgents} onClick={() => setShowAddMultipleAgents(true)}>
+                  <CopyPlus className="button-icon" size={16} aria-hidden="true" />
+                  Create Multiple Agents
+                </button>
               </div>
               )}
 
               {agents.length > 0 && (
                 <div className="input-group">
-                  <button className="btn-danger" onClick={() => { agentsArrayRef.current.length = 0; setAgents([]); }}>Delete All Agents</button>
+                  <button className="btn-danger" disabled={isRecording} onClick={() => { agentsArrayRef.current.length = 0; setAgents([]); }}>Delete All Agents</button>
                 </div>
               )}
 
@@ -384,7 +536,13 @@ function Simulation() {
                 <label>Agent List</label>
                 <button
                   className="agents-list-toggle"
-                  onClick={() => setAgentsListExpanded(!agentsListExpanded)}>{agents.length} {agents.length == 1? 'Agent' : 'Agents'} {agentsListExpanded ? '▲' : '▼'} {agentsListExpanded ? '(Click to Collpase)' : '(Click to Expand)'}</button>
+                  onClick={() => setAgentsListExpanded(!agentsListExpanded)}
+                >
+                  <span>{agents.length} {agents.length == 1 ? 'Agent' : 'Agents'}</span>
+                  <span className="toggle-label">
+                    {agentsListExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+                  </span>
+                </button>
                 {agentsListExpanded && (
                   <ul className="agents-list">
                     {agents.map((agent, index) => (
@@ -474,16 +632,23 @@ function Simulation() {
 
             {/* Obstacle Dashboard */}
             <div className="panel-card">
-              <h2 className="panel-section-title">Obstacle Dashboard</h2>
+              <h2 className="panel-section-title title-with-icon">
+                <Blocks className="section-title-icon" size={18} aria-hidden="true" />
+                Obstacle Dashboard
+              </h2>
 
               <div className="input-group">
-                <button className="btn-primary" disabled={showAddObstacle} onClick={() => setShowAddObstacle(true)}>Create Obstacle</button>
+                <button className="btn-primary icon-button" disabled={isRecording || showAddObstacle} onClick={() => setShowAddObstacle(true)}>
+                  <SquarePlus className="button-icon" size={16} aria-hidden="true" />
+                  Create Obstacle
+                </button>
               </div>
 
               {obstacles.length > 0 && (
                 <div className="input-group">
                   <button
                     className="btn-danger"
+                    disabled={isRecording}
                     onClick={() => {
                       obstaclesArrayRef.current.length = 0;
                       setObstacles([]);
@@ -498,7 +663,10 @@ function Simulation() {
                   className="agents-list-toggle"
                   onClick={() => setObstaclesListExpanded(!obstaclesListExpanded)}
                 >
-                  {obstacles.length} {obstacles.length === 1 ? 'Obstacle' : 'Obstacles'} {obstaclesListExpanded ? '▲' : '▼'} {obstaclesListExpanded ? '(Click to Collapse)' : '(Click to Expand)'}
+                  <span>{obstacles.length} {obstacles.length === 1 ? 'Obstacle' : 'Obstacles'}</span>
+                  <span className="toggle-label">
+                    {obstaclesListExpanded ? <ChevronUp size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}
+                  </span>
                 </button>
                 {obstaclesListExpanded && (
                   <ul className="agents-list">
@@ -551,29 +719,36 @@ function Simulation() {
 
             {/*Simulation Setup Card*/}
             <div className="panel-card">
-              <h2 className="panel-section-title">Simulation Configuration</h2>
+              <h2 className="panel-section-title title-with-icon">
+                <Settings className="section-title-icon" size={18} aria-hidden="true" />
+                Simulation Configuration
+              </h2>
               <div className="input-group">
                 <label htmlFor="fps-input">FPS (Frames Per Second)</label>
                 <input
                   type="number"
                   id="fps-input"
-                  min="1"
-                  max="60"
-                  value={targetFPS}
-                  onChange={(e) => setTargetFPS(e.target.value)}
-                  onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
-                />
+	                  min="1"
+	                  max="60"
+	                  value={targetFPS}
+                    disabled={isRecording}
+	                  onChange={(e) => setTargetFPS(e.target.value)}
+	                  onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
+	                />
               </div>
 
             </div>
 
-            <div className="panel-card">
-              <h2 className="panel-section-title">Recording & Replay (To be Implemented)</h2>
-              <div className="btn-row">
-                  <button className="btn-secondary" onClick={null}>▶</button>
-                  <button className="btn-secondary" onClick={null}>⏸</button>
-                </div>
-            </div>
+            <RecordingCard
+              isRecording={isRecording}
+              hasRecording={hasRecording}
+              recordings={recordings}
+              message={recordingMessage}
+              onStartRecording={handleStartRecording}
+              onStopRecording={handleStopRecording}
+              onOpenPlayback={handleOpenPlayback}
+              onDownloadRecording={handleDownloadPlayback}
+            />
 
             <MiscPanel />
             

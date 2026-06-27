@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Agent } from '../js_files/agent.js';
+import { CircleX, CopyPlus } from 'lucide-react';
 
 export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRef, canvasWidth, canvasHeight, maxAgents, onAgentsAdded, onClose }) {
   const [count, setCount] = useState('1');
@@ -57,6 +58,7 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
         `Agent_${roster.length + 1}`,
         ctx, canvas, roster
       );
+      roster[roster.length - 1].showFOV = showFOV;
     }
 
     onAgentsAdded([...roster]);
@@ -70,11 +72,14 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
   return (
     <div ref={cardRef} className="panel-card panel-card-highlight" style={{ position: 'relative' }}>
       <button
-        className="btn-secondary"
+        className="btn-secondary icon-only-button"
         onClick={cancel}
         aria-label="Close"
-        style={{ position: 'absolute', top: 8, right: 10, width: 28, height: 28, padding: 0, fontSize: 16 }}
-      >×</button>
+        title="Close"
+        style={{ position: 'absolute', top: 8, right: 10, width: 28, height: 28, padding: 0 }}
+      >
+        <CircleX size={16} aria-hidden="true" />
+      </button>
       <h2 className="panel-section-title">Create Multiple Agents</h2>
 
       <div className="input-group">
@@ -106,10 +111,15 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
       {limitWarning && <span style={{ color: '#d32f2f', fontSize: '0.85em' }}>{limitWarning}</span>}
 
       <div className="btn-row">
-        <button className="btn-primary" onClick={create}>Create</button>
-        <button className="btn-secondary" onClick={cancel}>Cancel</button>
+        <button className="btn-primary icon-button" onClick={create}>
+          <CopyPlus className="button-icon" size={16} aria-hidden="true" />
+          Create
+        </button>
+        <button className="btn-secondary icon-button" onClick={cancel}>
+          <CircleX className="button-icon" size={16} aria-hidden="true" />
+          Cancel
+        </button>
       </div>
     </div>
   );
 }
-

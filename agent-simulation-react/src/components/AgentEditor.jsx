@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { UserPen } from 'lucide-react';
 
 export default function AgentEditor({ selectedAgent, onApply, onDeselect }) {
   const [name, setName] = useState('');
@@ -23,7 +24,10 @@ export default function AgentEditor({ selectedAgent, onApply, onDeselect }) {
 
   return (
     <div ref={cardRef} className="panel-card">
-      <h2 className="panel-section-title">Agent Editor</h2>
+      <h2 className="panel-section-title title-with-icon">
+        <UserPen className="section-title-icon" size={18} aria-hidden="true" />
+        Agent Editor
+      </h2>
       {!selectedAgent && (
         <p style={{ fontSize: '0.85em', color: '#888' }}>Click an agent on the canvas to select it.</p>
       )}

@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { ArrowUpToLine, BrainCircuit, ChevronDown, ChevronUp, CirclePlus, ListFilterPlus, Trash2 } from 'lucide-react';
 import {
   TARGET_PROPERTIES,
   METHOD_LABELS,
@@ -72,10 +73,16 @@ function BehaviorCard({
   return (
     /* Behavior & Filter Settings*/
     <div className="panel-card">
-      <h2 className="panel-section-title">Behavior & Filter Settings</h2>
+      <h2 className="panel-section-title title-with-icon">
+        <BrainCircuit className="section-title-icon" size={18} aria-hidden="true" />
+        Behavior & Filter Settings
+      </h2>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #e0e0e0' }}>
-        <button className="btn-primary" onClick={onAddBehavior} style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+ Add Behavior</button>
+        <button className="btn-primary icon-button" onClick={onAddBehavior} style={{ height: 38 }}>
+          <CirclePlus className="button-icon" size={16} aria-hidden="true" />
+          Add Behavior
+        </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0' }}>
           <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #d0d0d0' }} />
@@ -91,11 +98,12 @@ function BehaviorCard({
           style={{ display: 'none' }}
         />
         <button
-          className="btn-primary"
+          className="btn-primary icon-button"
           onClick={openPresetFilePicker}
-          style={{ height: 38, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ height: 38 }}
         >
-          + Load Behavior Preset
+          <ArrowUpToLine className="button-icon" size={16} aria-hidden="true" />
+          Load Behavior Preset
         </button>
       </div>
 
@@ -121,18 +129,23 @@ function BehaviorCard({
                     className="btn-danger"
                     onClick={() => onDeleteBehavior(behavior.id)}
                     aria-label="Delete behavior"
-                    style={{ position: 'absolute', top: 6, right: 8, width: 62, height: 26, padding: 0, fontSize: 12 }}
-                  >Delete</button>
+                    title="Delete behavior"
+                    style={{ position: 'absolute', top: 6, right: 8, width: 32, height: 26, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 72 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 42 }}>
                     <button
-                      className="btn-secondary"
+                      className="btn-secondary icon-only-button"
                       onClick={() => onToggleBehaviorCollapsed(behavior.id)}
                       aria-expanded={!isCollapsed}
                       aria-label={isCollapsed ? 'Expand behavior' : 'Collapse behavior'}
                       style={{ width: 30, height: 26, padding: 0, flex: '0 0 auto' }}
                     >
-                      {isCollapsed ? '▼' : '▲'}
+                      {isCollapsed
+                        ? <ChevronDown size={16} aria-hidden="true" />
+                        : <ChevronUp size={16} aria-hidden="true" />}
                     </button>
                     <h2 className="panel-section-title" style={{ flex: 1, margin: 0 }}>{behavior.name}</h2>
                     <span style={{ color: '#888', fontSize: 12 }}>
@@ -198,8 +211,11 @@ function BehaviorCard({
                               className="btn-secondary"
                               onClick={() => onDeleteFilter(behavior.id, filter.id)}
                               aria-label="Remove filter"
-                              style={{ position: 'absolute', top: 6, right: 8, width: 66, height: 26, padding: 0, fontSize: 12 }}
-                            >Remove</button>
+                              title="Remove filter"
+                              style={{ position: 'absolute', top: 6, right: 8, width: 32, height: 26, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <Trash2 size={14} aria-hidden="true" />
+                            </button>
 
                             <div className="input-group">
                               <label>Type</label>
@@ -254,7 +270,10 @@ function BehaviorCard({
                           </div>
                         ))}
 
-                        <button className="btn-secondary" onClick={() => onAddFilter(behavior.id)}>+ Add Filter</button>
+                        <button className="btn-secondary icon-button" onClick={() => onAddFilter(behavior.id)}>
+                          <ListFilterPlus className="button-icon" size={16} aria-hidden="true" />
+                          Add Filter
+                        </button>
                       </div>
                     </>
                   )}
