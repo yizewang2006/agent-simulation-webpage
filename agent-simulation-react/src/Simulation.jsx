@@ -16,7 +16,8 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, REFERENCE_TYPES } from "./js_files/behavior.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "./js_files/behavior.js";
+import { Entity } from "./js_files/entity.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -226,15 +227,22 @@ function Simulation() {
 
   function handleLoadBehaviorPreset(presetData) {
     // Add behaviors loaded from a preset JSON file.
-    setBehaviorList((currentList) => {
-      const presetBehaviors = getPresetBehaviorArray(presetData);
-      const nextList = [...currentList];
+    const presetBehaviors = getPresetBehaviorArray(presetData);
+    const nextList = [...behaviorList];
+    const loadedBehaviorIds = [];
 
-      presetBehaviors.forEach((behavior) => {
-        nextList.push(createBehaviorFromPreset(behavior, nextList));
-      });
+    presetBehaviors.forEach((behavior) => {
+      const loadedBehavior = createBehaviorFromPreset(behavior, nextList);
+      nextList.push(loadedBehavior);
+      loadedBehaviorIds.push(loadedBehavior.id);
+    });
 
-      return nextList;
+    setBehaviorList(nextList);
+    // Collapse imported behaviors by default so large presets stay easy to scan.
+    setCollapsedBehaviorIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      loadedBehaviorIds.forEach((behaviorId) => nextIds.add(behaviorId));
+      return nextIds;
     });
   }
 
@@ -278,6 +286,7 @@ function Simulation() {
   function createFilter() {
     return {
       id: createStableId(),
+      targets: createDefaultFilterTargets(),
       filterType: 'method',
       propertyType: FILTER_TYPES.DISTANCE,
       methodType: METHOD_TYPES.CLOSEST,
@@ -289,11 +298,42 @@ function Simulation() {
   function createFilterFromPreset(filter) {
     return {
       id: createStableId(),
+      targets: normalizeFilterTargets(filter.targets),
       filterType: filter.filterType === 'ranged' ? 'ranged' : 'method',
       propertyType: getValidValue(filter.filteredProperty, FILTER_TYPES, FILTER_TYPES.DISTANCE),
       methodType: getValidValue(filter.methodType, METHOD_TYPES, METHOD_TYPES.CLOSEST),
       rangeLow: filter.low ?? '',
       rangeHigh: filter.high ?? '',
+    };
+  }
+
+  function createDefaultFilterTargets() { // Default: select agent, deselect everyone else
+    return {
+      [ENTITY_TYPES.AGENT]: true,
+      [ENTITY_TYPES.OBSTACLE]: {
+        enabled: false,
+        [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
+        [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
+      },
+      [ENTITY_TYPES.LEADER]: false,
+      [ENTITY_TYPES.EXIT]: false,
+    };
+  }
+
+  function normalizeFilterTargets(targets) {
+    const defaults = createDefaultFilterTargets(); // create a filter
+    if (!targets || typeof targets !== 'object') return defaults;
+
+    // Resolving compatibility issues with older presets
+    return {
+      [ENTITY_TYPES.AGENT]: targets[ENTITY_TYPES.AGENT] ?? defaults[ENTITY_TYPES.AGENT], // If n
+      [ENTITY_TYPES.OBSTACLE]: {
+        enabled: targets[ENTITY_TYPES.OBSTACLE]?.enabled ?? defaults[ENTITY_TYPES.OBSTACLE].enabled,
+        [OBSTACLE_SHAPE_TYPES.CIRCLE]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.CIRCLE] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.CIRCLE],
+        [OBSTACLE_SHAPE_TYPES.POLYGON]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.POLYGON] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.POLYGON],
+      },
+      [ENTITY_TYPES.LEADER]: targets[ENTITY_TYPES.LEADER] ?? defaults[ENTITY_TYPES.LEADER],
+      [ENTITY_TYPES.EXIT]: targets[ENTITY_TYPES.EXIT] ?? defaults[ENTITY_TYPES.EXIT],
     };
   }
 
@@ -673,7 +713,7 @@ function Simulation() {
                     {obstacles.map((obstacle, index) => (
                       <li key={`${obstacle.ID}-${index}`} className="agent-item">
                         <span className="agent-color" style={{ backgroundColor: obstacle.color }}></span>
-                        {obstacle.ID} ({obstacle.shapeType === 'circle' ? 'Circle' : 'Polygon'})
+                        {obstacle.ID} ({obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE ? 'Circle' : 'Polygon'})
                       </li>
                     ))}
                   </ul>

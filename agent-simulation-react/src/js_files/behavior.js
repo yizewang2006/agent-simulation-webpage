@@ -19,6 +19,18 @@ export const FILTER_TYPES = {
   HEADING: 3,
 }
 
+export const ENTITY_TYPES = {
+  AGENT: 0,
+  OBSTACLE: 1,
+  LEADER: 2,
+  EXIT: 3,
+};
+
+export const OBSTACLE_SHAPE_TYPES = {
+  CIRCLE: 0,
+  POLYGON: 1,
+};
+
 // Human-readable labels for the UI
 export const PROPERTY_LABELS = {
   [TARGET_PROPERTIES.POSITION]: 'Position', // Definition: Bearing
@@ -32,6 +44,18 @@ export const FILTER_LABELS = {
   [FILTER_TYPES.RELATIVE_ANGLE] : 'Heading Difference (0-360)',
   [FILTER_TYPES.HEADING] : 'Neighbor Heading',
 }
+
+export const ENTITY_LABELS = {
+  [ENTITY_TYPES.AGENT]: 'Agent',
+  [ENTITY_TYPES.OBSTACLE]: 'Obstacle',
+  [ENTITY_TYPES.LEADER]: 'Leader',
+  [ENTITY_TYPES.EXIT]: 'Exit/Escape Point',
+};
+
+export const OBSTACLE_SHAPE_LABELS = {
+  [OBSTACLE_SHAPE_TYPES.CIRCLE]: 'Circle',
+  [OBSTACLE_SHAPE_TYPES.POLYGON]: 'Polygon',
+};
 
 export const METHOD_LABELS = {
   [METHOD_TYPES.CLOSEST]:  'Closest',

@@ -1,4 +1,5 @@
 import { Entity } from "./entity.js";
+import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "./behavior.js";
 
 function drawObstacleLabel(ctx, label, x, y) {
   ctx.font = "600 15px Arial, sans-serif";
@@ -24,10 +25,11 @@ When selected "entity type", disable the "method type"
 
 // Obstacle collision implementation written by Elaine Ding.
 // Supports polygon obstacles, drawing, current collision checks, and linear collision prediction.
-export class Obstacle extends Entity {
+export class PolygonObstacle extends Entity {
   constructor(id, vertices, color = "#FF4444", ctx) {
     super(id);
-    this.shapeType = "polygon";
+    this.entityType = ENTITY_TYPES.OBSTACLE;
+    this.shapeType = OBSTACLE_SHAPE_TYPES.POLYGON;
     this.vertices = vertices;
     this.color = color;
     this.ctx = ctx;
@@ -166,7 +168,8 @@ export class Obstacle extends Entity {
 export class CircleObstacle extends Entity {
   constructor(id, center, radius, color = "#FF4444", ctx) {
     super(id);
-    this.shapeType = "circle";
+    this.entityType = ENTITY_TYPES.OBSTACLE;
+    this.shapeType = OBSTACLE_SHAPE_TYPES.CIRCLE;
     this.center = center;
     this.radius = radius;
     this.color = color;

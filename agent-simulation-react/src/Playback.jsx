@@ -7,6 +7,25 @@ import './playback.css';
 const PLAYBACK_CANVAS_WIDTH = 500;
 const PLAYBACK_CANVAS_HEIGHT = 500;
 
+function getCanvasLogicalWidth(canvas) {
+  return canvas?.logicalWidth ?? canvas?.width ?? PLAYBACK_CANVAS_WIDTH;
+}
+
+function getCanvasLogicalHeight(canvas) {
+  return canvas?.logicalHeight ?? canvas?.height ?? PLAYBACK_CANVAS_HEIGHT;
+}
+
+function configureHighDpiCanvas(canvas, ctx) {
+  const pixelRatio = window.devicePixelRatio || 1;
+  canvas.logicalWidth = PLAYBACK_CANVAS_WIDTH;
+  canvas.logicalHeight = PLAYBACK_CANVAS_HEIGHT;
+  canvas.width = Math.round(PLAYBACK_CANVAS_WIDTH * pixelRatio);
+  canvas.height = Math.round(PLAYBACK_CANVAS_HEIGHT * pixelRatio);
+  canvas.style.width = `${PLAYBACK_CANVAS_WIDTH}px`;
+  canvas.style.height = `${PLAYBACK_CANVAS_HEIGHT}px`;
+  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+}
+
 // Offset for virtual copies
 function getVirtualOffsets(agent, canvasWidth, canvasHeight) {
   const range = agent.radius + (agent.showFOV ? agent.fovRadius : 0);
@@ -88,11 +107,14 @@ function drawFrame(canvas, frame) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
+  const canvasWidth = getCanvasLogicalWidth(canvas);
+  const canvasHeight = getCanvasLogicalHeight(canvas);
+
   // Clear the old frame before drawing the requested recorded frame.
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   if (!frame) return;
 
-  frame.agents.forEach((agent) => drawAgentSnapshot(ctx, agent, canvas.width, canvas.height));
+  frame.agents.forEach((agent) => drawAgentSnapshot(ctx, agent, canvasWidth, canvasHeight));
 }
 
 export default function Playback() {
@@ -104,6 +126,17 @@ export default function Playback() {
   const frameCount = Array.isArray(recording?.frames) ? recording.frames.length : 0;
   const hasRecording = frameCount > 0;
   const frameLabel = hasRecording ? `${currentFrame + 1} / ${frameCount}` : '0 / 0';
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Match the main simulation canvas: high physical pixels, stable 500x500 logical coordinates.
+    configureHighDpiCanvas(canvas, ctx);
+  }, []);
 
   useEffect(() => {
     window.loadRecording = (recordingData) => {

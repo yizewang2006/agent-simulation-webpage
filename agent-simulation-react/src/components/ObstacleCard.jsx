@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { CircleObstacle, Obstacle } from '../js_files/obstacle.js';
+import { CircleObstacle, PolygonObstacle } from '../js_files/obstacle.js';
 
 // JSON formatted presets for common polygons (rectangle & triangle)
 
@@ -96,7 +96,7 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, canvasWidth, c
         obstacle = new CircleObstacle(obstacleName, center, radius, color, ctx);
       } else {
         const vertices = parseVertices();
-        obstacle = new Obstacle(obstacleName, vertices, color, ctx);
+        obstacle = new PolygonObstacle(obstacleName, vertices, color, ctx);
       }
 
       obstaclesArrayRef.current.push(obstacle);

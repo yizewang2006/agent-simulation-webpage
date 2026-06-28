@@ -7,7 +7,21 @@ import {
   METHOD_LABELS_BY_PROPERTY,
   FILTER_LABELS,
   REFERENCE_LABELS,
+  ENTITY_TYPES, // New
+  ENTITY_LABELS,
+  OBSTACLE_SHAPE_TYPES,
+  OBSTACLE_SHAPE_LABELS,
 } from "../js_files/behavior.js";
+
+const DEFAULT_FILTER_TARGETS = {
+  [ENTITY_TYPES.AGENT]: true,
+  [ENTITY_TYPES.OBSTACLE]: {
+    enabled: false,
+    [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
+    [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
+  },
+  [ENTITY_TYPES.LEADER]: false,
+};
 
 function getBehaviorGroups(behaviors) {
   return Object.entries(PROPERTY_LABELS).map(([targetProperty, label]) => {
@@ -37,6 +51,55 @@ function BehaviorCard({
   onDeleteFilter,
 }) {
   const presetInputRef = useRef(null);
+
+  function getFilterTargets(filter) {
+    return {
+      [ENTITY_TYPES.AGENT]: filter.targets?.[ENTITY_TYPES.AGENT] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.AGENT],
+      [ENTITY_TYPES.OBSTACLE]: {
+        enabled: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.enabled ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE].enabled,
+        [OBSTACLE_SHAPE_TYPES.CIRCLE]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.CIRCLE] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.CIRCLE],
+        [OBSTACLE_SHAPE_TYPES.POLYGON]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.POLYGON] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.POLYGON],
+      },
+      [ENTITY_TYPES.LEADER]: filter.targets?.[ENTITY_TYPES.LEADER] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.LEADER],
+    };
+  }
+
+  function handleEntityTargetChange(behaviorId, filter, entityType, checked) {
+    const targets = getFilterTargets(filter);
+
+    if (entityType === ENTITY_TYPES.OBSTACLE) {
+      onUpdateFilter(behaviorId, filter.id, {
+        targets: {
+          ...targets,
+          [ENTITY_TYPES.OBSTACLE]: {
+            ...targets[ENTITY_TYPES.OBSTACLE],
+            enabled: checked,
+          },
+        },
+      });
+      return;
+    }
+
+    onUpdateFilter(behaviorId, filter.id, {
+      targets: {
+        ...targets,
+        [entityType]: checked,
+      },
+    });
+  }
+
+  function handleObstacleSubtypeChange(behaviorId, filter, shapeType, checked) {
+    const targets = getFilterTargets(filter);
+    onUpdateFilter(behaviorId, filter.id, {
+      targets: {
+        ...targets,
+        [ENTITY_TYPES.OBSTACLE]: {
+          ...targets[ENTITY_TYPES.OBSTACLE],
+          [shapeType]: checked,
+        },
+      },
+    });
+  }
 
   function openPresetFilePicker() {
     // Open the hidden file input when the visible preset button is clicked.
@@ -216,6 +279,58 @@ function BehaviorCard({
                             >
                               <Trash2 size={14} aria-hidden="true" />
                             </button>
+
+                            {/* HARD CODED ENTITY SELECTION
+                            <div className="input-group">
+                              <label>Entity Type</label>
+                              <div className="entity-target-group">
+                                <label className="entity-target-option">
+                                  <input
+                                    type="checkbox"
+                                    checked={getFilterTargets(filter)[ENTITY_TYPES.AGENT]}
+                                    onChange={(e) => handleEntityTargetChange(behavior.id, filter, ENTITY_TYPES.AGENT, e.target.checked)}
+                                  />
+                                  {ENTITY_LABELS[ENTITY_TYPES.AGENT]}
+                                </label>
+
+                                <label className="entity-target-option">
+                                  <input
+                                    type="checkbox"
+                                    checked={getFilterTargets(filter)[ENTITY_TYPES.OBSTACLE].enabled}
+                                    onChange={(e) => handleEntityTargetChange(behavior.id, filter, ENTITY_TYPES.OBSTACLE, e.target.checked)}
+                                  />
+                                  {ENTITY_LABELS[ENTITY_TYPES.OBSTACLE]}
+                                </label>
+
+                                <div className="entity-subtype-options">
+                                  {Object.values(OBSTACLE_SHAPE_TYPES).map((shapeType) => {
+                                    const obstacleTargets = getFilterTargets(filter)[ENTITY_TYPES.OBSTACLE];
+                                    return (
+                                      <label key={shapeType} className={`entity-target-option ${!obstacleTargets.enabled ? 'entity-target-option-disabled' : ''}`}>
+                                        <input
+                                          type="checkbox"
+                                          disabled={!obstacleTargets.enabled}
+                                          checked={obstacleTargets[shapeType]}
+                                          onChange={(e) => handleObstacleSubtypeChange(behavior.id, filter, shapeType, e.target.checked)}
+                                        />
+                                        {OBSTACLE_SHAPE_LABELS[shapeType]}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+
+                                <label className="entity-target-option">
+                                  <input
+                                    type="checkbox"
+                                    checked={getFilterTargets(filter)[ENTITY_TYPES.LEADER]}
+                                    onChange={(e) => handleEntityTargetChange(behavior.id, filter, ENTITY_TYPES.LEADER, e.target.checked)}
+                                  />
+                                  {ENTITY_LABELS[ENTITY_TYPES.LEADER]}
+                                </label>
+                              </div>
+                            </div>
+
+                            */}
 
                             <div className="input-group">
                               <label>Type</label>
