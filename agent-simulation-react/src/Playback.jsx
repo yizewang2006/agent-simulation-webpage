@@ -3,28 +3,10 @@ import { ChevronLeft, ChevronRight, MonitorPlay, Pause, Play } from 'lucide-reac
 import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import './playback.css';
+import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth } from './js_files/utilities.js';
 
 const PLAYBACK_CANVAS_WIDTH = 500;
 const PLAYBACK_CANVAS_HEIGHT = 500;
-
-function getCanvasLogicalWidth(canvas) {
-  return canvas?.logicalWidth ?? canvas?.width ?? PLAYBACK_CANVAS_WIDTH;
-}
-
-function getCanvasLogicalHeight(canvas) {
-  return canvas?.logicalHeight ?? canvas?.height ?? PLAYBACK_CANVAS_HEIGHT;
-}
-
-function configureHighDpiCanvas(canvas, ctx) {
-  const pixelRatio = window.devicePixelRatio || 1;
-  canvas.logicalWidth = PLAYBACK_CANVAS_WIDTH;
-  canvas.logicalHeight = PLAYBACK_CANVAS_HEIGHT;
-  canvas.width = Math.round(PLAYBACK_CANVAS_WIDTH * pixelRatio);
-  canvas.height = Math.round(PLAYBACK_CANVAS_HEIGHT * pixelRatio);
-  canvas.style.width = `${PLAYBACK_CANVAS_WIDTH}px`;
-  canvas.style.height = `${PLAYBACK_CANVAS_HEIGHT}px`;
-  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-}
 
 // Offset for virtual copies
 function getVirtualOffsets(agent, canvasWidth, canvasHeight) {
@@ -135,7 +117,7 @@ export default function Playback() {
     if (!ctx) return;
 
     // Match the main simulation canvas: high physical pixels, stable 500x500 logical coordinates.
-    configureHighDpiCanvas(canvas, ctx);
+    configureHighDpiCanvas(canvas, ctx, PLAYBACK_CANVAS_WIDTH, PLAYBACK_CANVAS_HEIGHT);
   }, []);
 
   useEffect(() => {

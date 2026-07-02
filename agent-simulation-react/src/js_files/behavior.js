@@ -1,84 +1,26 @@
-// ─── Constants (numeric identifiers used in computation & UI) ────────────────
+import {
+  ENTITY_TYPES,
+  FILTER_TYPES,
+  METHOD_TYPES,
+  TARGET_PROPERTIES,
+} from "./constants.js";
+import { getCanvasLogicalHeight, getCanvasLogicalWidth } from "./utilities.js";
 
-export const TARGET_PROPERTIES = {
-  POSITION: 0,
-  SPEED: 1,
-  ANGLE: 2,
-};
-
-export const METHOD_TYPES = {
-  CLOSEST: 0,
-  AVERAGE: 1,
-  FARTHEST: 2,
-};
-
-export const FILTER_TYPES = {
-  DISTANCE: 0,
-  SPEED: 1,
-  RELATIVE_ANGLE: 2,
-  HEADING: 3,
-}
-
-export const ENTITY_TYPES = {
-  AGENT: 0,
-  OBSTACLE: 1,
-  LEADER: 2,
-  EXIT: 3,
-};
-
-export const OBSTACLE_SHAPE_TYPES = {
-  CIRCLE: 0,
-  POLYGON: 1,
-};
-
-// Human-readable labels for the UI
-export const PROPERTY_LABELS = {
-  [TARGET_PROPERTIES.POSITION]: 'Position', // Definition: Bearing
-  [TARGET_PROPERTIES.SPEED]:    'Speed',
-  [TARGET_PROPERTIES.ANGLE]:    'Angle',
-};
-
-export const FILTER_LABELS = {
-  [FILTER_TYPES.DISTANCE]: 'Distance',
-  [FILTER_TYPES.SPEED] : 'Speed',
-  [FILTER_TYPES.RELATIVE_ANGLE] : 'Heading Difference (0-360)',
-  [FILTER_TYPES.HEADING] : 'Neighbor Heading',
-}
-
-export const ENTITY_LABELS = {
-  [ENTITY_TYPES.AGENT]: 'Agent',
-  [ENTITY_TYPES.OBSTACLE]: 'Obstacle',
-  [ENTITY_TYPES.LEADER]: 'Leader',
-  [ENTITY_TYPES.EXIT]: 'Exit/Escape Point',
-};
-
-export const OBSTACLE_SHAPE_LABELS = {
-  [OBSTACLE_SHAPE_TYPES.CIRCLE]: 'Circle',
-  [OBSTACLE_SHAPE_TYPES.POLYGON]: 'Polygon',
-};
-
-export const METHOD_LABELS = {
-  [METHOD_TYPES.CLOSEST]:  'Closest',
-  [METHOD_TYPES.FARTHEST]: 'Farthest',
-  [METHOD_TYPES.AVERAGE]:  'Average',
-};
-
-export const METHOD_LABELS_BY_PROPERTY = {
-  [FILTER_TYPES.DISTANCE]:       { [METHOD_TYPES.CLOSEST]: 'Closest',      [METHOD_TYPES.FARTHEST]: 'Farthest',      [METHOD_TYPES.AVERAGE]: 'Average' },
-  [FILTER_TYPES.SPEED]:          { [METHOD_TYPES.CLOSEST]: 'Slowest',      [METHOD_TYPES.FARTHEST]: 'Fastest',       [METHOD_TYPES.AVERAGE]: 'Average' },
-  [FILTER_TYPES.RELATIVE_ANGLE]: { [METHOD_TYPES.CLOSEST]: 'Smallest Heading Difference', [METHOD_TYPES.FARTHEST]: 'Largest Heading Difference', [METHOD_TYPES.AVERAGE]: 'Average' },
-  [FILTER_TYPES.HEADING]:        { [METHOD_TYPES.CLOSEST]: 'Lowest Heading', [METHOD_TYPES.FARTHEST]: 'Highest Heading', [METHOD_TYPES.AVERAGE]: 'Average' },
-};
-
-export const REFERENCE_TYPES = {
-  NEIGHBOR_REFERENCE: 0,
-  SELF_SPACE: 1,
-};
-
-export const REFERENCE_LABELS = {
-  [REFERENCE_TYPES.NEIGHBOR_REFERENCE]: 'Neighbor Reference',
-  [REFERENCE_TYPES.SELF_SPACE]: 'Self-Space',
-};
+export {
+  ENTITY_LABELS,
+  ENTITY_TYPES,
+  FILTER_LABELS,
+  FILTER_TYPES,
+  METHOD_LABELS,
+  METHOD_LABELS_BY_PROPERTY,
+  METHOD_TYPES,
+  OBSTACLE_SHAPE_LABELS,
+  OBSTACLE_SHAPE_TYPES,
+  PROPERTY_LABELS,
+  REFERENCE_LABELS,
+  REFERENCE_TYPES,
+  TARGET_PROPERTIES,
+} from "./constants.js";
 
 // ─── Property (base) ──────────────────────────────────────────────────────────
 
@@ -183,6 +125,7 @@ export class Angle extends Property {
   Filters class (can be added to behaviors) should have a targetProperty and parameters specific to the filter type (e.g., low/high for RangedFilter, methodType for MethodFilter).
 */
 
+/* This behavior class is NOT IN USE. We use plain javascript objects in Simulation.jsx */
 export class Behavior {
   constructor(name, targetProperty) {
     this.name = name;
@@ -227,34 +170,17 @@ export class RangedFilter extends Filter {
     this.high = parseRangeBound(high, getDefaultRangeHigh(propertyType));
   }
 
-  apply(self, agents) {
-    switch (this.propertyType) {
-      case FILTER_TYPES.SPEED: {
-        return agents.filter(filteredAgent => {
-          const speed = Math.sqrt(filteredAgent.dx**2 + filteredAgent.dy**2);
-          return speed >= this.low && speed <= this.high
-        })
+  apply(self, entities) {
+    return entities.filter(entity => {
+      const value = getFilterValue(this.propertyType, self, entity);
+      if (value === null) return false;
+
+      if (isAngleFilterProperty(this.propertyType)) {
+        return isAngleInRange(value, this.low, this.high);
       }
-      case FILTER_TYPES.RELATIVE_ANGLE: {
-        return agents.filter(filteredAgent => {
-          const headingDiff = getHeadingDifferenceDeg(self, filteredAgent);
-          return isAngleInRange(headingDiff, this.low, this.high);
-        })
-      }
-      case FILTER_TYPES.HEADING: {
-        return agents.filter(filteredAgent => {
-          const heading = (filteredAgent.angle * 180 / Math.PI + 360) % 360;
-          return isAngleInRange(heading, this.low, this.high);
-        });
-      }
-      case FILTER_TYPES.DISTANCE: {
-        return agents.filter(filteredAgent => {
-          const { diffX, diffY } = getWrappedOffset(self.position, filteredAgent.position, self.canvas);
-          return Math.sqrt(diffX**2 + diffY**2) >= this.low && Math.sqrt(diffX**2 + diffY**2) <= this.high;
-        });
-      }
-      default: return agents;
-    }
+
+      return value >= this.low && value <= this.high;
+    });
   }
 }
 
@@ -266,128 +192,121 @@ export class MethodFilter extends Filter {
     this.methodType = methodType;
   }
 
-  apply(self, agents) {
-    if (agents.length === 0) return [];
+  apply(self, entities) {
+    const supportedEntities = entities
+      .map(entity => ({
+        entity,
+        value: getFilterValue(this.propertyType, self, entity),
+      }))
+      .filter(({ value }) => value !== null);
 
-    // AVERAGE: pass all agents through — applyBehavior computes the average across them
-    if (this.methodType === METHOD_TYPES.AVERAGE) return agents;
+    if (supportedEntities.length === 0) return [];
 
-    const getVal = (a) => { // Calculate values based on the filtered property
-      switch (this.propertyType) {
-        case FILTER_TYPES.SPEED:
-          return Math.sqrt(a.dx**2 + a.dy**2);
-        case FILTER_TYPES.HEADING:
-          return (a.angle * 180 / Math.PI + 360) % 360;
-        case FILTER_TYPES.RELATIVE_ANGLE:
-          return getHeadingDifferenceDeg(self, a);
-        case FILTER_TYPES.DISTANCE: {
-          const { diffX, diffY } = getWrappedOffset(self.position, a.position, self.canvas);
-          return Math.sqrt(diffX**2 + diffY**2);
-        }
-        default: // otherwise, return infinity value
-          return Infinity;
-      }
-    };
-
-    let best = agents[0];
-    let bestVal = getVal(agents[0]);
-    for (const a of agents) {
-      const val = getVal(a);
-      if (this.methodType === METHOD_TYPES.CLOSEST && val < bestVal) { best = a; bestVal = val; }
-      if (this.methodType === METHOD_TYPES.FARTHEST && val > bestVal) { best = a; bestVal = val; }
+    // AVERAGE: pass all supported entities through; applyBehavior computes the average across them.
+    if (this.methodType === METHOD_TYPES.AVERAGE) {
+      return supportedEntities.map(({ entity }) => entity);
     }
-    return [best];
+
+    let best = supportedEntities[0];
+    for (const candidate of supportedEntities) {
+      if (this.methodType === METHOD_TYPES.CLOSEST && candidate.value < best.value) best = candidate;
+      if (this.methodType === METHOD_TYPES.FARTHEST && candidate.value > best.value) best = candidate;
+    }
+    return [best.entity];
   }
 }
 
-// OBSTACLE FILTER?
-export class ObstacleFilter extends Filter {
+// ─── Filter helpers ──────────────────────────────────────────────────────────
 
+// Determines whether this entity supports the filtered property
+function supportsProperty(entity, filterPropertyType) {
+  if (!entity) return false;
+  // check if property is available for selected entity
+  switch (filterPropertyType) {
+    case (FILTER_TYPES.DISTANCE): return Boolean(entity.position);
+    case (FILTER_TYPES.SPEED): return entity.hasMotion === true;
+    case (FILTER_TYPES.HEADING_DIFFERENCE):
+    case (FILTER_TYPES.HEADING_RAW): return entity.hasHeading === true;
+    case (FILTER_TYPES.RELATIVE_BEARING): return Boolean(entity.position);
+
+    default: return false;
+  }
 }
 
-// Returns a list of agents — delegates to RangedFilter or MethodFilter class
-function applyFilters(agentFilter, self, agents) {
+// Does all calculation for for filter value
+function getFilterValue(filterPropertyType, self, entity) {
+  if (!supportsProperty(entity, filterPropertyType)) return null;
+
+  switch (filterPropertyType) {
+    case FILTER_TYPES.DISTANCE: {
+      if (!self?.position || !entity.position) return null;
+      const { diffX, diffY } = getWrappedOffset(self.position, entity.position, self.canvas);
+      return Math.sqrt(diffX ** 2 + diffY ** 2);
+    }
+    case FILTER_TYPES.HEADING_DIFFERENCE: {
+      if (!self?.hasHeading) return null;
+      return getHeadingDifferenceDeg(self, entity);
+    }
+    case FILTER_TYPES.RELATIVE_BEARING: {
+      if (!self?.position || !entity.position) return null;
+      const { diffX, diffY } = getWrappedOffset(self.position, entity.position, self.canvas);
+      const bearing = Math.atan2(diffY, diffX) * 180 / Math.PI;
+      const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
+      return (bearing - selfHeading + 360) % 360;
+    }
+
+    case FILTER_TYPES.SPEED:
+      return Math.sqrt(entity.dx ** 2 + entity.dy ** 2);
+
+    case FILTER_TYPES.HEADING_RAW:
+      return (entity.angle * 180 / Math.PI + 360) % 360;
+
+    default:
+      return null;
+  }
+}
+
+// Based on UI choices, filter ENTITY TYPES!
+function filterByTargets(entities, targets) {
+  return entities.filter((entity) => {
+    if (!entity) return false;
+
+    // Legacy filters did not have target scopes. Keep them agent-only by default
+    // so old behavior presets do not suddenly react to obstacles.
+    if (!targets) return entity.entityType === ENTITY_TYPES.AGENT;
+
+    if (entity.entityType === ENTITY_TYPES.OBSTACLE) {
+      const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE];
+
+      if (!obstacleTargets) return false;
+      if (!obstacleTargets.enabled) return false;
+      if (entity.shapeType === undefined || entity.shapeType === null) return false;
+      if (!obstacleTargets[entity.shapeType]) return false;
+
+      return true;
+    }
+
+    // More entity-specific conditional statement coming soon
+
+    return Boolean(targets[entity.entityType]);
+  });
+}
+
+// Returns a list of entities — delegates to RangedFilter or MethodFilter class
+function applyFilters(agentFilter, self, entities) {
   if (agentFilter.filterType === 'ranged')
-    return new RangedFilter(agentFilter.propertyType, agentFilter.rangeLow, agentFilter.rangeHigh).apply(self, agents);
+    return new RangedFilter(agentFilter.propertyType, agentFilter.low, agentFilter.high).apply(self, entities);
   if (agentFilter.filterType === 'method')
-    return new MethodFilter(agentFilter.propertyType, agentFilter.methodType).apply(self, agents);
-  return agents; // fallback
+    return new MethodFilter(agentFilter.propertyType, agentFilter.methodType).apply(self, entities);
+  return entities; // fallback
 }
 
-// Return a target value depending on the behavior
-export function getBehaviorTarget(behavior, self, detectedAgents) {
-    let detAgents = [...detectedAgents]; // All detected agents before filtering
-
-    for (const filter of behavior.filters) {
-      detAgents = applyFilters(filter, self, detAgents);
-      if (detAgents.length === 0) {
-        // detectedAgents.forEach(agent => agent.colorHex = '#FF0000'); // failed filter but still in FOV — reset to red
-        return null;
-      }
-    }
-
-    if (detAgents.length > 0) {
-      // detAgents.forEach(a => a.colorHex = "#00FF00"); // ALL Filtered agent turns green (red color change in agent.js)
-
-      // Behavior value calculation
-      switch (behavior.targetProperty) {
-        case TARGET_PROPERTIES.POSITION: {
-          let sinSum = 0, cosSum = 0;
-          for (const a of detAgents) {
-            const { diffX, diffY } = getWrappedOffset(self.position, a.position, self.canvas);
-            const bearing = Math.atan2(diffY, diffX);
-            sinSum += Math.sin(bearing);
-            cosSum += Math.cos(bearing);
-          }
-          return Math.atan2(sinSum, cosSum);
-        }
-        case TARGET_PROPERTIES.SPEED: {
-          let total = 0;
-          for (const a of detAgents) total += Math.sqrt(a.dx**2 + a.dy**2);
-          return total / detAgents.length;
-        }
-        case TARGET_PROPERTIES.ANGLE: {
-          let sinSum = 0, cosSum = 0;
-          for (const a of detAgents) {
-            sinSum += Math.sin(a.angle);
-            cosSum += Math.cos(a.angle);
-          }
-          return Math.atan2(sinSum, cosSum);
-        }
-      }
-    }
-    return null;
-  }
-
-export function offsetCorrection(diffX, diffY, canvas) {
-  if (!canvas) return { diffX, diffY };
-  const canvasWidth = canvas.logicalWidth ?? canvas.width;
-  const canvasHeight = canvas.logicalHeight ?? canvas.height;
-  if (canvasWidth <= 0 || canvasHeight <= 0) return { diffX, diffY };
-  while (diffX > canvasWidth / 2) diffX -= canvasWidth;
-  while (diffX < -canvasWidth / 2) diffX += canvasWidth;
-  while (diffY > canvasHeight / 2) diffY -= canvasHeight;
-  while (diffY < -canvasHeight / 2) diffY += canvasHeight;
-  return { diffX, diffY };
-}
-
-export function getWrappedOffset(fromPosition, toPosition, canvas) {
-  return offsetCorrection(
-    toPosition.x - fromPosition.x,
-    toPosition.y - fromPosition.y,
-    canvas
+function isAngleFilterProperty(propertyType) {
+  return (
+    propertyType === FILTER_TYPES.HEADING_DIFFERENCE ||
+    propertyType === FILTER_TYPES.HEADING_RAW ||
+    propertyType === FILTER_TYPES.RELATIVE_BEARING
   );
-}
-
-export function getHeadingDifferenceDeg(self, neighbor) {
-  const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
-  const neighborHeading = (neighbor.angle * 180 / Math.PI + 360) % 360;
-  return (neighborHeading - selfHeading + 360) % 360;
-}
-
-export function isAngleInRange(value, low, high) {
-  if (low <= high) return value >= low && value <= high;
-  return value >= low || value <= high;
 }
 
 function parseRangeBound(value, fallback) {
@@ -398,9 +317,136 @@ function parseRangeBound(value, fallback) {
 
 // Some default high/low values
 function getDefaultRangeHigh(propertyType) {
-  if (propertyType === FILTER_TYPES.RELATIVE_ANGLE) return 360;
-  if (propertyType === FILTER_TYPES.HEADING) return 360;
+  if (isAngleFilterProperty(propertyType)) return 360;
   return Infinity;
+}
+
+// ─── Target property helpers ─────────────────────────────────────────────────
+
+// Determine whether the entity supports the targetProperty (as opposed to filter properties)
+function supportsTargetProperty(entity, targetProperty) {
+  if (!entity) return false; // check if entity is null or undefined
+
+  switch (targetProperty) {
+    case TARGET_PROPERTIES.POSITION:
+      return Boolean(entity.position);
+    case TARGET_PROPERTIES.SPEED:
+      return entity.hasMotion === true;
+    case TARGET_PROPERTIES.ANGLE:
+      return entity.hasHeading === true;
+    default:
+      return false;
+  }
+}
+
+// Returns the target value based on the targetProperty
+function getTargetValue(targetProperty, self, entity) {
+  if (!supportsTargetProperty(entity, targetProperty)) return null;
+
+  switch (targetProperty) {
+    case TARGET_PROPERTIES.POSITION: {
+      if (!self?.position || !entity.position) return null;
+      const { diffX, diffY } = getWrappedOffset(self.position, entity.position, self.canvas);
+      return Math.atan2(diffY, diffX);
+    }
+
+    case TARGET_PROPERTIES.SPEED:
+      return Math.sqrt(entity.dx ** 2 + entity.dy ** 2);
+
+    case TARGET_PROPERTIES.ANGLE:
+      return entity.angle;
+
+    default:
+      return null;
+  }
+}
+
+// Return a target value depending on the behavior
+export function getBehaviorTarget(behavior, self, detectedEntities) {
+    const filters = Array.isArray(behavior.filters) ? behavior.filters : [];
+    let detectedEntitiesForBehavior = [...detectedEntities]; // All detected entities before filtering
+
+    if (filters.length === 0) detectedEntitiesForBehavior = filterByTargets(detectedEntitiesForBehavior, null);
+    
+    for (const filter of filters) {
+      detectedEntitiesForBehavior = filterByTargets(detectedEntitiesForBehavior, filter.targets);
+      detectedEntitiesForBehavior = applyFilters(filter, self, detectedEntitiesForBehavior);
+      if (detectedEntitiesForBehavior.length === 0) {
+        // detectedEntities.forEach(entity => entity.colorHex = '#FF0000'); // failed filter but still in FOV — reset to red
+        return null;
+      }
+    }
+
+    if (detectedEntitiesForBehavior.length > 0) {
+      // detectedEntitiesForBehavior.forEach(entity => entity.colorHex = "#00FF00"); // ALL filtered entities turn green (red color change in agent.js)
+
+      const targetValues = detectedEntitiesForBehavior
+        .map(entity => getTargetValue(behavior.targetProperty, self, entity))
+        .filter(value => value !== null);
+
+      if (targetValues.length === 0) return null;
+
+      // Behavior value calculation
+      switch (behavior.targetProperty) {
+        case TARGET_PROPERTIES.POSITION: {
+          let sinSum = 0, cosSum = 0;
+          for (const value of targetValues) {
+            sinSum += Math.sin(value);
+            cosSum += Math.cos(value);
+          }
+          return Math.atan2(sinSum, cosSum);
+        }
+        case TARGET_PROPERTIES.SPEED: {
+          let total = 0;
+          for (const value of targetValues) total += value;
+          return total / targetValues.length;
+        }
+        case TARGET_PROPERTIES.ANGLE: {
+          let sinSum = 0, cosSum = 0;
+          for (const value of targetValues) {
+            sinSum += Math.sin(value);
+            cosSum += Math.cos(value);
+          }
+          return Math.atan2(sinSum, cosSum);
+        }
+      }
+    }
+    return null;
+  }
+
+// Will correct the offset to account for warping
+export function offsetCorrection(diffX, diffY, canvas) {
+  if (!canvas) return { diffX, diffY };
+  const canvasWidth = getCanvasLogicalWidth(canvas);
+  const canvasHeight = getCanvasLogicalHeight(canvas);
+  if (canvasWidth <= 0 || canvasHeight <= 0) return { diffX, diffY };
+  while (diffX > canvasWidth / 2) diffX -= canvasWidth;
+  while (diffX < -canvasWidth / 2) diffX += canvasWidth;
+  while (diffY > canvasHeight / 2) diffY -= canvasHeight;
+  while (diffY < -canvasHeight / 2) diffY += canvasHeight;
+  return { diffX, diffY };
+}
+
+// Returns the offset from one position to another, accounting for warping
+export function getWrappedOffset(fromPosition, toPosition, canvas) {
+  return offsetCorrection(
+    toPosition.x - fromPosition.x,
+    toPosition.y - fromPosition.y,
+    canvas
+  );
+}
+
+// Returns the offset from one position to another, accounting for warping
+export function getHeadingDifferenceDeg(self, neighbor) {
+  const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
+  const neighborHeading = (neighbor.angle * 180 / Math.PI + 360) % 360;
+  return (neighborHeading - selfHeading + 360) % 360;
+}
+
+// 0 - 360 correction
+export function isAngleInRange(value, low, high) {
+  if (low <= high) return value >= low && value <= high;
+  return value >= low || value <= high;
 }
 
 // Smoothing Calculator (based on smoothing factor)

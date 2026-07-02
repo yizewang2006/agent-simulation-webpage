@@ -1,5 +1,7 @@
 import { Entity } from "./entity.js";
-import { Position, Angle, Speed, getBehaviorTarget, getWrappedOffset, smoothTowardAngle, turnTowardAngle, TARGET_PROPERTIES, REFERENCE_TYPES } from "./behavior.js";
+import { Position, getBehaviorTarget, getWrappedOffset, turnTowardAngle } from "./behavior.js";
+import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES } from "./constants.js";
+import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNumberOrDefault } from "./utilities.js";
 
 class fovOffset {
     constructor(x, y) {
@@ -8,46 +10,27 @@ class fovOffset {
     }
 }
 
-function parseNumberCap(value) {
-    if (value === '' || value === null || value === undefined) return Infinity;
-    const parsed = parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : Infinity;
-}
-
-function parseNumberOrDefault(value, fallback) {
-    if (value === '' || value === null || value === undefined) return fallback;
-    const parsed = parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function getCanvasLogicalWidth(canvas) {
-    return canvas?.logicalWidth ?? canvas?.width ?? 0;
-}
-
-function getCanvasLogicalHeight(canvas) {
-    return canvas?.logicalHeight ?? canvas?.height ?? 0;
-}
-
 export class Agent extends Entity{
     constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, ctx, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + id + " has been created");
-        super();
+        super(id, ENTITY_TYPES.AGENT);
         // Instead of separate x and y, we now use a Position() class
         this.isSpecial = isSpecial;
         this.position = new Position(x, y);
         this.radius = radius;
+        this.hasMotion = true;
+        this.hasHeading = true;
         this.dx = dx;
         this.dy = dy;
         // 25.2.17 FIX: ANGLE INDEPENDENT OF dy & dx
         this.angle = angle; // We have now set the angle to be independent of dy & dx
         this.steeringAngle = angle;
-        this.turnSmoothing = 0.15;
         this.colorHex = colorHex;  // Default color
         this.originalColor = colorHex; // Store original color: won't change, java
         this.fovRadius = fovRadius; // FOV range of detection
         this.fovAngle = fovAngle;
-        // Initialize an empty array to hold detected agents
-        this.detectedAgents = [];
+        // Initialize an empty array to hold detected ENTITIES (6/28/2026)
+        this.detectedEntities = [];
         this.id = id;
         // 26.1.28 Context and Canvas reference for scalability (now accepts passed-in context and canvas)
         this.ctx = ctx;
@@ -70,11 +53,11 @@ export class Agent extends Entity{
             "#800080", // Purple
             "#FFC0CB"  // Pink
           ];
-        const randomIndex = Math.floor(Math.random() * possibleColor.length); // ChatGPT told me to round it down?
+        const randomIndex = Math.floor(Math.random() * possibleColor.length);
         this.colorHex = possibleColor[randomIndex];
     }
 
-    // Method to draw the circle
+    // Method to draw the circle <-- not circle, AGENT
     draw() {
         // this.showFOV is attached by Simulation.jsx, by React, not in the Agent class itself. It is a global setting that each agent can access to determine whether to draw FOV or not.
         const shouldDrawFOV = this.isSpecial && this.showFOV !== false;
@@ -169,8 +152,8 @@ export class Agent extends Entity{
     }
 
     // Phase 2: detect and apply behaviors using consistent post-move positions
-    behave(allAgents, behaviors = [], maxSpeed = null, maxAngle = null) {
-        this.detectAgents(allAgents);
+    behave(allEntities, behaviors = [], maxSpeed = null, maxAngle = null) {
+        this.detectEntities(allEntities);
         let sinSum = 0, cosSum = 0, angleCount = 0;
         const speedCap = parseNumberCap(maxSpeed);
         const angleCap = parseNumberCap(maxAngle) * Math.PI / 180;
@@ -199,7 +182,7 @@ export class Agent extends Entity{
                 continue;
             }
 
-            const targetVal = getBehaviorTarget(behavior, this, this.detectedAgents);
+            const targetVal = getBehaviorTarget(behavior, this, this.detectedEntities);
 
             if (targetVal !== null && targetVal !== undefined) {
                 switch (behavior.targetProperty) {
@@ -232,8 +215,8 @@ export class Agent extends Entity{
         }
         if (angleCount > 0) {
             const desiredAngle = Math.atan2(sinSum / angleCount, cosSum / angleCount);
-            this.steeringAngle = smoothTowardAngle(this.steeringAngle, desiredAngle, this.turnSmoothing);
-            this.angle = turnTowardAngle(this.angle, this.steeringAngle, angleCap);
+            this.steeringAngle = desiredAngle;
+            this.angle = turnTowardAngle(this.angle, desiredAngle, angleCap);
 
             const currentSpeed = Math.min(Math.sqrt(this.dx ** 2 + this.dy ** 2), speedCap);
             this.dx = Math.cos(this.angle) * currentSpeed;
@@ -259,48 +242,47 @@ export class Agent extends Entity{
         }
     }
 
-    // Detection system to identify agents inside FOV
-    detectAgents(agents) {
-        let currentlyDetected = [];
+    // New: detect all entities specified by UI
+    detectEntities(entities) {
+        const currentlyDetected = [];
 
-        // Loop through all agents to check if they are within FOV
-        agents.forEach(agent => {
-            if (agent !== this) { // Don't detect self
-                const { diffX, diffY } = getWrappedOffset(this.position, agent.position, this.canvas);
-    
-                let distanceBetweenAgents = Math.sqrt(diffX * diffX + diffY * diffY);
-                
-                // Check if within FOV radius
-                if (distanceBetweenAgents <= this.fovRadius + agent.radius) {
-                    let targetAngle = Math.atan2(diffY, diffX);
-                    // 2.17 FIX: ANGLE INDEPENDENT OF dy & dx
-                    let currentAgentAngle = this.angle;
-                    
+        // Loop through all entities to check if they are within FOV
+        entities.forEach(entity => {
+            if (entity !== this && entity.position) {
+                const { diffX, diffY } = getWrappedOffset(this.position, entity.position, this.canvas);
+
+                const distanceBetweenEntities = Math.sqrt(diffX * diffX + diffY * diffY);
+
+                if (distanceBetweenEntities <= this.fovRadius + entity.radius) {
+                    const targetAngle = Math.atan2(diffY, diffX);
+                    const currentAgentAngle = this.angle;
+
                     let angleDifference = Math.abs(currentAgentAngle - targetAngle);
-                    if (angleDifference > Math.PI) angleDifference = (2 * Math.PI) - angleDifference;
-                    
-                    // Check if within FOV angle
+                    if (angleDifference > Math.PI) {
+                        angleDifference = (2 * Math.PI) - angleDifference;
+                    }
+
                     if (angleDifference <= this.fovAngle / 2) {
-                        currentlyDetected.push(agent);
-                        // Only change to red if this agent wasn't detected in the previous update
-                        // if (!this.detectedAgents.includes(agent)) {
-                        //     agent.colorHex = '#FF0000';
+                        currentlyDetected.push(entity);
+                        // Only change to red if this entity wasn't detected in the previous update
+                        // if (!this.detectedEntities.includes(entity)) {
+                        //     entity.colorHex = '#FF0000';
                         // }
                     }
                 }
             }
         });
-        
-        // For any agent that was previously detected but is no longer in the current list,
+
+        // For any entity that was previously detected but is no longer in the current list,
         // reset its color to original.
-        this.detectedAgents.forEach(agent => {
-            if (!currentlyDetected.includes(agent)) {
-                // agent.colorHex = agent.originalColor; // Line changing color to red is in behavior.js
+        this.detectedEntities.forEach(entity => {
+            if (!currentlyDetected.includes(entity)) {
+                // entity.colorHex = entity.originalColor; // Line changing color to red is in behavior.js
             }
         });
 
-        // Update the detectedAgents list for the next update cycle.
-        this.detectedAgents = currentlyDetected;
+        // Update the detectedEntities list for the next update cycle.
+        this.detectedEntities = currentlyDetected;
     }
 
     // DEMO ONLY. DISUSED

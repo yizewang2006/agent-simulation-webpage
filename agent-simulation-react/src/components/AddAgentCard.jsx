@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Agent } from "../js_files/agent.js";
 import { CircleX, SquarePlus } from "lucide-react";
+import { parseNumberOrDefault } from "../js_files/utilities.js";
 
 // State variables
 export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, canvasWidth, canvasHeight, maxAgents, onAgentAdded, onClose }) {
@@ -53,12 +54,6 @@ export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, canvas
     roster[roster.length - 1].showFOV = showFOV;
     onAgentAdded([...roster]);
     onClose();
-  }
-
-  function parseNumberOrDefault(value, fallback) {
-    if (value === '' || value === null || value === undefined) return fallback;
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
   }
 
   function cancel() {

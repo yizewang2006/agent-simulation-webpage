@@ -16,33 +16,13 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "./js_files/agent.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "./js_files/behavior.js";
-import { Entity } from "./js_files/entity.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "./js_files/constants.js";
+import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent } from "./js_files/utilities.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
 const CANVAS_HEIGHT = 500;
 const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
-
-function getCanvasLogicalWidth(canvas) {
-  return canvas?.logicalWidth ?? canvas?.width ?? CANVAS_WIDTH;
-}
-
-function getCanvasLogicalHeight(canvas) {
-  return canvas?.logicalHeight ?? canvas?.height ?? CANVAS_HEIGHT;
-}
-
-// Better image quality
-function configureHighDpiCanvas(canvas, ctx) {
-  const pixelRatio = window.devicePixelRatio || 1;
-  canvas.logicalWidth = CANVAS_WIDTH;
-  canvas.logicalHeight = CANVAS_HEIGHT;
-  canvas.width = Math.round(CANVAS_WIDTH * pixelRatio);
-  canvas.height = Math.round(CANVAS_HEIGHT * pixelRatio);
-  canvas.style.width = `${CANVAS_WIDTH}px`;
-  canvas.style.height = `${CANVAS_HEIGHT}px`;
-  ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-}
 
 // Capture one JSON-friendly frame. Playback can redraw from this data without running behavior again.
 function createFrameSnapshot(agentsArray, frameIndex, recordingStartTime) {
@@ -290,8 +270,8 @@ function Simulation() {
       filterType: 'method',
       propertyType: FILTER_TYPES.DISTANCE,
       methodType: METHOD_TYPES.CLOSEST,
-      rangeLow: '',
-      rangeHigh: '',
+      low: '',
+      high: '',
     };
   }
 
@@ -300,24 +280,28 @@ function Simulation() {
       id: createStableId(),
       targets: normalizeFilterTargets(filter.targets),
       filterType: filter.filterType === 'ranged' ? 'ranged' : 'method',
-      propertyType: getValidValue(filter.filteredProperty, FILTER_TYPES, FILTER_TYPES.DISTANCE),
+      propertyType: getValidValue(filter.propertyType ?? filter.filteredProperty, FILTER_TYPES, FILTER_TYPES.DISTANCE),
       methodType: getValidValue(filter.methodType, METHOD_TYPES, METHOD_TYPES.CLOSEST),
-      rangeLow: filter.low ?? '',
-      rangeHigh: filter.high ?? '',
+      low: filter.low ?? '',
+      high: filter.high ?? '',
     };
   }
 
   function createDefaultFilterTargets() { // Default: select agent, deselect everyone else
-    return {
-      [ENTITY_TYPES.AGENT]: true,
-      [ENTITY_TYPES.OBSTACLE]: {
-        enabled: false,
-        [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
-        [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
-      },
-      [ENTITY_TYPES.LEADER]: false,
-      [ENTITY_TYPES.EXIT]: false,
+    const targets = {};
+
+    Object.values(ENTITY_TYPES).forEach((entityType) => {
+      targets[entityType] = false;
+    });
+
+    targets[ENTITY_TYPES.AGENT] = true;
+    targets[ENTITY_TYPES.OBSTACLE] = {
+      enabled: false,
+      [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
+      [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
     };
+
+    return targets;
   }
 
   function normalizeFilterTargets(targets) {
@@ -332,8 +316,11 @@ function Simulation() {
         [OBSTACLE_SHAPE_TYPES.CIRCLE]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.CIRCLE] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.CIRCLE],
         [OBSTACLE_SHAPE_TYPES.POLYGON]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.POLYGON] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.POLYGON],
       },
-      [ENTITY_TYPES.LEADER]: targets[ENTITY_TYPES.LEADER] ?? defaults[ENTITY_TYPES.LEADER],
-      [ENTITY_TYPES.EXIT]: targets[ENTITY_TYPES.EXIT] ?? defaults[ENTITY_TYPES.EXIT],
+      ...Object.fromEntries(
+        Object.values(ENTITY_TYPES)
+          .filter((entityType) => entityType !== ENTITY_TYPES.AGENT && entityType !== ENTITY_TYPES.OBSTACLE)
+          .map((entityType) => [entityType, targets[entityType] ?? defaults[entityType]])
+      ),
     };
   }
 
@@ -431,7 +418,7 @@ function Simulation() {
     const ctx = canvas.getContext('2d'); // same thing as the HTML version
     ctxRef.current = ctx; // Store in ref for access outside useEffect
 
-    configureHighDpiCanvas(canvas, ctx);
+    configureHighDpiCanvas(canvas, ctx, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     // Array to hold all agents
     const agentsArray = [];
@@ -453,7 +440,8 @@ function Simulation() {
         ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
         obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
         agentsArray.forEach(agent => agent.move(maxSpeedRef.current));
-        agentsArray.forEach(agent => agent.behave(agentsArray, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
+        const allEntities = [...agentsArray, ...obstaclesArrayRef.current];
+        agentsArray.forEach(agent => agent.behave(allEntities, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
         // Record the post-behavior state that should be reproduced during playback.
         if (isRecordingRef.current) {
           recordedFramesRef.current.push(
@@ -476,12 +464,8 @@ function Simulation() {
   function handleCanvasClick(e) {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
     // Scale click coords to match the logical simulation size.
-    const scaleX = getCanvasLogicalWidth(canvas) / rect.width;
-    const scaleY = getCanvasLogicalHeight(canvas) / rect.height;
-    const clickX = (e.clientX - rect.left) * scaleX;
-    const clickY = (e.clientY - rect.top) * scaleY;
+    const { x: clickX, y: clickY } = getCanvasPointFromEvent(e, canvas);
 
     // Finds the first agent within the click area (agent radius + 4px tolerance) and selects it for editing
     const clicked = agentsArrayRef.current.find(agent => {

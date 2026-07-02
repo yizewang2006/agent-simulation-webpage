@@ -1,5 +1,5 @@
 import { Entity } from "./entity.js";
-import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "./behavior.js";
+import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "./constants.js";
 
 function drawObstacleLabel(ctx, label, x, y) {
   ctx.font = "600 15px Arial, sans-serif";
@@ -27,14 +27,15 @@ When selected "entity type", disable the "method type"
 // Supports polygon obstacles, drawing, current collision checks, and linear collision prediction.
 export class PolygonObstacle extends Entity {
   constructor(id, vertices, color = "#FF4444", ctx) {
-    super(id);
-    this.entityType = ENTITY_TYPES.OBSTACLE;
+    super(id, ENTITY_TYPES.OBSTACLE);
     this.shapeType = OBSTACLE_SHAPE_TYPES.POLYGON;
     this.vertices = vertices;
     this.color = color;
     this.ctx = ctx;
     this.edges = this._buildEdges(vertices);
-    this.centroid = this._computeCentroid(vertices);
+    this.position = this._computeCentroid(vertices);
+    this.centroid = this.position;
+    this.radius = this._computeBoundingRadius(vertices, this.position);
   }
 
   _buildEdges(vertices) {
@@ -52,6 +53,14 @@ export class PolygonObstacle extends Entity {
       cy += v.y;
     }
     return { x: cx / vertices.length, y: cy / vertices.length };
+  }
+
+  _computeBoundingRadius(vertices, center) {
+    let radius = 0;
+    for (const v of vertices) {
+      radius = Math.max(radius, Math.hypot(v.x - center.x, v.y - center.y));
+    }
+    return radius;
   }
 
   draw() {
@@ -167,10 +176,10 @@ export class PolygonObstacle extends Entity {
 
 export class CircleObstacle extends Entity {
   constructor(id, center, radius, color = "#FF4444", ctx) {
-    super(id);
-    this.entityType = ENTITY_TYPES.OBSTACLE;
+    super(id, ENTITY_TYPES.OBSTACLE);
     this.shapeType = OBSTACLE_SHAPE_TYPES.CIRCLE;
-    this.center = center;
+    this.position = center;
+    this.center = this.position;
     this.radius = radius;
     this.color = color;
     this.ctx = ctx;
