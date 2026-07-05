@@ -1,5 +1,5 @@
 import { Entity } from "./entity.js";
-import { Position, getBehaviorTarget, getWrappedOffset, turnTowardAngle } from "./behavior.js";
+import { Position, getBehaviorTarget, getEntityReferencePosition, getWrappedOffset, turnTowardAngle } from "./behavior.js";
 import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES } from "./constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNumberOrDefault } from "./utilities.js";
 
@@ -254,7 +254,13 @@ export class Agent extends Entity{
                 const distanceBetweenEntities = Math.sqrt(diffX * diffX + diffY * diffY);
 
                 if (distanceBetweenEntities <= this.fovRadius + entity.radius) {
-                    const targetAngle = Math.atan2(diffY, diffX);
+                    const referencePosition = getEntityReferencePosition(this, entity);
+                    if (!referencePosition) return;
+
+                    // Use the closest obstacle boundary point for the FOV angle check.
+                    // The center/centroid is still used above as a cheap broad-phase distance check.
+                    const { diffX: refDiffX, diffY: refDiffY } = getWrappedOffset(this.position, referencePosition, this.canvas);
+                    const targetAngle = Math.atan2(refDiffY, refDiffX);
                     const currentAgentAngle = this.angle;
 
                     let angleDifference = Math.abs(currentAgentAngle - targetAngle);

@@ -216,6 +216,17 @@ export class MethodFilter extends Filter {
   }
 }
 
+export function getEntityReferencePosition(self, entity) {
+  if (!entity?.position) return null; // if position is null or undefined, or not available for this entity type, return null
+
+  if (typeof entity.getClosestPointTo === 'function') {
+    // Obstacles use the closest boundary point, not the center/centroid, for detection and steering.
+    return entity.getClosestPointTo(self.position);
+  }
+
+  return entity.position; // otherwise, return the entity's position directly
+}
+
 // ─── Filter helpers ──────────────────────────────────────────────────────────
 
 // Determines whether this entity supports the filtered property
@@ -239,8 +250,10 @@ function getFilterValue(filterPropertyType, self, entity) {
 
   switch (filterPropertyType) {
     case FILTER_TYPES.DISTANCE: {
-      if (!self?.position || !entity.position) return null;
-      const { diffX, diffY } = getWrappedOffset(self.position, entity.position, self.canvas);
+      const referencePosition = getEntityReferencePosition(self, entity);
+      if (!self?.position || !referencePosition) return null;
+      // Distance-based filters should measure to the visible obstacle boundary, not obstacle center.
+      const { diffX, diffY } = getWrappedOffset(self.position, referencePosition, self.canvas);
       return Math.sqrt(diffX ** 2 + diffY ** 2);
     }
     case FILTER_TYPES.HEADING_DIFFERENCE: {
@@ -248,8 +261,10 @@ function getFilterValue(filterPropertyType, self, entity) {
       return getHeadingDifferenceDeg(self, entity);
     }
     case FILTER_TYPES.RELATIVE_BEARING: {
-      if (!self?.position || !entity.position) return null;
-      const { diffX, diffY } = getWrappedOffset(self.position, entity.position, self.canvas);
+      const referencePosition = getEntityReferencePosition(self, entity);
+      if (!self?.position || !referencePosition) return null;
+      // Bearing-based filters should aim at the closest obstacle boundary point.
+      const { diffX, diffY } = getWrappedOffset(self.position, referencePosition, self.canvas);
       const bearing = Math.atan2(diffY, diffX) * 180 / Math.PI;
       const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
       return (bearing - selfHeading + 360) % 360;
@@ -345,8 +360,10 @@ function getTargetValue(targetProperty, self, entity) {
 
   switch (targetProperty) {
     case TARGET_PROPERTIES.POSITION: {
-      if (!self?.position || !entity.position) return null;
-      const { diffX, diffY } = getWrappedOffset(self.position, entity.position, self.canvas);
+      const referencePosition = getEntityReferencePosition(self, entity);
+      if (!self?.position || !referencePosition) return null;
+      // Position targets should steer relative to obstacle edges, not their centers.
+      const { diffX, diffY } = getWrappedOffset(self.position, referencePosition, self.canvas);
       return Math.atan2(diffY, diffX);
     }
 

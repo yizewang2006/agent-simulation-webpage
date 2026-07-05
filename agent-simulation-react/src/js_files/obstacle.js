@@ -172,6 +172,38 @@ export class PolygonObstacle extends Entity {
     t = Math.max(0, Math.min(1, t));
     return Math.hypot(px - (p1.x + t * dx), py - (p1.y + t * dy));
   }
+
+  _closestPointOnSegment(px, py, p1, p2) {
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    const l2 = dx * dx + dy * dy;
+
+    // Degenerate edge: treat the segment as a single vertex.
+    if (l2 < 1e-10) return { x: p1.x, y: p1.y };
+
+    // Project the point onto the edge, then clamp to keep it on the segment.
+    let t = ((px - p1.x) * dx + (py - p1.y) * dy) / l2;
+    t = Math.max(0, Math.min(1, t));
+
+      x: p1.x + t * dx,
+      y: p1.y + t * dy,
+    };
+  }
+
+  getClosestPointTo(position) {
+    // different from circle obstacles, polygons have edges and vertices (while circles does not have vertices)
+    let closestPoint = null, closetDist = Infinity;
+    for (const edge of this.edges) {
+      const pointOnEdge = this._closestPointOnSegment(position.x, position.y, edge.p1, edge.p2);
+      const distToPoint = Math.hypot(position.x - pointOnEdge.x, position.y - pointOnEdge.y);
+
+      if (distToPoint < closetDist) { // The champion seat algorithm for finding the closest point on a polygon.
+        closetDist = distToPoint;
+        closestPoint = pointOnEdge;
+      }
+    }
+    return closestPoint ?? this.position;
+  }
 }
 
 export class CircleObstacle extends Entity {
@@ -228,6 +260,24 @@ export class CircleObstacle extends Entity {
     const dy = agent.position.y - this.center.y;
     return Math.hypot(dx, dy) < agent.radius + this.radius;
   }
+
+  getClosestPointTo(position) {
+    const dx = position.x - this.center.x; // center to x coordinate of position
+    const dy = position.y - this.center.y; // center to y coordinate of position
+    const dist = Math.hypot(dx, dy); // the hypotenus of the triangle
+
+    if (dist === 0) {
+      return { x: this.center.x + this.radius, y: this.center.y}; // If at center, pick a random point on the circle's edge
+    }
+
+    return {
+      // from the center of the circle, move in the direction of "position" by radius (all lengths are equal to the radius of the circle)
+      x: this.center.x + (dx / dist) * this.radius,
+      y: this.center.y + (dy / dist) * this.radius,
+      // dx/dist and dy/dist are unit vectors
+    };
+  }
+
 }
 
 // Obstacle manager implementation written by Elaine.
