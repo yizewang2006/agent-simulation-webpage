@@ -47,9 +47,9 @@ export const PROPERTY_LABELS = {
 export const FILTER_LABELS = {
   [FILTER_TYPES.DISTANCE]: 'Distance',
   [FILTER_TYPES.SPEED]: 'Speed',
-  [FILTER_TYPES.HEADING_DIFFERENCE]: 'Heading Difference (0-360)',
+  [FILTER_TYPES.HEADING_DIFFERENCE]: 'Heading Difference',
   [FILTER_TYPES.HEADING_RAW]: 'Raw Heading',
-  [FILTER_TYPES.RELATIVE_BEARING]: 'Relative Bearing (0-360)',
+  [FILTER_TYPES.RELATIVE_BEARING]: 'Relative Bearing',
 };
 
 export const ENTITY_LABELS = {

@@ -25,7 +25,7 @@ const CANVAS_HEIGHT = 500;
 const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
 
 // Capture one JSON-friendly frame. Playback can redraw from this data without running behavior again.
-function createFrameSnapshot(agentsArray, frameIndex, recordingStartTime) {
+function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingStartTime) {
   return {
     frameIndex,
     timestamp: performance.now() - recordingStartTime,
@@ -43,7 +43,100 @@ function createFrameSnapshot(agentsArray, frameIndex, recordingStartTime) {
       // Store the final visual FOV decision, matching Agent.draw().
       showFOV: agent.isSpecial && agent.showFOV !== false,
     })),
+    obstacles: obstaclesArray.map((obstacle) => ({
+      id: obstacle.ID,
+      shapeType: obstacle.shapeType,
+      color: obstacle.color,
+      center: obstacle.center
+        ? { x: obstacle.center.x, y: obstacle.center.y }
+        : null,
+      radius: obstacle.radius,
+      vertices: Array.isArray(obstacle.vertices)
+        ? obstacle.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y }))
+        : [],
+    })),
   };
+}
+
+function drawObstaclePreview(ctx, preview) {
+  if (!preview) return;
+
+  // Preview is only a canvas overlay: it never enters the obstacle list, so
+  // agents do not collide with it and recordings do not capture it.
+  ctx.save();
+  ctx.fillStyle = 'rgba(79, 134, 215, 0.16)';
+  ctx.strokeStyle = '#4f86d7';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 6]);
+
+  if (preview.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+    ctx.beginPath();
+    ctx.arc(preview.center.x, preview.center.y, preview.radius, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  } else if (preview.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON && preview.vertices.length >= 3) {
+    ctx.beginPath();
+    ctx.moveTo(preview.vertices[0].x, preview.vertices[0].y);
+    for (let i = 1; i < preview.vertices.length; i++) {
+      ctx.lineTo(preview.vertices[i].x, preview.vertices[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawAgentPreview(ctx, preview) {
+  if (!preview) return;
+
+  // Like obstacle preview, this is only a visual overlay. The draft agent is
+  // never added to agentsArrayRef, so no behavior or collision code can see it.
+  ctx.save();
+
+  if (preview.showFOV) {
+    ctx.beginPath();
+    ctx.moveTo(preview.x, preview.y);
+    ctx.arc(
+      preview.x,
+      preview.y,
+      preview.fovRadius,
+      preview.angle - preview.fovAngle / 2,
+      preview.angle + preview.fovAngle / 2
+    );
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(79, 134, 215, 0.10)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(79, 134, 215, 0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 5]);
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([7, 5]);
+  ctx.beginPath();
+  ctx.arc(preview.x, preview.y, preview.radius, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fillStyle = `${preview.color}55`;
+  ctx.fill();
+  ctx.strokeStyle = '#4f86d7';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(preview.x, preview.y);
+  ctx.lineTo(
+    preview.x + Math.cos(preview.angle) * preview.radius * 2.6,
+    preview.y + Math.sin(preview.angle) * preview.radius * 2.6
+  );
+  ctx.setLineDash([]);
+  ctx.strokeStyle = '#4f86d7';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function Simulation() {
@@ -52,6 +145,8 @@ function Simulation() {
   const ctxRef = useRef(null); // Ref to hold the canvas context
   const agentsArrayRef = useRef([]); // Ref to hold the internal agents array (used by animation loop & Agent constructor)
   const obstaclesArrayRef = useRef([]); // Ref to hold obstacle objects used by the animation loop
+  const agentPreviewRef = useRef(null); // Draft single-agent preview drawn while creating an agent
+  const obstaclePreviewRef = useRef(null); // Draft obstacle preview drawn over the canvas while creating
 
   const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
   const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
@@ -439,7 +534,16 @@ function Simulation() {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
         obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
+        drawObstaclePreview(ctx, obstaclePreviewRef.current);
+        drawAgentPreview(ctx, agentPreviewRef.current);
         agentsArray.forEach(agent => agent.move(maxSpeedRef.current));
+        agentsArray.forEach(agent => {
+          // Snapshot motion before behavior so neighbor-reference rules do not
+          // read speeds/headings already changed earlier in the same frame.
+          agent.behaviorDx = agent.dx;
+          agent.behaviorDy = agent.dy;
+          agent.behaviorAngle = agent.angle;
+        });
         const allEntities = [...agentsArray, ...obstaclesArrayRef.current];
         agentsArray.forEach(agent => agent.behave(allEntities, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
         // Record the post-behavior state that should be reproduced during playback.
@@ -447,6 +551,7 @@ function Simulation() {
           recordedFramesRef.current.push(
             createFrameSnapshot(
               agentsArray,
+              obstaclesArrayRef.current,
               recordedFrameIndexRef.current,
               recordingStartTimeRef.current
             )
@@ -618,11 +723,15 @@ function Simulation() {
                 canvasRef={canvasRef}
                 ctxRef={ctxRef}
                 agentsArrayRef={agentsArrayRef}
+                agentPreviewRef={agentPreviewRef}
                 canvasWidth={CANVAS_WIDTH}
                 canvasHeight={CANVAS_HEIGHT}
                 maxAgents={MAX_AGENTS}
                 onAgentAdded={(updatedRoster) => setAgents(updatedRoster)}
-                onClose={() => setShowAddAgent(false)}
+                onClose={() => {
+                  agentPreviewRef.current = null;
+                  setShowAddAgent(false);
+                }}
               />
             )}
 
@@ -709,10 +818,14 @@ function Simulation() {
               <ObstacleCard
                 ctxRef={ctxRef}
                 obstaclesArrayRef={obstaclesArrayRef}
+                obstaclePreviewRef={obstaclePreviewRef}
                 canvasWidth={CANVAS_WIDTH}
                 canvasHeight={CANVAS_HEIGHT}
                 onObstaclesChanged={(updatedObstacles) => setObstacles(updatedObstacles)}
-                onClose={() => setShowAddObstacle(false)}
+                onClose={() => {
+                  obstaclePreviewRef.current = null;
+                  setShowAddObstacle(false);
+                }}
               />
             )}
             

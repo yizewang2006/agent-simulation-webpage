@@ -1,7 +1,14 @@
 import { Entity } from "./entity.js";
-import { Position, getBehaviorTarget, getEntityReferencePosition, getWrappedOffset, turnTowardAngle } from "./behavior.js";
+import { Position, getBehaviorTarget, getEntityDetectionPoints, getWrappedOffset, turnTowardAngle } from "./behavior.js";
 import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES } from "./constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNumberOrDefault } from "./utilities.js";
+
+/*
+Separate Page for Agent Creation AND Obstacles(dragging ...) Called: Scenario Configuration
+Everything involved in configuration of entities, group them together.
+Feature to Load Scenario Presets (JSON) and Save Scenario Presets (JSON)
+Pause the simulation?
+*/
 
 class fovOffset {
     constructor(x, y) {
@@ -254,21 +261,26 @@ export class Agent extends Entity{
                 const distanceBetweenEntities = Math.sqrt(diffX * diffX + diffY * diffY);
 
                 if (distanceBetweenEntities <= this.fovRadius + entity.radius) {
-                    const referencePosition = getEntityReferencePosition(this, entity);
-                    if (!referencePosition) return;
+                    const detectionPoints = getEntityDetectionPoints(this, entity);
 
-                    // Use the closest obstacle boundary point for the FOV angle check.
+                    // Use all detection points for the FOV angle check.
                     // The center/centroid is still used above as a cheap broad-phase distance check.
-                    const { diffX: refDiffX, diffY: refDiffY } = getWrappedOffset(this.position, referencePosition, this.canvas);
-                    const targetAngle = Math.atan2(refDiffY, refDiffX);
-                    const currentAgentAngle = this.angle;
+                    const isVisible = detectionPoints.some((point) => {
+                        const { diffX: refDiffX, diffY: refDiffY } =
+                            getWrappedOffset(this.position, point, this.canvas);
 
-                    let angleDifference = Math.abs(currentAgentAngle - targetAngle);
-                    if (angleDifference > Math.PI) {
-                        angleDifference = (2 * Math.PI) - angleDifference;
-                    }
+                        const targetAngle = Math.atan2(refDiffY, refDiffX);
+                        const currentAgentAngle = this.angle;
 
-                    if (angleDifference <= this.fovAngle / 2) {
+                        let angleDifference = Math.abs(currentAgentAngle - targetAngle);
+                        if (angleDifference > Math.PI) {
+                            angleDifference = (2 * Math.PI) - angleDifference;
+                        }
+
+                        return angleDifference <= this.fovAngle / 2;
+                    });
+
+                    if (isVisible) {
                         currentlyDetected.push(entity);
                         // Only change to red if this entity wasn't detected in the previous update
                         // if (!this.detectedEntities.includes(entity)) {

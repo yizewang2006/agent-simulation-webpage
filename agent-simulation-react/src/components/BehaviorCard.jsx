@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowUpToLine, BrainCircuit, ChevronDown, ChevronUp, CirclePlus, ListFilterPlus, Trash2 } from 'lucide-react';
 import {
   TARGET_PROPERTIES,
@@ -60,6 +60,19 @@ function BehaviorCard({
   onDeleteFilter,
 }) { /* Body of function */
   const presetInputRef = useRef(null);
+  const [collapsedFilterIds, setCollapsedFilterIds] = useState(new Set());
+
+  function toggleFilterCollapsed(filterId) {
+    setCollapsedFilterIds((current) => {
+      const next = new Set(current);
+      if (next.has(filterId)) {
+        next.delete(filterId);
+      } else {
+        next.add(filterId);
+      }
+      return next;
+    });
+  }
 
   function getFilterTargets(filter) {
     return {
@@ -281,126 +294,157 @@ function BehaviorCard({
                       <div className="panel-card" style={{ marginTop: 6, padding: '10px 12px' }}>
                         <h3 className="panel-section-title" style={{ margin: '0 0 4px 0', fontSize: 14 }}>Filters</h3>
 
-                        {behavior.filters.map((filter) => (
-                          <div key={filter.id} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 4, padding: '10px 12px' }}>
-                            <button
-                              className="btn-secondary"
-                              onClick={() => onDeleteFilter(behavior.id, filter.id)}
-                              aria-label="Remove filter"
-                              title="Remove filter"
-                              style={{ position: 'absolute', top: 6, right: 8, width: 32, height: 26, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <Trash2 size={14} aria-hidden="true" />
-                            </button>
+                        {behavior.filters.map((filter, filterIndex) => {
+                          const isFilterCollapsed = collapsedFilterIds.has(filter.id);
+                          const filterTypeLabel = filter.filterType
+                            ? filter.filterType.charAt(0).toUpperCase() + filter.filterType.slice(1)
+                            : 'Filter';
 
-                            <div className="input-group">
-                              <label>Target Entity Types</label>
-                              <div className="entity-target-group">
-                                {/* Generate a checkbox for every entity type, special treatment for Obstacle*/}
-                                {Object.entries(ENTITY_LABELS).map(([entityType, label]) => {
-                                  const numericEntityType = Number(entityType);
+                          return (
+                            <div key={filter.id} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 4, padding: '10px 12px' }}>
+                              <button
+                                className="btn-secondary"
+                                onClick={() => onDeleteFilter(behavior.id, filter.id)}
+                                aria-label="Remove filter"
+                                title="Remove filter"
+                                style={{ position: 'absolute', top: 6, right: 8, width: 32, height: 26, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                              </button>
 
-                                  if (numericEntityType === ENTITY_TYPES.OBSTACLE) {
-                                    const obstacleTargets = getFilterTargets(filter)[ENTITY_TYPES.OBSTACLE];
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 42 }}>
+                                <button
+                                  className="btn-secondary icon-only-button"
+                                  onClick={() => toggleFilterCollapsed(filter.id)}
+                                  aria-expanded={!isFilterCollapsed}
+                                  aria-label={isFilterCollapsed ? 'Expand filter' : 'Collapse filter'}
+                                  style={{ width: 30, height: 26, padding: 0, flex: '0 0 auto' }}
+                                >
+                                  {isFilterCollapsed
+                                    ? <ChevronDown size={16} aria-hidden="true" />
+                                    : <ChevronUp size={16} aria-hidden="true" />}
+                                </button>
+                                <h4 className="panel-section-title" style={{ flex: 1, margin: 0, fontSize: 14 }}>
+                                  Filter {filterIndex + 1}
+                                </h4>
+                                <span style={{ color: '#888', fontSize: 12 }}>
+                                  {filterTypeLabel} | {FILTER_LABELS[filter.propertyType]}
+                                </span>
+                              </div>
 
-                                    return (
-                                      <div key={numericEntityType}>
-                                        <label className="entity-target-option">
-                                          <input
-                                            type="checkbox"
-                                            checked={obstacleTargets.enabled}
-                                            onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
-                                          />
-                                          {label}
-                                        </label>
+                              {!isFilterCollapsed && (
+                                <>
+                                  <div className="input-group">
+                                    <label>Target Entity Types</label>
+                                    <div className="entity-target-group">
+                                      {/* Generate a checkbox for every entity type, special treatment for Obstacle*/}
+                                      {Object.entries(ENTITY_LABELS).map(([entityType, label]) => {
+                                        const numericEntityType = Number(entityType);
 
-                                        <div className="entity-subtype-options">
-                                          {Object.entries(OBSTACLE_SHAPE_LABELS).map(([shapeType, shapeLabel]) => {
-                                            const numericShapeType = Number(shapeType);
+                                        if (numericEntityType === ENTITY_TYPES.OBSTACLE) {
+                                          const obstacleTargets = getFilterTargets(filter)[ENTITY_TYPES.OBSTACLE];
 
-                                            return (
-                                              <label key={numericShapeType} className={`entity-target-option ${!obstacleTargets.enabled ? 'entity-target-option-disabled' : ''}`}>
+                                          return (
+                                            <div key={numericEntityType}>
+                                              <label className="entity-target-option">
                                                 <input
                                                   type="checkbox"
-                                                  disabled={!obstacleTargets.enabled}
-                                                  checked={obstacleTargets[numericShapeType]}
-                                                  onChange={(e) => handleObstacleSubtypeChange(behavior.id, filter, numericShapeType, e.target.checked)}
+                                                  checked={obstacleTargets.enabled}
+                                                  onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
                                                 />
-                                                {shapeLabel}
+                                                {label}
                                               </label>
-                                            );
-                                          })}
-                                        </div>
+
+                                              <div className="entity-subtype-options">
+                                                {Object.entries(OBSTACLE_SHAPE_LABELS).map(([shapeType, shapeLabel]) => {
+                                                  const numericShapeType = Number(shapeType);
+
+                                                  return (
+                                                    <label key={numericShapeType} className={`entity-target-option ${!obstacleTargets.enabled ? 'entity-target-option-disabled' : ''}`}>
+                                                      <input
+                                                        type="checkbox"
+                                                        disabled={!obstacleTargets.enabled}
+                                                        checked={obstacleTargets[numericShapeType]}
+                                                        onChange={(e) => handleObstacleSubtypeChange(behavior.id, filter, numericShapeType, e.target.checked)}
+                                                      />
+                                                      {shapeLabel}
+                                                    </label>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+
+                                        return (
+                                          <label key={numericEntityType} className="entity-target-option">
+                                            <input
+                                              type="checkbox"
+                                              checked={getFilterTargets(filter)[numericEntityType]}
+                                              onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
+                                            />
+                                            {label}
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  <div className="input-group">
+                                    <label>Type</label>
+                                    <div className="radio-group">
+                                      {['method', 'ranged'].map(t => ( // method, ranged
+                                        <label key={t} className="radio-option">
+                                          <input
+                                            type="radio"
+                                            name={`filter-type-${behavior.id}-${filter.id}`}
+                                            value={t}
+                                            checked={filter.filterType === t}
+                                            onChange={() => onUpdateFilter(behavior.id, filter.id, { filterType: t })}
+                                          />
+                                          {' '}{t.charAt(0).toUpperCase() + t.slice(1)}
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="input-group">
+                                    <label>Property</label>
+                                    <select value={filter.propertyType} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { propertyType: Number(e.target.value) })}>
+                                      {Object.entries(FILTER_LABELS).map(([val, label]) => (
+                                        <option key={val} value={val}>{label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {filter.filterType === 'method' && (
+                                    <div className="input-group">
+                                      <label>Method</label>
+                                      <select value={filter.methodType} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { methodType: Number(e.target.value) })}>
+                                        {Object.entries(METHOD_LABELS_BY_PROPERTY[filter.propertyType] ?? METHOD_LABELS).map(([val, label]) => (
+                                          <option key={val} value={val}>{label}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+
+                                  {filter.filterType === 'ranged' && (
+                                    <div className="input-row">
+                                      <div className="input-group">
+                                        <label>Low</label>
+                                        <input type="number" value={filter.low} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { low: e.target.value })} />
                                       </div>
-                                    );
-                                  }
-
-                                  return (
-                                    <label key={numericEntityType} className="entity-target-option">
-                                      <input
-                                        type="checkbox"
-                                        checked={getFilterTargets(filter)[numericEntityType]}
-                                        onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
-                                      />
-                                      {label}
-                                    </label>
-                                  );
-                                })}
-                              </div>
+                                      <div className="input-group">
+                                        <label>High</label>
+                                        <input type="number" value={filter.high} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { high: e.target.value })} />
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
                             </div>
-
-                            <div className="input-group">
-                              <label>Type</label>
-                              <div className="radio-group">
-                                {['method', 'ranged'].map(t => ( // method, ranged
-                                  <label key={t} className="radio-option">
-                                    <input
-                                      type="radio"
-                                      name={`filter-type-${behavior.id}-${filter.id}`}
-                                      value={t}
-                                      checked={filter.filterType === t}
-                                      onChange={() => onUpdateFilter(behavior.id, filter.id, { filterType: t })}
-                                    />
-                                    {' '}{t.charAt(0).toUpperCase() + t.slice(1)}
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="input-group">
-                              <label>Property</label>
-                              <select value={filter.propertyType} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { propertyType: Number(e.target.value) })}>
-                                {Object.entries(FILTER_LABELS).map(([val, label]) => (
-                                  <option key={val} value={val}>{label}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {filter.filterType === 'method' && (
-                              <div className="input-group">
-                                <label>Method</label>
-                                <select value={filter.methodType} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { methodType: Number(e.target.value) })}>
-                                  {Object.entries(METHOD_LABELS_BY_PROPERTY[filter.propertyType] ?? METHOD_LABELS).map(([val, label]) => (
-                                    <option key={val} value={val}>{label}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            )}
-
-                            {filter.filterType === 'ranged' && (
-                              <div className="input-row">
-                                <div className="input-group">
-                                  <label>Low</label>
-                                  <input type="number" value={filter.low} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { low: e.target.value })} />
-                                </div>
-                                <div className="input-group">
-                                  <label>High</label>
-                                  <input type="number" value={filter.high} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { high: e.target.value })} />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          );
+                        })}
 
                         <button className="btn-secondary icon-button" onClick={() => onAddFilter(behavior.id)}>
                           <ListFilterPlus className="button-icon" size={16} aria-hidden="true" />

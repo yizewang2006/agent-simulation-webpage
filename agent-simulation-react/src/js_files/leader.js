@@ -1,5 +1,7 @@
 import { Entity } from "./entity";
 
 export class Leader extends Entity {
-    // TODO
+    constructor(ID, entityType) {
+        super(ID, ENTITY_TYPES.LEADER);
+    }
 }

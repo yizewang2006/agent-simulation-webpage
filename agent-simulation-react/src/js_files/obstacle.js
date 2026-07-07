@@ -185,6 +185,7 @@ export class PolygonObstacle extends Entity {
     let t = ((px - p1.x) * dx + (py - p1.y) * dy) / l2;
     t = Math.max(0, Math.min(1, t));
 
+    return {
       x: p1.x + t * dx,
       y: p1.y + t * dy,
     };
@@ -203,6 +204,21 @@ export class PolygonObstacle extends Entity {
       }
     }
     return closestPoint ?? this.position;
+  }
+
+  // Grab a set of points for detection (closest point only for now)
+  getDetectionPointsTo(position) {
+    const points = [];
+    
+    const closestPoint = this.getClosestPointTo(position);
+    if (closestPoint) points.push(closestPoint);
+
+    // Dealing with diagonal cases
+    // for (const v of this.vertices) {
+    //   points.push(v);
+    // }
+
+    return points;
   }
 }
 

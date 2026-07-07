@@ -221,10 +221,32 @@ export function getEntityReferencePosition(self, entity) {
 
   if (typeof entity.getClosestPointTo === 'function') {
     // Obstacles use the closest boundary point, not the center/centroid, for detection and steering.
-    return entity.getClosestPointTo(self.position);
+    return entity.getClosestPointTo(getWrappedQueryPosition(self, entity));
   }
 
   return entity.position; // otherwise, return the entity's position directly
+}
+
+export function getEntityDetectionPoints(self, entity) {
+  if (!entity?.position) return [];
+
+  if (typeof entity.getDetectionPointsTo === 'function') { // FOR POLYGON OBSTACLES, THEY HAVE A FUNCTION called getDetectionPointsTo that returns detection points
+    // Obstacles use the closest boundary point for detection and steering.
+    return entity.getDetectionPointsTo(getWrappedQueryPosition(self, entity));
+  }
+
+  const refPos = getEntityReferencePosition(self, entity);
+  return refPos ? [refPos] : [];
+}
+
+function getWrappedQueryPosition(self, entity) {
+  if (!self?.position || !entity?.position) return self?.position;
+
+  const { diffX, diffY } = getWrappedOffset(entity.position, self.position, self.canvas);
+  return {
+    x: entity.position.x + diffX,
+    y: entity.position.y + diffY,
+  };
 }
 
 // ─── Filter helpers ──────────────────────────────────────────────────────────
@@ -266,19 +288,29 @@ function getFilterValue(filterPropertyType, self, entity) {
       // Bearing-based filters should aim at the closest obstacle boundary point.
       const { diffX, diffY } = getWrappedOffset(self.position, referencePosition, self.canvas);
       const bearing = Math.atan2(diffY, diffX) * 180 / Math.PI;
-      const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
+      const selfHeading = (getEntityHeading(self) * 180 / Math.PI + 360) % 360;
       return (bearing - selfHeading + 360) % 360;
     }
 
     case FILTER_TYPES.SPEED:
-      return Math.sqrt(entity.dx ** 2 + entity.dy ** 2);
+      return getEntitySpeed(entity);
 
     case FILTER_TYPES.HEADING_RAW:
-      return (entity.angle * 180 / Math.PI + 360) % 360;
+      return (getEntityHeading(entity) * 180 / Math.PI + 360) % 360;
 
     default:
       return null;
   }
+}
+
+function getEntitySpeed(entity) {
+  const dx = entity.behaviorDx ?? entity.dx;
+  const dy = entity.behaviorDy ?? entity.dy;
+  return Math.sqrt(dx ** 2 + dy ** 2);
+}
+
+function getEntityHeading(entity) {
+  return entity.behaviorAngle ?? entity.angle;
 }
 
 // Based on UI choices, filter ENTITY TYPES!
@@ -368,10 +400,10 @@ function getTargetValue(targetProperty, self, entity) {
     }
 
     case TARGET_PROPERTIES.SPEED:
-      return Math.sqrt(entity.dx ** 2 + entity.dy ** 2);
+      return getEntitySpeed(entity);
 
     case TARGET_PROPERTIES.ANGLE:
-      return entity.angle;
+      return getEntityHeading(entity);
 
     default:
       return null;
@@ -455,8 +487,8 @@ export function getWrappedOffset(fromPosition, toPosition, canvas) {
 
 // Returns the offset from one position to another, accounting for warping
 export function getHeadingDifferenceDeg(self, neighbor) {
-  const selfHeading = (self.angle * 180 / Math.PI + 360) % 360;
-  const neighborHeading = (neighbor.angle * 180 / Math.PI + 360) % 360;
+  const selfHeading = (getEntityHeading(self) * 180 / Math.PI + 360) % 360;
+  const neighborHeading = (getEntityHeading(neighbor) * 180 / Math.PI + 360) % 360;
   return (neighborHeading - selfHeading + 360) % 360;
 }
 

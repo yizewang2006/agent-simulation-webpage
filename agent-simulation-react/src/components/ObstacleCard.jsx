@@ -1,26 +1,20 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { CircleObstacle, PolygonObstacle } from '../js_files/obstacle.js';
+import { OBSTACLE_SHAPE_TYPES } from '../js_files/constants.js';
+import { CirclePlus, CircleX, SquarePlus, Trash2 } from 'lucide-react';
 
-// JSON formatted presets for common polygons (rectangle & triangle)
+const DEFAULT_POLYGON_VERTICES = [
+  { x: '180', y: '220' },
+  { x: '320', y: '220' },
+  { x: '320', y: '260' },
+  { x: '180', y: '260' },
+];
 
-const RECTANGLE_TEMPLATE = `[
-  { "x": 180, "y": 220 },
-  { "x": 320, "y": 220 },
-  { "x": 320, "y": 260 },
-  { "x": 180, "y": 260 }
-]`;
-
-const TRIANGLE_TEMPLATE = `[
-  { "x": 250, "y": 180 },
-  { "x": 330, "y": 320 },
-  { "x": 170, "y": 320 }
-]`;
-
-export default function ObstacleCard({ ctxRef, obstaclesArrayRef, canvasWidth, canvasHeight, onObstaclesChanged, onClose }) {
+export default function ObstacleCard({ ctxRef, obstaclesArrayRef, obstaclePreviewRef, canvasWidth, canvasHeight, onObstaclesChanged, onClose }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#ACAD9D');
   const [shapeType, setShapeType] = useState('polygon');
-  const [verticesText, setVerticesText] = useState(RECTANGLE_TEMPLATE);
+  const [vertices, setVertices] = useState(DEFAULT_POLYGON_VERTICES);
   const [circleCenterX, setCircleCenterX] = useState(250);
   const [circleCenterY, setCircleCenterY] = useState(250);
   const [circleRadius, setCircleRadius] = useState(45);
@@ -31,24 +25,36 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, canvasWidth, c
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
 
-  function handleUseRectangleTemplate() {
-    setVerticesText(RECTANGLE_TEMPLATE);
+  function handleAddVertex() {
+    const lastVertex = vertices[vertices.length - 1] ?? { x: '250', y: '250' };
+    const nextX = String(Math.min(canvasWidth, Number(lastVertex.x) + 20 || 250));
+    const nextY = String(Math.min(canvasHeight, Number(lastVertex.y) + 20 || 250));
+    setVertices([...vertices, { x: nextX, y: nextY }]);
     setError('');
   }
 
-  function handleUseTriangleTemplate() {
-    setVerticesText(TRIANGLE_TEMPLATE);
+  function handleUpdateVertex(index, field, value) {
+    setVertices(vertices.map((vertex, vertexIndex) => (
+      vertexIndex === index ? { ...vertex, [field]: value } : vertex
+    )));
+  }
+
+  function handleDeleteVertex(index) {
+    if (vertices.length <= 3) {
+      setError('Polygon obstacles need at least 3 vertices.');
+      return;
+    }
+
+    setVertices(vertices.filter((_, vertexIndex) => vertexIndex !== index));
     setError('');
   }
 
-  // Temporary function to parse JSON vertices
-  function parseVertices() {
-    const parsedVertices = JSON.parse(verticesText);
-    if (!Array.isArray(parsedVertices) || parsedVertices.length < 3) {
+  const parseVertices = useCallback(() => {
+    if (!Array.isArray(vertices) || vertices.length < 3) {
       throw new Error('Obstacle needs at least 3 vertices.');
     }
 
-    parsedVertices.forEach((vertex, index) => {
+    vertices.forEach((vertex, index) => {
       const x = Number(vertex.x);
       const y = Number(vertex.y);
       if (!Number.isFinite(x) || !Number.isFinite(y)) {
@@ -59,13 +65,13 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, canvasWidth, c
       }
     });
 
-    return parsedVertices.map((vertex) => ({
+    return vertices.map((vertex) => ({
       x: Number(vertex.x),
       y: Number(vertex.y),
     }));
-  }
+  }, [vertices, canvasWidth, canvasHeight]);
 
-  function parseCircle() {
+  const parseCircle = useCallback(() => {
     const x = Number(circleCenterX);
     const y = Number(circleCenterY);
     const radius = Number(circleRadius);
@@ -81,7 +87,35 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, canvasWidth, c
     }
 
     return { center: { x, y }, radius };
-  }
+  }, [circleCenterX, circleCenterY, circleRadius, canvasWidth, canvasHeight]);
+
+  useEffect(() => {
+    if (!obstaclePreviewRef) return;
+
+    // Keep the canvas preview in sync with the current form values. Invalid
+    // drafts are hidden until the user enters enough valid geometry again.
+    try {
+      if (shapeType === 'circle') {
+        const { center, radius } = parseCircle();
+        obstaclePreviewRef.current = {
+          shapeType: OBSTACLE_SHAPE_TYPES.CIRCLE,
+          center,
+          radius,
+        };
+      } else {
+        obstaclePreviewRef.current = {
+          shapeType: OBSTACLE_SHAPE_TYPES.POLYGON,
+          vertices: parseVertices(),
+        };
+      }
+    } catch {
+      obstaclePreviewRef.current = null;
+    }
+
+    return () => {
+      obstaclePreviewRef.current = null;
+    };
+  }, [shapeType, obstaclePreviewRef, parseCircle, parseVertices]);
 
   function handleCreateObstacle() {
     try {
@@ -122,82 +156,116 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, canvasWidth, c
         <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
       </div>
 
-      <div className="input-group">
-        <label>Shape</label>
-        <div className="radio-group">
-          <label className="radio-option">
-            <input
-              type="radio"
-              name="obstacle-shape"
-              value="polygon"
-              checked={shapeType === 'polygon'}
-              onChange={() => {
-                setShapeType('polygon');
-                setError('');
-              }}
-            />
-            Polygon
-          </label>
-          <label className="radio-option">
-            <input
-              type="radio"
-              name="obstacle-shape"
-              value="circle"
-              checked={shapeType === 'circle'}
-              onChange={() => {
-                setShapeType('circle');
-                setError('');
-              }}
-            />
-            Circle
-          </label>
+      <div className="obstacle-shape-editor">
+        <div className="input-group">
+          <label>Shape</label>
+          <div className="radio-group">
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="obstacle-shape"
+                value="polygon"
+                checked={shapeType === 'polygon'}
+                onChange={() => {
+                  setShapeType('polygon');
+                  setError('');
+                }}
+              />
+              Polygon
+            </label>
+            <label className="radio-option">
+              <input
+                type="radio"
+                name="obstacle-shape"
+                value="circle"
+                checked={shapeType === 'circle'}
+                onChange={() => {
+                  setShapeType('circle');
+                  setError('');
+                }}
+              />
+              Circle
+            </label>
+          </div>
         </div>
+
+        {shapeType === 'polygon' ? (
+          <>
+            <div className="obstacle-vertices-editor">
+              {vertices.map((vertex, index) => (
+                <div key={index} className="obstacle-vertex-row">
+                  <span className="obstacle-vertex-label">Vertex {index + 1}</span>
+                  <div className="input-group">
+                    <label>X</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={canvasWidth}
+                      value={vertex.x}
+                      onChange={(e) => handleUpdateVertex(index, 'x', e.target.value)}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label>Y</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={canvasHeight}
+                      value={vertex.y}
+                      onChange={(e) => handleUpdateVertex(index, 'y', e.target.value)}
+                    />
+                  </div>
+                  <button
+                    className="btn-secondary icon-only-button obstacle-vertex-delete"
+                    onClick={() => handleDeleteVertex(index)}
+                    disabled={vertices.length <= 3}
+                    aria-label={`Delete vertex ${index + 1}`}
+                    title={vertices.length <= 3 ? 'Polygon needs at least 3 vertices' : `Delete vertex ${index + 1}`}
+                  >
+                    <Trash2 size={15} aria-hidden="true" />
+                  </button>
+                </div>
+              ))}
+              <button className="btn-secondary icon-button" onClick={handleAddVertex}>
+                <CirclePlus className="button-icon" size={16} aria-hidden="true" />
+                Add Vertex
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="input-row">
+              <div className="input-group">
+                <label>Center X</label>
+                <input type="number" min={0} max={canvasWidth} value={circleCenterX} onChange={(e) => setCircleCenterX(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Center Y</label>
+                <input type="number" min={0} max={canvasHeight} value={circleCenterY} onChange={(e) => setCircleCenterY(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label>Radius</label>
+              <input type="number" min={1} max={Math.min(canvasWidth, canvasHeight) / 2} value={circleRadius} onChange={(e) => setCircleRadius(e.target.value)} />
+            </div>
+          </>
+        )}
       </div>
-
-      {shapeType === 'polygon' ? (
-        <>
-          <div className="input-row">
-            <button className="btn-secondary" onClick={handleUseRectangleTemplate}>Rectangle</button>
-            <button className="btn-secondary" onClick={handleUseTriangleTemplate}>Triangle</button>
-          </div>
-
-          <div className="input-group">
-            <label>Vertices JSON</label>
-            <textarea
-              value={verticesText}
-              onChange={(e) => setVerticesText(e.target.value)}
-              rows={8}
-              style={{ resize: 'vertical', minHeight: 130 }}
-            />
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="input-row">
-            <div className="input-group">
-              <label>Center X</label>
-              <input type="number" min={0} max={canvasWidth} value={circleCenterX} onChange={(e) => setCircleCenterX(e.target.value)} />
-            </div>
-            <div className="input-group">
-              <label>Center Y</label>
-              <input type="number" min={0} max={canvasHeight} value={circleCenterY} onChange={(e) => setCircleCenterY(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label>Radius</label>
-            <input type="number" min={1} max={Math.min(canvasWidth, canvasHeight) / 2} value={circleRadius} onChange={(e) => setCircleRadius(e.target.value)} />
-          </div>
-        </>
-      )}
 
       {error && (
         <p style={{ margin: 0, color: '#b00020', fontSize: 13 }}>{error}</p>
       )}
 
       <div className="input-row">
-        <button className="btn-primary" onClick={handleCreateObstacle}>Create Obstacle</button>
-        <button className="btn-secondary" onClick={onClose}>Cancel</button>
+        <button className="btn-primary icon-button" onClick={handleCreateObstacle}>
+          <SquarePlus className="button-icon" size={16} aria-hidden="true" />
+          Create Obstacle
+        </button>
+        <button className="btn-secondary icon-button" onClick={onClose}>
+          <CircleX className="button-icon" size={16} aria-hidden="true" />
+          Cancel
+        </button>
       </div>
     </div>
   );

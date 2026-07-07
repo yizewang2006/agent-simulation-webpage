@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Agent } from "../js_files/agent.js";
 import { CircleX, SquarePlus } from "lucide-react";
 import { parseNumberOrDefault } from "../js_files/utilities.js";
 
 // State variables
-export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, canvasWidth, canvasHeight, maxAgents, onAgentAdded, onClose }) {
+export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, agentPreviewRef, canvasWidth, canvasHeight, maxAgents, onAgentAdded, onClose }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#000000');
   const [x, setX] = useState(String(canvasWidth / 2));
@@ -18,6 +18,44 @@ export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, canvas
   useEffect(() => {
     cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, []);
+
+  const parsePreviewAgent = useCallback(() => {
+    const previewX = parseNumberOrDefault(x, canvasWidth / 2);
+    const previewY = parseNumberOrDefault(y, canvasHeight / 2);
+    const previewAngle = -parseNumberOrDefault(angle, 0) * Math.PI / 180;
+    const previewFovAngle = parseNumberOrDefault(fovAngle, 150) * Math.PI / 180;
+
+    if (previewX < 0 || previewX > canvasWidth || previewY < 0 || previewY > canvasHeight) {
+      throw new Error('Agent preview is outside the canvas.');
+    }
+
+    return {
+      x: previewX,
+      y: previewY,
+      radius: 5,
+      color,
+      angle: previewAngle,
+      fovRadius: 100,
+      fovAngle: previewFovAngle,
+      showFOV,
+    };
+  }, [x, y, angle, fovAngle, color, showFOV, canvasWidth, canvasHeight]);
+
+  useEffect(() => {
+    if (!agentPreviewRef) return;
+
+    // Keep the canvas preview in sync with this form. It stays separate from
+    // the real agent roster until the user clicks Create.
+    try {
+      agentPreviewRef.current = parsePreviewAgent();
+    } catch {
+      agentPreviewRef.current = null;
+    }
+
+    return () => {
+      agentPreviewRef.current = null;
+    };
+  }, [agentPreviewRef, parsePreviewAgent]);
 
   function create() {
     const canvas = canvasRef.current;

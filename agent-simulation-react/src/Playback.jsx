@@ -4,6 +4,7 @@ import Header from './components/Header.jsx';
 import Footer from './components/Footer.jsx';
 import './playback.css';
 import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth } from './js_files/utilities.js';
+import { OBSTACLE_SHAPE_TYPES } from './js_files/constants.js';
 
 const PLAYBACK_CANVAS_WIDTH = 500;
 const PLAYBACK_CANVAS_HEIGHT = 500;
@@ -85,6 +86,70 @@ function drawAgentSnapshotAtOffset(ctx, agent, offset) {
   ctx.closePath();
 }
 
+function drawSnapshotLabel(ctx, label, x, y) {
+  ctx.font = '600 15px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+  ctx.strokeText(label, x, y);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(label, x, y);
+  ctx.textBaseline = 'alphabetic';
+}
+
+function drawObstacleSnapshot(ctx, obstacle) {
+  if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+    drawCircleObstacleSnapshot(ctx, obstacle);
+    return;
+  }
+
+  if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON) {
+    drawPolygonObstacleSnapshot(ctx, obstacle);
+  }
+}
+
+function drawCircleObstacleSnapshot(ctx, obstacle) {
+  if (!obstacle.center || !Number.isFinite(obstacle.radius)) return;
+
+  ctx.beginPath();
+  ctx.arc(obstacle.center.x, obstacle.center.y, obstacle.radius, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fillStyle = obstacle.color;
+  ctx.fill();
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  drawSnapshotLabel(ctx, obstacle.id, obstacle.center.x, obstacle.center.y);
+}
+
+function drawPolygonObstacleSnapshot(ctx, obstacle) {
+  if (!Array.isArray(obstacle.vertices) || obstacle.vertices.length < 3) return;
+
+  ctx.beginPath();
+  ctx.moveTo(obstacle.vertices[0].x, obstacle.vertices[0].y);
+  for (let i = 1; i < obstacle.vertices.length; i++) {
+    ctx.lineTo(obstacle.vertices[i].x, obstacle.vertices[i].y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = obstacle.color;
+  ctx.fill();
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  const centroid = obstacle.vertices.reduce(
+    (sum, vertex) => ({ x: sum.x + vertex.x, y: sum.y + vertex.y }),
+    { x: 0, y: 0 }
+  );
+  drawSnapshotLabel(
+    ctx,
+    obstacle.id,
+    centroid.x / obstacle.vertices.length,
+    centroid.y / obstacle.vertices.length
+  );
+}
+
 function drawFrame(canvas, frame) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -96,7 +161,8 @@ function drawFrame(canvas, frame) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
   if (!frame) return;
 
-  frame.agents.forEach((agent) => drawAgentSnapshot(ctx, agent, canvasWidth, canvasHeight));
+  (frame.obstacles ?? []).forEach((obstacle) => drawObstacleSnapshot(ctx, obstacle));
+  (frame.agents ?? []).forEach((agent) => drawAgentSnapshot(ctx, agent, canvasWidth, canvasHeight));
 }
 
 export default function Playback() {

@@ -378,6 +378,45 @@
   justify-content: center;
 }
 
+.obstacle-shape-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1.5px solid #4f86d7;
+  border-radius: 8px;
+  background-color: #f8fbff;
+}
+
+.obstacle-vertices-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.obstacle-vertex-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr) 34px;
+  align-items: end;
+  gap: 8px;
+}
+
+.obstacle-vertex-label {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  color: #5d6f88;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.obstacle-vertex-delete {
+  width: 34px;
+  height: 40px;
+  padding: 0;
+}
+
 /* Add/Remove Agent Little Area*/
 .btn-row {
   display: flex;
