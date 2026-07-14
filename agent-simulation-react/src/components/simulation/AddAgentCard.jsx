@@ -1,0 +1,178 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Agent } from "../../models/agent.js";
+import { CircleX, SquarePlus } from "lucide-react";
+import { parseNumberOrDefault } from "../../utils/utilities.js";
+import AlertBox from "./AlertBox.jsx";
+
+// State variables
+export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, agentPreviewRef, canvasWidth, canvasHeight, maxAgents, onAgentAdded, onClose }) {
+  const [name, setName] = useState('');
+  const [color, setColor] = useState('#000000');
+  const [x, setX] = useState(String(canvasWidth / 2));
+  const [y, setY] = useState(String(canvasHeight / 2));
+  const [fovAngle, setFovAngle] = useState('150');
+  const [angle, setAngle] = useState('0');
+  const [showFOV, setShowFOV] = useState(true);
+  const [showCapacityAlert, setShowCapacityAlert] = useState(false);
+  const cardRef = useRef(null);
+
+  useEffect(() => {
+    cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, []);
+
+  const parsePreviewAgent = useCallback(() => {
+    const previewX = parseNumberOrDefault(x, canvasWidth / 2);
+    const previewY = parseNumberOrDefault(y, canvasHeight / 2);
+    const previewAngle = -parseNumberOrDefault(angle, 0) * Math.PI / 180;
+    const previewFovAngle = parseNumberOrDefault(fovAngle, 150) * Math.PI / 180;
+
+    if (previewX < 0 || previewX > canvasWidth || previewY < 0 || previewY > canvasHeight) {
+      throw new Error('Agent preview is outside the canvas.');
+    }
+
+    return {
+      x: previewX,
+      y: previewY,
+      radius: 5,
+      color,
+      angle: previewAngle,
+      fovRadius: 100,
+      fovAngle: previewFovAngle,
+      showFOV,
+    };
+  }, [x, y, angle, fovAngle, color, showFOV, canvasWidth, canvasHeight]);
+
+  useEffect(() => {
+    if (!agentPreviewRef) return;
+
+    // Keep the canvas preview in sync with this form. It stays separate from
+    // the real agent roster until the user clicks Create.
+    try {
+      agentPreviewRef.current = parsePreviewAgent();
+    } catch {
+      agentPreviewRef.current = null;
+    }
+
+    return () => {
+      agentPreviewRef.current = null;
+    };
+  }, [agentPreviewRef, parsePreviewAgent]);
+
+  function create() {
+    const canvas = canvasRef.current;
+    const ctx = ctxRef.current;
+    const roster = agentsArrayRef.current;
+    if (!canvas || !ctx) return;
+    if (roster.length >= maxAgents) {
+      setShowCapacityAlert(true);
+      return;
+    }
+
+    const fovAngleRad = parseNumberOrDefault(fovAngle, 150) * Math.PI / 180;
+    const angleRad = -parseNumberOrDefault(angle, 0) * Math.PI / 180;
+    const randomSpeed = Math.random() * 2 + 0.5;
+
+    new Agent(
+      true,
+      parseNumberOrDefault(x, canvasWidth / 2),
+      parseNumberOrDefault(y, canvasHeight / 2),
+      5,
+      Math.cos(angleRad) * randomSpeed,
+      Math.sin(angleRad) * randomSpeed,
+      color,
+      100,
+      fovAngleRad,
+      angleRad,
+      name || `Agent_${roster.length + 1}`,
+      ctx, canvas, roster
+    );
+
+    roster[roster.length - 1].showFOV = showFOV;
+    onAgentAdded([...roster]);
+    onClose();
+  }
+
+  function cancel() {
+    onClose();
+  }
+
+  // HTML component
+  return (
+    <>
+      {showCapacityAlert && (
+        <AlertBox
+          title="Sorry, the Canvas Is at Full Capacity!"
+          primMessage={`You cannot create another agent. The limit is ${maxAgents} agents, and the canvas currently contains ${agentsArrayRef.current.length}.`}
+          secMessage="We impose this limit to ensure the best possible performance. Remove an agent before creating another."
+          type="warning"
+          confirmLabel="Got It"
+          cancelLabel="Close"
+          onConfirm={() => setShowCapacityAlert(false)}
+          onCancel={() => setShowCapacityAlert(false)}
+        />
+      )}
+      <div ref={cardRef} className="panel-card panel-card-highlight" style={{ position: 'relative' }}>
+      <button
+        className="btn-secondary icon-only-button"
+        onClick={cancel}
+        aria-label="Close"
+        title="Close"
+        style={{ position: 'absolute', top: 8, right: 10, width: 28, height: 28, padding: 0 }}
+      >
+        <CircleX size={16} aria-hidden="true" />
+      </button>
+      <h2 className="panel-section-title">Create Agent</h2>
+
+      <div className="input-group">
+        <label>Name</label>
+        <input type="text" placeholder="e.g. Agent_01" value={name} onChange={(e) => setName(e.target.value)} />
+      </div>
+
+      <div className="input-group">
+        <label>
+          <input type="checkbox" checked={showFOV} onChange={(e) => setShowFOV(e.target.checked)} />
+          {' '}Show FOV
+        </label>
+      </div>
+
+      <div className="input-group">
+        <label>Color</label>
+        <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+      </div>
+
+      <div className="input-row">
+        <div className="input-group">
+          <label>X Position</label>
+          <input type="number" min="0" max={canvasWidth} value={x} onChange={(e) => setX(e.target.value)} />
+        </div>
+        <div className="input-group">
+          <label>Y Position</label>
+          <input type="number" min="0" max={canvasHeight} value={y} onChange={(e) => setY(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="input-row">
+        <div className="input-group">
+          <label>FOV Angle (deg)</label>
+          <input type="number" min="0" max="360" value={fovAngle} onChange={(e) => setFovAngle(e.target.value)} />
+        </div>
+        <div className="input-group">
+          <label>Initial Angle (deg)</label>
+          <input type="number" min="0" max="360" value={angle} onChange={(e) => setAngle(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="btn-row">
+        <button className="btn-primary icon-button" onClick={create}>
+          <SquarePlus className="button-icon" size={16} aria-hidden="true" />
+          Create
+        </button>
+        <button className="btn-secondary icon-button" onClick={cancel}>
+          <CircleX className="button-icon" size={16} aria-hidden="true" />
+          Cancel
+        </button>
+      </div>
+      </div>
+    </>
+  );
+}

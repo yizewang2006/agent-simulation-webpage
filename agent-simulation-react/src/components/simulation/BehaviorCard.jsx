@@ -1,0 +1,466 @@
+import { useRef, useState } from 'react';
+import { ArrowUpToLine, BrainCircuit, ChevronDown, ChevronUp, CirclePlus, ListFilterPlus, Trash2 } from 'lucide-react';
+import {
+  TARGET_PROPERTIES,
+  METHOD_LABELS,
+  PROPERTY_LABELS,
+  METHOD_LABELS_BY_PROPERTY,
+  FILTER_LABELS,
+  REFERENCE_LABELS,
+  ENTITY_TYPES, // New
+  ENTITY_LABELS,
+  OBSTACLE_SHAPE_TYPES,
+  OBSTACLE_SHAPE_LABELS,
+} from "../../utils/constants.js";
+
+function createDefaultFilterTargets() {
+  const targets = {};
+
+  Object.values(ENTITY_TYPES).forEach((entityType) => {
+    targets[entityType] = false;
+  });
+
+  targets[ENTITY_TYPES.AGENT] = true;
+  targets[ENTITY_TYPES.OBSTACLE] = {
+    enabled: false,
+    [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
+    [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
+  };
+
+  return targets;
+}
+
+const DEFAULT_FILTER_TARGETS = createDefaultFilterTargets();
+
+function getBehaviorGroups(behaviors) {
+  return Object.entries(PROPERTY_LABELS).map(([targetProperty, label]) => {
+    const numericTargetProperty = Number(targetProperty);
+    const groupBehaviors = behaviors
+      .map((behavior, behaviorIndex) => ({ behavior, behaviorIndex }))
+      .filter(({ behavior }) => behavior.targetProperty === numericTargetProperty);
+
+    return {
+      targetProperty: numericTargetProperty,
+      label,
+      behaviors: groupBehaviors,
+    };
+  });
+}
+
+function BehaviorCard({
+  behaviorList,
+  collapsedBehaviorIds,
+  onAddBehavior,
+  onUpdateBehavior,
+  onDeleteBehavior,
+  onLoadBehaviorPreset,
+  onToggleBehaviorCollapsed,
+  onAddFilter,
+  onUpdateFilter,
+  onDeleteFilter,
+}) { /* Body of function */
+  const presetInputRef = useRef(null);
+  const [collapsedFilterIds, setCollapsedFilterIds] = useState(new Set());
+
+  function toggleFilterCollapsed(filterId) {
+    setCollapsedFilterIds((current) => {
+      const next = new Set(current);
+      if (next.has(filterId)) {
+        next.delete(filterId);
+      } else {
+        next.add(filterId);
+      }
+      return next;
+    });
+  }
+
+  function getFilterTargets(filter) {
+    return {
+      [ENTITY_TYPES.AGENT]: filter.targets?.[ENTITY_TYPES.AGENT] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.AGENT],
+      [ENTITY_TYPES.OBSTACLE]: {
+        enabled: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.enabled ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE].enabled,
+        [OBSTACLE_SHAPE_TYPES.CIRCLE]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.CIRCLE] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.CIRCLE],
+        [OBSTACLE_SHAPE_TYPES.POLYGON]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.POLYGON] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.POLYGON],
+      },
+      ...Object.fromEntries(
+        Object.values(ENTITY_TYPES)
+          .filter((entityType) => entityType !== ENTITY_TYPES.AGENT && entityType !== ENTITY_TYPES.OBSTACLE)
+          .map((entityType) => [entityType, filter.targets?.[entityType] ?? DEFAULT_FILTER_TARGETS[entityType]])
+      ),
+    };
+  }
+
+  function handleEntityTargetChange(behaviorId, filter, entityType, checked) {
+    const targets = getFilterTargets(filter);
+
+    if (entityType === ENTITY_TYPES.OBSTACLE) {
+      onUpdateFilter(behaviorId, filter.id, {
+        targets: {
+          ...targets,
+          [ENTITY_TYPES.OBSTACLE]: {
+            ...targets[ENTITY_TYPES.OBSTACLE],
+            enabled: checked,
+          },
+        },
+      });
+      return;
+    }
+
+    onUpdateFilter(behaviorId, filter.id, {
+      targets: {
+        ...targets,
+        [entityType]: checked,
+      },
+    });
+  }
+
+  function handleObstacleSubtypeChange(behaviorId, filter, shapeType, checked) {
+    const targets = getFilterTargets(filter);
+    onUpdateFilter(behaviorId, filter.id, {
+      targets: {
+        ...targets,
+        [ENTITY_TYPES.OBSTACLE]: {
+          ...targets[ENTITY_TYPES.OBSTACLE],
+          [shapeType]: checked,
+        },
+      },
+    });
+  }
+
+  function openPresetFilePicker() {
+    // Open the hidden file input when the visible preset button is clicked.
+    presetInputRef.current?.click();
+  }
+
+  async function handlePresetFileChange(e) {
+    // Get the first file selected by the user.
+    const selectedFile = e.target.files?.[0];
+
+    // If the user closes the file picker without choosing a file, do nothing.
+    if (!selectedFile) return;
+
+    try {
+      const presetData = await readPresetJsonFile(selectedFile);
+
+      // Send parsed JSON data to Simulation.jsx, where it becomes real behaviors.
+      onLoadBehaviorPreset(presetData);
+    } catch (error) {
+      window.alert(`Unable to load behavior preset: ${error.message}`);
+    } finally {
+      e.target.value = '';
+    }
+  }
+
+  async function readPresetJsonFile(file) {
+    // Read the selected file as plain text.
+    const fileText = await file.text();
+
+    // Convert the text into a JavaScript object/array.
+    return JSON.parse(fileText);
+  }
+
+  return (
+    /* Behavior & Filter Settings*/
+    <div className="panel-card">
+      <h2 className="panel-section-title title-with-icon">
+        <BrainCircuit className="section-title-icon" size={18} aria-hidden="true" />
+        Behavior & Filter Settings
+      </h2>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 8, borderBottom: '1px solid #e0e0e0' }}>
+        <button className="btn-primary icon-button" onClick={onAddBehavior} style={{ height: 38 }}>
+          <CirclePlus className="button-icon" size={16} aria-hidden="true" />
+          Add Behavior
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0' }}>
+          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #d0d0d0' }} />
+          <span style={{ color: '#888', fontSize: 11, fontWeight: 600 }}>OR</span>
+          <hr style={{ flex: 1, border: 'none', borderTop: '1px solid #d0d0d0' }} />
+        </div>
+
+        <input
+          ref={presetInputRef}
+          type="file"
+          accept="application/json,.json"
+          onChange={handlePresetFileChange}
+          style={{ display: 'none' }}
+        />
+        <button
+          className="btn-primary icon-button"
+          onClick={openPresetFilePicker}
+          style={{ height: 38 }}
+        >
+          <ArrowUpToLine className="button-icon" size={16} aria-hidden="true" />
+          Load Behavior Preset
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 2 }}>
+        {getBehaviorGroups(behaviorList).map((group) => (
+          <div key={group.targetProperty} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <h3 className="panel-section-title" style={{ margin: '0', fontSize: 14 }}>
+              {group.label} Behaviors ({group.behaviors.length})
+            </h3>
+
+            {group.behaviors.length === 0 && (
+              <p style={{ margin: '0 0 2px 0', color: '#888', fontSize: 12 }}>
+                No {group.label.toLowerCase()} behaviors yet.
+              </p>
+            )}
+
+            {group.behaviors.map(({ behavior, behaviorIndex }) => {
+              const isCollapsed = collapsedBehaviorIds.has(behavior.id);
+
+              return (
+                <div key={behavior.id} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 2, padding: '10px 12px' }}>
+                  <button
+                    className="btn-danger"
+                    onClick={() => onDeleteBehavior(behavior.id)}
+                    aria-label="Delete behavior"
+                    title="Delete behavior"
+                    style={{ position: 'absolute', top: 6, right: 8, width: 32, height: 26, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 42 }}>
+                    <button
+                      className="btn-secondary icon-only-button"
+                      onClick={() => onToggleBehaviorCollapsed(behavior.id)}
+                      aria-expanded={!isCollapsed}
+                      aria-label={isCollapsed ? 'Expand behavior' : 'Collapse behavior'}
+                      style={{ width: 30, height: 26, padding: 0, flex: '0 0 auto' }}
+                    >
+                      {isCollapsed
+                        ? <ChevronDown size={16} aria-hidden="true" />
+                        : <ChevronUp size={16} aria-hidden="true" />}
+                    </button>
+                    <h2 className="panel-section-title" style={{ flex: 1, margin: 0 }}>{behavior.name}</h2>
+                    <span style={{ color: '#888', fontSize: 12 }}>
+                      {PROPERTY_LABELS[behavior.targetProperty]} | {behavior.filters.length} {behavior.filters.length === 1 ? 'filter' : 'filters'}
+                    </span>
+                  </div>
+
+                  {!isCollapsed && (
+                    <>
+                      {/* Names */}
+                      <div className="input-group">
+                        <label>Behavior Name</label>
+                        <input
+                          type="text"
+                          placeholder={`Behavior ${behaviorIndex + 1}`}
+                          value={behavior.name}
+                          onChange={(e) => onUpdateBehavior(behavior.id, { name: e.target.value })}
+                        />
+                      </div>
+
+                      <div className="input-group">
+                        <label>Option</label>
+                        <select
+                          value={behavior.action}
+                          onChange={(e) => onUpdateBehavior(behavior.id, { action: Number(e.target.value) })}
+                        >
+                          {Object.entries(REFERENCE_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Target Property Dropdown*/}
+                      <div className="input-group">
+                        <label>Target Property</label>
+                        <select
+                          value={behavior.targetProperty}
+                          onChange={(e) => onUpdateBehavior(behavior.id, { targetProperty: Number(e.target.value) })}
+                        >
+                          {Object.entries(PROPERTY_LABELS).map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Position: Relative Angle*/}
+                      <div className="input-group">
+                        <label>Offset {(behavior.targetProperty === TARGET_PROPERTIES.ANGLE || behavior.targetProperty === TARGET_PROPERTIES.POSITION) ? '(degrees)' : ''}</label> {/* Bearing and Angle both use degree offsets */}
+                        <input
+                          type="number"
+                          value={behavior.offset}
+                          onChange={(e) => onUpdateBehavior(behavior.id, { offset: e.target.value })}
+                        />
+                      </div>
+
+                      {/* Filters sub-box */}
+                      <div className="panel-card" style={{ marginTop: 6, padding: '10px 12px' }}>
+                        <h3 className="panel-section-title" style={{ margin: '0 0 4px 0', fontSize: 14 }}>Filters</h3>
+
+                        {behavior.filters.map((filter, filterIndex) => {
+                          const isFilterCollapsed = collapsedFilterIds.has(filter.id);
+                          const filterTypeLabel = filter.filterType
+                            ? filter.filterType.charAt(0).toUpperCase() + filter.filterType.slice(1)
+                            : 'Filter';
+
+                          return (
+                            <div key={filter.id} className="panel-card panel-card-highlight" style={{ position: 'relative', marginBottom: 4, padding: '10px 12px' }}>
+                              <button
+                                className="btn-secondary"
+                                onClick={() => onDeleteFilter(behavior.id, filter.id)}
+                                aria-label="Remove filter"
+                                title="Remove filter"
+                                style={{ position: 'absolute', top: 6, right: 8, width: 32, height: 26, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Trash2 size={14} aria-hidden="true" />
+                              </button>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 42 }}>
+                                <button
+                                  className="btn-secondary icon-only-button"
+                                  onClick={() => toggleFilterCollapsed(filter.id)}
+                                  aria-expanded={!isFilterCollapsed}
+                                  aria-label={isFilterCollapsed ? 'Expand filter' : 'Collapse filter'}
+                                  style={{ width: 30, height: 26, padding: 0, flex: '0 0 auto' }}
+                                >
+                                  {isFilterCollapsed
+                                    ? <ChevronDown size={16} aria-hidden="true" />
+                                    : <ChevronUp size={16} aria-hidden="true" />}
+                                </button>
+                                <h4 className="panel-section-title" style={{ flex: 1, margin: 0, fontSize: 14 }}>
+                                  Filter {filterIndex + 1}
+                                </h4>
+                                <span style={{ color: '#888', fontSize: 12 }}>
+                                  {filterTypeLabel} | {FILTER_LABELS[filter.propertyType]}
+                                </span>
+                              </div>
+
+                              {!isFilterCollapsed && (
+                                <>
+                                  <div className="input-group">
+                                    <label>Target Entity Types</label>
+                                    <div className="entity-target-group">
+                                      {/* Generate a checkbox for every entity type, special treatment for Obstacle*/}
+                                      {Object.entries(ENTITY_LABELS).map(([entityType, label]) => {
+                                        const numericEntityType = Number(entityType);
+
+                                        if (numericEntityType === ENTITY_TYPES.OBSTACLE) {
+                                          const obstacleTargets = getFilterTargets(filter)[ENTITY_TYPES.OBSTACLE];
+
+                                          return (
+                                            <div key={numericEntityType}>
+                                              <label className="entity-target-option">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={obstacleTargets.enabled}
+                                                  onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
+                                                />
+                                                {label}
+                                              </label>
+
+                                              <div className="entity-subtype-options">
+                                                {Object.entries(OBSTACLE_SHAPE_LABELS).map(([shapeType, shapeLabel]) => {
+                                                  const numericShapeType = Number(shapeType);
+
+                                                  return (
+                                                    <label key={numericShapeType} className={`entity-target-option ${!obstacleTargets.enabled ? 'entity-target-option-disabled' : ''}`}>
+                                                      <input
+                                                        type="checkbox"
+                                                        disabled={!obstacleTargets.enabled}
+                                                        checked={obstacleTargets[numericShapeType]}
+                                                        onChange={(e) => handleObstacleSubtypeChange(behavior.id, filter, numericShapeType, e.target.checked)}
+                                                      />
+                                                      {shapeLabel}
+                                                    </label>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          );
+                                        }
+
+                                        return (
+                                          <label key={numericEntityType} className="entity-target-option">
+                                            <input
+                                              type="checkbox"
+                                              checked={getFilterTargets(filter)[numericEntityType]}
+                                              onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
+                                            />
+                                            {label}
+                                          </label>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+
+                                  <div className="input-group">
+                                    <label>Type</label>
+                                    <div className="radio-group">
+                                      {['method', 'ranged'].map(t => ( // method, ranged
+                                        <label key={t} className="radio-option">
+                                          <input
+                                            type="radio"
+                                            name={`filter-type-${behavior.id}-${filter.id}`}
+                                            value={t}
+                                            checked={filter.filterType === t}
+                                            onChange={() => onUpdateFilter(behavior.id, filter.id, { filterType: t })}
+                                          />
+                                          {' '}{t.charAt(0).toUpperCase() + t.slice(1)}
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </div>
+
+                                  <div className="input-group">
+                                    <label>Property</label>
+                                    <select value={filter.propertyType} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { propertyType: Number(e.target.value) })}>
+                                      {Object.entries(FILTER_LABELS).map(([val, label]) => (
+                                        <option key={val} value={val}>{label}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {filter.filterType === 'method' && (
+                                    <div className="input-group">
+                                      <label>Method</label>
+                                      <select value={filter.methodType} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { methodType: Number(e.target.value) })}>
+                                        {Object.entries(METHOD_LABELS_BY_PROPERTY[filter.propertyType] ?? METHOD_LABELS).map(([val, label]) => (
+                                          <option key={val} value={val}>{label}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )}
+
+                                  {filter.filterType === 'ranged' && (
+                                    <div className="input-row">
+                                      <div className="input-group">
+                                        <label>Low</label>
+                                        <input type="number" value={filter.low} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { low: e.target.value })} />
+                                      </div>
+                                      <div className="input-group">
+                                        <label>High</label>
+                                        <input type="number" value={filter.high} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { high: e.target.value })} />
+                                      </div>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        <button className="btn-secondary icon-button" onClick={() => onAddFilter(behavior.id)}>
+                          <ListFilterPlus className="button-icon" size={16} aria-hidden="true" />
+                          Add Filter
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default BehaviorCard;

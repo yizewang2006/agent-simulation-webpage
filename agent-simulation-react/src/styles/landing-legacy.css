@@ -1,0 +1,132 @@
+.landing-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  gap: 1.75rem;
+}
+
+.landing-goal {
+  max-width: 760px;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.landing-goal h2 {
+  margin: 0 0 0.7rem 0;
+  color: #002878;
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+.landing-goal p {
+  margin: 0;
+  color: #4d5568;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+.landing-subtitle {
+  font-size: 1rem;
+  font-weight: 400;
+  font-family: 'Montserrat', sans-serif;
+  color: #002878;
+  text-align: center;
+  margin: 0;
+}
+
+.landing-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
+  color: #002878;
+  text-align: center;
+  margin: 0;
+}
+
+.landing-profiles {
+  display: flex;
+  gap: 4rem;
+  justify-content: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.landing-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.landing-photo-placeholder {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aaa;
+  font-size: 0.85em;
+  border: 2px dashed #ccc;
+}
+
+.landing-photo {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #ccc;
+}
+
+.landing-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  font-family: 'Montserrat', sans-serif;
+  color: #002878;
+  margin: 0;
+  text-align: center;
+}
+
+.landing-role {
+  font-size: 0.9rem;
+  color: #666;
+  margin: 0;
+  font-family: 'Montserrat', sans-serif;
+  text-align: center;
+}
+
+.landing-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.landing-btn {
+  position: relative;
+  min-width: 180px;
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+.landing-btn-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #888;
+  color: white;
+  font-size: 0.65rem;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.landing-btn-badge-warn {
+  background: #e65100;
+}

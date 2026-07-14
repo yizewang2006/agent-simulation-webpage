@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "canvas": {
+    "width": 500,
+    "height": 500
+  },
+  "agents": [
+    {
+      "kind": "agent",
+      "id": "Agent_1",
+      "x": 68.19556085795442,
+      "y": 424.9695202263044,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_2",
+      "x": 304.75840981945316,
+      "y": 209.44674710321866,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_3",
+      "x": 239.97378830230105,
+      "y": 446.4195171823464,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_4",
+      "x": 184.16699842363093,
+      "y": 318.98339119523973,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_5",
+      "x": 375.3916023365033,
+      "y": 180.20336927246694,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_6",
+      "x": 307.2966872400332,
+      "y": 296.3476756532838,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_7",
+      "x": 16.617426346729026,
+      "y": 207.9329072844673,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_8",
+      "x": 271.97348291297516,
+      "y": 480.9319114537575,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_9",
+      "x": 149.37159545421363,
+      "y": 136.54941986919616,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    },
+    {
+      "kind": "agent",
+      "id": "Agent_10",
+      "x": 267.6465049002373,
+      "y": 121.20742024796783,
+      "radius": 5,
+      "angle": 0,
+      "speed": 1.5,
+      "colorHex": "#000000",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": true
+    }
+  ],
+  "obstacles": [
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Polygon_Obstacle_1",
+      "color": "#ACAD9D",
+      "vertices": [
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 500,
+          "y": 0
+        },
+        {
+          "x": 500,
+          "y": 30
+        },
+        {
+          "x": 0,
+          "y": 30
+        }
+      ]
+    }
+  ]
+}
