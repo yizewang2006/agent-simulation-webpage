@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm ci --prefix agent-simulation-react",
+  "buildCommand": "npm run build --prefix agent-simulation-react",
+  "outputDirectory": "agent-simulation-react/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
