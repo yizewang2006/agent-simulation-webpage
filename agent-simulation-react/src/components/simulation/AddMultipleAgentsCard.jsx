@@ -46,7 +46,7 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
         : color;
       const speed = Math.random() * 2 + 0.5;
       const dir = Math.random() * 2 * Math.PI;
-      new Agent(
+      const agent = new Agent(
         showFOV,
         x, y,
         5, Math.cos(dir) * speed, Math.sin(dir) * speed,
@@ -57,7 +57,9 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
         `Agent_${roster.length + 1}`,
         ctx, canvas, roster
       );
-      roster[roster.length - 1].showFOV = showFOV;
+
+      agent.showFOV = showFOV;
+      agent.move();
     }
 
     onAgentsAdded([...roster]);

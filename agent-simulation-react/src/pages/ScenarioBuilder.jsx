@@ -297,12 +297,14 @@ function generateRandomAgentPosition(count, range, config, startIndex = 0) {
   return Array.from({ length: count }, (_, index) => {
     const x = range.xMin + Math.random() * (range.xMax - range.xMin);
     const y = range.yMin + Math.random() * (range.yMax - range.yMin);
+    const speed = config.speedMin + Math.random() * (config.speedMax - config.speedMin);
+    const heading = config.angleMin + Math.random() * (config.angleMax - config.angleMin);
 
     return createAgent(startIndex + index, {
       x,
       y,
-      speed: config.speed,
-      angle: config.heading,
+      speed,
+      angle: heading,
       colorHex: config.colorHex,
       showFOV: config.showFOV,
     });
@@ -472,8 +474,10 @@ export default function ScenarioBuilder() {
     xMax: String(CANVAS_WIDTH),
     yMin: '0',
     yMax: String(CANVAS_HEIGHT),
-    speed: '1.5',
-    heading: '0',
+    speedMin: '0.5',
+    speedMax: '2.5',
+    angleMin: '0',
+    angleMax: '360',
     colorHex: '#000000',
     showFOV: true,
   });
@@ -607,8 +611,8 @@ export default function ScenarioBuilder() {
     });
   }, [activeConfiguration]);
 
-  // Agent preview stays live while the Agent configuration is open. Any change
-  // to count/range/speed/heading/color/FOV regenerates the draft preview batch.
+  // Keep the preview live for layout changes. Speed and angle ranges are
+  // intentionally excluded so editing them only takes effect after Refresh.
   useEffect(() => {
     if (activeConfiguration !== 'agent') return;
     refreshAgentPreview();
@@ -616,14 +620,21 @@ export default function ScenarioBuilder() {
     activeConfiguration,
     agentDraft.colorHex,
     agentDraft.count,
-    agentDraft.heading,
-    agentDraft.showFOV,
-    agentDraft.speed,
     agentDraft.xMax,
     agentDraft.xMin,
     agentDraft.yMax,
     agentDraft.yMin,
   ]);
+
+  // FOV is only a display option. Update the existing preview objects without
+  // regenerating their randomized positions, speeds, or headings.
+  useEffect(() => {
+    if (activeConfiguration !== 'agent') return;
+    setPreviewAgents((currentAgents) => currentAgents.map((agent) => ({
+      ...agent,
+      showFOV: agentDraft.showFOV,
+    })));
+  }, [activeConfiguration, agentDraft.showFOV]);
 
   function recordCreatedEntity(type, entity) {
     undoStackRef.current.push({ action: 'create', type, key: getScenarioEntityKey(entity) });
@@ -1076,8 +1087,10 @@ export default function ScenarioBuilder() {
     const xMax = parseRequiredNumber(agentDraft.xMax, 'X maximum');
     const yMin = parseRequiredNumber(agentDraft.yMin, 'Y minimum');
     const yMax = parseRequiredNumber(agentDraft.yMax, 'Y maximum');
-    const speed = parseRequiredNumber(agentDraft.speed, 'Initial speed');
-    const heading = parseRequiredNumber(agentDraft.heading, 'Initial heading');
+    const speedMin = parseRequiredNumber(agentDraft.speedMin, 'Minimum initial speed');
+    const speedMax = parseRequiredNumber(agentDraft.speedMax, 'Maximum initial speed');
+    const angleMin = parseRequiredNumber(agentDraft.angleMin, 'Minimum initial angle');
+    const angleMax = parseRequiredNumber(agentDraft.angleMax, 'Maximum initial angle');
 
     if (!Number.isInteger(count) || count < 1) {
       throw new Error('Number of agents must be a whole number greater than 0.');
@@ -1088,16 +1101,24 @@ export default function ScenarioBuilder() {
     if (yMin < 0 || yMax > CANVAS_HEIGHT || yMin > yMax) {
       throw new Error(`Y range must be within 0-${CANVAS_HEIGHT} and min cannot exceed max.`);
     }
-    if (speed < 0) {
-      throw new Error('Initial speed cannot be negative.');
+    if (speedMin < 0 || speedMax < 0) {
+      throw new Error('Initial speed values cannot be negative.');
+    }
+    if (speedMin > speedMax) {
+      throw new Error('Minimum initial speed cannot exceed maximum initial speed.');
+    }
+    if (angleMin > angleMax) {
+      throw new Error('Minimum initial angle cannot exceed maximum initial angle.');
     }
 
     return {
       count,
       range: { xMin, xMax, yMin, yMax },
       config: {
-        speed,
-        heading,
+        speedMin,
+        speedMax,
+        angleMin,
+        angleMax,
         colorHex: agentDraft.colorHex,
         showFOV: agentDraft.showFOV,
       },
@@ -1347,15 +1368,41 @@ export default function ScenarioBuilder() {
           </div>
         </div>
 
-        <div className="input-row">
+        {/* <div className="input-row">
           <div className="input-group">
             <label>Initial Speed</label>
             <input type="number" min="0" step="0.1" value={agentDraft.speed} onChange={(event) => updateAgentDraft({ speed: event.target.value })} />
           </div>
+
+
           <div className="input-group">
             <label>Initial Heading</label>
             <input type="number" value={agentDraft.heading} onChange={(event) => updateAgentDraft({ heading: event.target.value })} />
           </div>
+        </div> */}
+
+        {/* Eventually going to be replaced*/}
+        <div className="input-row">
+           <div className="input-group">
+              <label>Min Speed (Initial)</label>
+              <input type="number" min="0" step="0.1" value={agentDraft.speedMin} onChange={(event) => updateAgentDraft({ speedMin: event.target.value })} />
+            </div>
+            <div className="input-group">
+              <label>Max Speed (Initial)</label>
+              <input type="number" min="0" step="0.1" value={agentDraft.speedMax} onChange={(event) => updateAgentDraft({ speedMax: event.target.value })} />
+            </div>
+        </div>
+        
+        {/* Eventually going to be replaced*/}
+        <div className="input-row">
+           <div className="input-group">
+              <label>Min Angle (Initial)</label>
+              <input type="number" min="0" step="0.1" value={agentDraft.angleMin} onChange={(event) => updateAgentDraft({ angleMin: event.target.value })} />
+            </div>
+            <div className="input-group">
+              <label>Max Angle (Initial)</label>
+              <input type="number" min="0" step="0.1" value={agentDraft.angleMax} onChange={(event) => updateAgentDraft({ angleMax: event.target.value })} />
+            </div>
         </div>
 
         <div className="input-group">

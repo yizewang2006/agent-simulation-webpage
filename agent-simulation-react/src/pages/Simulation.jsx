@@ -1027,109 +1027,6 @@ function Simulation() {
               <h2 className="simulation-dashboard-title">Control Panel</h2>
             </div>
             
-            {/*Simulation Setup Card*/}
-            <div className="panel-card">
-              <h2 className="panel-section-title title-with-icon">
-                <Settings className="section-title-icon" size={18} aria-hidden="true" />
-                Simulation Configuration
-              </h2>
-              <div className="simulation-section-divider">
-                <span>Environment Setup</span>
-              </div>
-              <div className="environment-config-options">
-                <div className="input-group">
-                  <input
-                    ref={scenarioFileInputRef}
-                    type="file"
-                    accept="application/json,.json"
-                    hidden
-                    onChange={handleLoadScenario}
-                  />
-                  <button
-                    className="btn-secondary icon-button"
-                    type="button"
-                    disabled={isRecording}
-                    onClick={() => scenarioFileInputRef.current?.click()}
-                  >
-                    <FileUp className="button-icon" size={17} aria-hidden="true" />
-                    Load Scenario Configuration
-                  </button>
-                </div>
-                <div className="environment-option-connector">
-                  <span>Don't have a configuration? Build your own below</span>
-                </div>
-                <div className="input-group">
-                  <button
-                    className="btn-secondary icon-button"
-                    type="button"
-                    disabled={isRecording}
-                    onClick={() => navigate('/loading', {
-                      state: {
-                        from: 'Main Simulation',
-                        to: 'Scenario Builder',
-                        path: '/scenario-builder',
-                      },
-                    })}
-                  >
-                    <MousePointer2 className="button-icon" size={17} aria-hidden="true" />
-                    Open Scenario Builder
-                  </button>
-                </div>
-              </div>
-              <div className="simulation-section-divider">
-                <span>Play/Pause Simulation</span>
-              </div>
-              <div className="simulation-control-options">
-                <div className="simulation-status-row">
-                  <span className="simulation-status-label">STATUS:</span>
-                  <span className={`simulation-status-badge ${isSimulationRunning ? 'playing' : 'paused'}`}>
-                    {isSimulationRunning ? 'PLAYING' : 'PAUSED'}
-                  </span>
-                </div>
-                <div className="input-group">
-                  <button
-                    className={`${isSimulationRunning ? 'btn-secondary' : 'btn-primary'} icon-button`}
-                    type="button"
-                    disabled={isRecording && !recordWhenPlaying}
-                    onClick={toggleSimulationRunning}
-                  >
-                    {isSimulationRunning ? (
-                      <Pause className="button-icon" size={17} fill="currentColor" aria-hidden="true" />
-                    ) : (
-                      <Play className="button-icon" size={17} fill="currentColor" aria-hidden="true" />
-                    )}
-                    {isSimulationRunning ? 'Pause Simulation' : 'Play Simulation'}
-                  </button>
-                </div>
-                <label className="simulation-record-option">
-                  <input
-                    type="checkbox"
-                    checked={recordWhenPlaying}
-                    disabled={isSimulationRunning || isRecording}
-                    onChange={(event) => setRecordWhenPlaying(event.target.checked)}
-                  />
-                  <span>Record when playing</span>
-                </label>
-              </div>
-              <div className="simulation-section-divider">
-                <span>Performance Settings</span>
-              </div>
-              <div className="input-group">
-                <label htmlFor="fps-input">FPS (Frames Per Second)</label>
-                <input
-                  type="number"
-                  id="fps-input"
-	                  min="1"
-	                  max="60"
-	                  value={targetFPS}
-                    disabled={isRecording}
-	                  onChange={(e) => setTargetFPS(e.target.value)}
-	                  onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
-	                />
-              </div>
-
-            </div>
-            
               <div className="panel-card">
               <h2 className="panel-section-title title-with-icon">
                 <UserCog className="section-title-icon" size={18} aria-hidden="true" />
@@ -1392,6 +1289,109 @@ function Simulation() {
               </div>
             </div>
             */}
+
+            {/*Simulation Setup Card*/}
+            <div className="panel-card">
+              <h2 className="panel-section-title title-with-icon">
+                <Settings className="section-title-icon" size={18} aria-hidden="true" />
+                Simulation Configuration
+              </h2>
+              <div className="simulation-section-divider">
+                <span>Environment Setup</span>
+              </div>
+              <div className="environment-config-options">
+                <div className="input-group">
+                  <input
+                    ref={scenarioFileInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    hidden
+                    onChange={handleLoadScenario}
+                  />
+                  <button
+                    className="btn-secondary icon-button"
+                    type="button"
+                    disabled={isRecording}
+                    onClick={() => scenarioFileInputRef.current?.click()}
+                  >
+                    <FileUp className="button-icon" size={17} aria-hidden="true" />
+                    Load Scenario Configuration
+                  </button>
+                </div>
+                <div className="environment-option-connector">
+                  <span>Don't have a configuration? Build your own below</span>
+                </div>
+                <div className="input-group">
+                  <button
+                    className="btn-secondary icon-button"
+                    type="button"
+                    disabled={isRecording}
+                    onClick={() => navigate('/loading', {
+                      state: {
+                        from: 'Main Simulation',
+                        to: 'Scenario Builder',
+                        path: '/scenario-builder',
+                      },
+                    })}
+                  >
+                    <MousePointer2 className="button-icon" size={17} aria-hidden="true" />
+                    Open Scenario Builder
+                  </button>
+                </div>
+              </div>
+              <div className="simulation-section-divider">
+                <span>Play/Pause Simulation</span>
+              </div>
+              <div className="simulation-control-options">
+                <div className="simulation-status-row">
+                  <span className="simulation-status-label">STATUS:</span>
+                  <span className={`simulation-status-badge ${isSimulationRunning ? 'playing' : 'paused'}`}>
+                    {isSimulationRunning ? 'PLAYING' : 'PAUSED'}
+                  </span>
+                </div>
+                <div className="input-group">
+                  <button
+                    className={`${isSimulationRunning ? 'btn-secondary' : 'btn-primary'} icon-button`}
+                    type="button"
+                    disabled={isRecording && !recordWhenPlaying}
+                    onClick={toggleSimulationRunning}
+                  >
+                    {isSimulationRunning ? (
+                      <Pause className="button-icon" size={17} fill="currentColor" aria-hidden="true" />
+                    ) : (
+                      <Play className="button-icon" size={17} fill="currentColor" aria-hidden="true" />
+                    )}
+                    {isSimulationRunning ? 'Pause Simulation' : 'Play Simulation'}
+                  </button>
+                </div>
+                <label className="simulation-record-option">
+                  <input
+                    type="checkbox"
+                    checked={recordWhenPlaying}
+                    disabled={isSimulationRunning || isRecording}
+                    onChange={(event) => setRecordWhenPlaying(event.target.checked)}
+                  />
+                  <span>Record when playing</span>
+                </label>
+              </div>
+              <div className="simulation-section-divider">
+                <span>Performance Settings</span>
+              </div>
+              <div className="input-group">
+                <label htmlFor="fps-input">FPS (Frames Per Second)</label>
+                <input
+                  type="number"
+                  id="fps-input"
+	                  min="1"
+	                  max="60"
+	                  value={targetFPS}
+                    disabled={isRecording}
+	                  onChange={(e) => setTargetFPS(e.target.value)}
+	                  onBlur={(e) => { if (e.target.value === '') setTargetFPS('1');}} // default to 1 when empty on blur (lose focus)
+	                />
+              </div>
+
+            </div>
 
             <RecordingCard
               isRecording={isRecording}
