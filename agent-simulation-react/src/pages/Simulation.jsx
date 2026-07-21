@@ -729,24 +729,29 @@ function Simulation() {
         drawObstaclePreview(ctx, obstaclePreviewRef.current);
         drawAgentPreview(ctx, agentPreviewRef.current);
 
+        // Always read the current roster from the ref. Entity editing can change
+        // the roster after this animation effect is created, so closing over the
+        // initial agentsArray would leave the canvas drawing a stale list.
+        const runtimeAgents = agentsArrayRef.current;
+
         if (isSimulationRunningRef.current) {
           // Only advance positions and behaviors while the simulation is playing.
-          agentsArray.forEach(agent => agent.move(maxSpeedRef.current));
-          agentsArray.forEach(agent => {
+          runtimeAgents.forEach(agent => agent.move(maxSpeedRef.current));
+          runtimeAgents.forEach(agent => {
             // Snapshot motion before behavior so neighbor-reference rules do not
             // read speeds/headings already changed earlier in the same frame.
             agent.behaviorDx = agent.dx;
             agent.behaviorDy = agent.dy;
             agent.behaviorAngle = agent.angle;
           });
-          const allEntities = [...agentsArray, ...obstaclesArrayRef.current];
-          agentsArray.forEach(agent => agent.behave(allEntities, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
+          const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
+          runtimeAgents.forEach(agent => agent.behave(allEntities, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
 
           // Record only frames in which the simulation actually advanced.
           if (isRecordingRef.current) {
             recordedFramesRef.current.push(
               createFrameSnapshot(
-                agentsArray,
+                runtimeAgents,
                 obstaclesArrayRef.current,
                 recordedFrameIndexRef.current,
                 recordingStartTimeRef.current
@@ -757,7 +762,7 @@ function Simulation() {
         } else {
           // Pausing freezes positions, but agents must still be redrawn because
           // the canvas is cleared at the beginning of every rendered frame.
-          agentsArray.forEach(agent => agent.draw());
+          runtimeAgents.forEach(agent => agent.draw());
         }
       }
     }
@@ -844,8 +849,13 @@ function Simulation() {
   function handleDeleteSelectedAgent(agentToDelete) {
     if (!agentToDelete) return;
 
-    agentsArrayRef.current = agentsArrayRef.current.filter((agent) => agent !== agentToDelete);
-    setAgents([...agentsArrayRef.current]);
+    // Preserve the roster array identity shared by the canvas and Agent
+    // instances. Replacing the ref with filter() can split the UI and runtime
+    // onto different arrays.
+    const roster = agentsArrayRef.current;
+    const agentIndex = roster.indexOf(agentToDelete);
+    if (agentIndex !== -1) roster.splice(agentIndex, 1);
+    setAgents([...roster]);
     setSelectedAgent(null);
   }
 

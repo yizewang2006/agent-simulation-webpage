@@ -10,7 +10,7 @@ export default function Header({ title = "Agent Simulation Project" }) {
         </a>
         <div className="header-text">
           <h1 className="header-title">{title}</h1>
-          <p className="header-subtitle">Dr. Hai Hoang Le | Yize (Kevin) Wang | Hanyi (Elaine) Ding</p>
+          {/* <p className="header-subtitle">Dr. Hai Hoang Le | Yize (Kevin) Wang | Hanyi (Elaine) Ding</p> */}
         </div>
       </div>
     </header>
