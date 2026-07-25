@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "canvas": {
+    "width": 500,
+    "height": 500
+  },
+  "agents": [
+    {
+      "kind": "agent",
+      "id": "Person_01",
+      "x": 75,
+      "y": 90,
+      "radius": 5,
+      "angle": 45,
+      "speed": 1.2,
+      "colorHex": "#2563EB",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_02",
+      "x": 150,
+      "y": 100,
+      "radius": 5,
+      "angle": 60,
+      "speed": 1.2,
+      "colorHex": "#2563EB",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_03",
+      "x": 250,
+      "y": 105,
+      "radius": 5,
+      "angle": 90,
+      "speed": 1.2,
+      "colorHex": "#2563EB",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_04",
+      "x": 350,
+      "y": 100,
+      "radius": 5,
+      "angle": 120,
+      "speed": 1.2,
+      "colorHex": "#2563EB",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_05",
+      "x": 425,
+      "y": 90,
+      "radius": 5,
+      "angle": 135,
+      "speed": 1.2,
+      "colorHex": "#2563EB",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_06",
+      "x": 75,
+      "y": 400,
+      "radius": 5,
+      "angle": 315,
+      "speed": 1.2,
+      "colorHex": "#EA580C",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_07",
+      "x": 150,
+      "y": 390,
+      "radius": 5,
+      "angle": 300,
+      "speed": 1.2,
+      "colorHex": "#EA580C",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_08",
+      "x": 250,
+      "y": 405,
+      "radius": 5,
+      "angle": 270,
+      "speed": 1.2,
+      "colorHex": "#EA580C",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_09",
+      "x": 350,
+      "y": 390,
+      "radius": 5,
+      "angle": 240,
+      "speed": 1.2,
+      "colorHex": "#EA580C",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    },
+    {
+      "kind": "agent",
+      "id": "Person_10",
+      "x": 425,
+      "y": 400,
+      "radius": 5,
+      "angle": 225,
+      "speed": 1.2,
+      "colorHex": "#EA580C",
+      "fovRadius": 100,
+      "fovAngle": 150,
+      "showFOV": false
+    }
+  ],
+  "obstacles": [
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "North_Wall",
+      "color": "#64748B",
+      "vertices": [
+        { "x": 0, "y": 0 },
+        { "x": 500, "y": 0 },
+        { "x": 500, "y": 15 },
+        { "x": 0, "y": 15 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "West_Wall",
+      "color": "#64748B",
+      "vertices": [
+        { "x": 0, "y": 0 },
+        { "x": 15, "y": 0 },
+        { "x": 15, "y": 500 },
+        { "x": 0, "y": 500 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "East_Wall",
+      "color": "#64748B",
+      "vertices": [
+        { "x": 485, "y": 0 },
+        { "x": 500, "y": 0 },
+        { "x": 500, "y": 500 },
+        { "x": 485, "y": 500 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "South_Wall_Left",
+      "color": "#64748B",
+      "vertices": [
+        { "x": 0, "y": 485 },
+        { "x": 220, "y": 485 },
+        { "x": 220, "y": 500 },
+        { "x": 0, "y": 500 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "South_Wall_Right",
+      "color": "#64748B",
+      "vertices": [
+        { "x": 280, "y": 485 },
+        { "x": 500, "y": 485 },
+        { "x": 500, "y": 500 },
+        { "x": 280, "y": 500 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Conference_Table",
+      "color": "#94A3B8",
+      "vertices": [
+        { "x": 145, "y": 205 },
+        { "x": 355, "y": 205 },
+        { "x": 355, "y": 295 },
+        { "x": 145, "y": 295 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_Northwest",
+      "color": "#334155",
+      "vertices": [
+        { "x": 165, "y": 170 },
+        { "x": 195, "y": 170 },
+        { "x": 195, "y": 195 },
+        { "x": 165, "y": 195 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_North",
+      "color": "#334155",
+      "vertices": [
+        { "x": 235, "y": 170 },
+        { "x": 265, "y": 170 },
+        { "x": 265, "y": 195 },
+        { "x": 235, "y": 195 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_Northeast",
+      "color": "#334155",
+      "vertices": [
+        { "x": 305, "y": 170 },
+        { "x": 335, "y": 170 },
+        { "x": 335, "y": 195 },
+        { "x": 305, "y": 195 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_Southwest",
+      "color": "#334155",
+      "vertices": [
+        { "x": 165, "y": 305 },
+        { "x": 195, "y": 305 },
+        { "x": 195, "y": 330 },
+        { "x": 165, "y": 330 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_South",
+      "color": "#334155",
+      "vertices": [
+        { "x": 235, "y": 305 },
+        { "x": 265, "y": 305 },
+        { "x": 265, "y": 330 },
+        { "x": 235, "y": 330 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_Southeast",
+      "color": "#334155",
+      "vertices": [
+        { "x": 305, "y": 305 },
+        { "x": 335, "y": 305 },
+        { "x": 335, "y": 330 },
+        { "x": 305, "y": 330 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_West",
+      "color": "#334155",
+      "vertices": [
+        { "x": 105, "y": 235 },
+        { "x": 135, "y": 235 },
+        { "x": 135, "y": 265 },
+        { "x": 105, "y": 265 }
+      ]
+    },
+    {
+      "kind": "obstacle",
+      "shapeType": "polygon",
+      "id": "Chair_East",
+      "color": "#334155",
+      "vertices": [
+        { "x": 365, "y": 235 },
+        { "x": 395, "y": 235 },
+        { "x": 395, "y": 265 },
+        { "x": 365, "y": 265 }
+      ]
+    }
+  ]
+}
