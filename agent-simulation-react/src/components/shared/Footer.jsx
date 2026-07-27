@@ -4,7 +4,7 @@ import '../../styles/layout.css';
 export default function Footer() {
   return (
     <footer className="emory-footer">
-      © 2026 Agent Simulation Project, All rights reserved.
+      Agent Simulation Project · Updated July 26, 2026
     </footer>
   );
 }

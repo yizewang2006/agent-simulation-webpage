@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Simulation from "./pages/Simulation";
+import Simulation1stGen from "./pages/Simulation1stGen";
+import Simulation2ndGen from "./pages/Simulation2ndGen";
+import Simulation3rdGen from "./pages/Simulation3rdGen";
 import Landing from "./pages/Landing";
 import LandingLegacy from "./pages/LandingLegacy";
 import Tutorial from "./pages/Tutorial"
@@ -13,7 +15,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/landing-legacy" element={<LandingLegacy />} />
-        <Route path="/simulation" element={<Simulation />} />
+        <Route path="/simulation" element={<Simulation2ndGen />} />
+        <Route path="/simulation-1st-gen" element={<Simulation1stGen />} />
+        <Route path="/simulation-2nd-gen" element={<Simulation2ndGen />} />
+        <Route path="/simulation-3rd-gen" element={<Simulation3rdGen />} />
         <Route path="/scenario-builder" element={<ScenarioBuilder />} />
         <Route path="/playback" element={<Playback />} />
         <Route path="/tutorial" element={<Tutorial />} />

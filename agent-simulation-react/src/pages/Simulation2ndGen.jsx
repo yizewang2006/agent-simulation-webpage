@@ -197,7 +197,7 @@ function findObstacleAt(point, obstacles) {
   return null;
 }
 
-function Simulation() {
+function Simulation2ndGen() {
   const navigate = useNavigate();
   const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
   const [showNoAgentsAlert, setShowNoAgentsAlert] = useState(false);
@@ -960,25 +960,26 @@ function Simulation() {
     <div className="simulation-page">
         {showWelcomeAlert && (
           <AlertBox
-            title="Welcome to the Main Simulation!"
-            primMessage="Create agents, define their behaviors, and see how they interact in real time."
+            title="You’re Using the Stable Simulation"
+            primMessage="This is the current stable version of the Main Simulation and remains fully available while we work on the next generation."
             secMessage={(
               <>
-                Don&apos;t know where to start?{' '}
+                A redesigned simulation experience is underway. In the meantime, you can continue working here as usual.{' '}
                 <Link
                   to="/loading"
                   state={{ from: 'Main Simulation', to: 'Tutorial', path: '/tutorial' }}
-                >Check out the tutorial.</Link>
+                >View the tutorial.</Link>
               </>
             )}
-            confirmLabel="Get Started"
+            confirmLabel="Continue"
             cancelLabel="Close"
             permanentDismiss
-            dismissStorageKey="simulation-welcome-dismissed"
+            dismissStorageKey="simulation-2nd-gen-notice-dismissed"
             onConfirm={() => setShowWelcomeAlert(false)}
             onCancel={() => setShowWelcomeAlert(false)}
           />
         )}
+        
         {showNoAgentsAlert && (
           <AlertBox
             title="No Agents Found!"
@@ -1423,4 +1424,4 @@ function Simulation() {
   );
 }
 
-export default Simulation;
+export default Simulation2ndGen;

@@ -64,11 +64,15 @@
 /* Footer Styles */
 .emory-footer {
   width: 100%;
-  padding: 1rem;
+  height: 50px;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background-color: #002878;
   color: #ffffff;
   text-align: center;
   font-family: 'Montserrat', sans-serif;
-  font-size: 0.875rem;
+  font-size: 1rem;
   box-sizing: border-box;
 }
