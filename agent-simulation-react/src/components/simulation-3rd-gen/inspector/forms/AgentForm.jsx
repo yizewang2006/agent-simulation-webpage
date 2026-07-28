@@ -34,8 +34,34 @@ export default function AgentForm({
         ...initialValues,
     }));
     const [formError, setFormError] = useState("");
+    const [hasMoreBelow, setHasMoreBelow] = useState(false);
+    const formRef = useRef(null);
     const regeneratePreviewRef = useRef(onRegeneratePreview);
     const updatePreviewAppearanceRef = useRef(onUpdatePreviewAppearance);
+
+    function updateScrollHint() {
+      const form = formRef.current;
+
+      if (!form) return;
+
+      setHasMoreBelow(
+        form.scrollTop + form.clientHeight < form.scrollHeight - 2
+      );
+    }
+
+    // Recheck when the form changes between the shorter and longer modes.
+    useEffect(() => {
+      const form = formRef.current;
+
+      if (!form) return undefined;
+
+      updateScrollHint();
+
+      const resizeObserver = new ResizeObserver(updateScrollHint);
+      resizeObserver.observe(form);
+
+      return () => resizeObserver.disconnect();
+    }, [mode]);
 
     // Keep the latest parent callback without making the preview effect rerun
     // whenever Simulation3rdGen renders for an unrelated reason.
@@ -135,8 +161,15 @@ export default function AgentForm({
       : "Create Agents";
 
     return (
+    <div
+      className={`${styles.inspectorFormViewport} ${
+        hasMoreBelow ? styles.hasMoreBelow : ""
+      }`}
+    >
     <form
+      ref={formRef}
       className={styles.inspectorForm}
+      onScroll={updateScrollHint}
       onSubmit={submitForm}
     >
       <div className={styles.formIntroduction}>
@@ -538,5 +571,6 @@ export default function AgentForm({
         </button>
       </div>
     </form>
+    </div>
   );
 }

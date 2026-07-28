@@ -74,7 +74,7 @@ export default function RuntimeSettingsForm({
 
   return (
     <div
-      className={`${styles.settingsFormViewport} ${
+      className={`${styles.inspectorFormViewport} ${
         hasMoreBelow ? styles.hasMoreBelow : ""
       }`}
     >

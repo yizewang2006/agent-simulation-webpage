@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
   BrainCircuit,
+  ChevronDown,
   Circle,
   Download,
   FileUp,
@@ -40,6 +41,12 @@ export default function SimulationExplorer({
 }) {
   const [activeTab, setActiveTab] = useState(EXPLORER_TABS.ENTITIES);
   const [searchTerm, setSearchTerm] = useState('');
+  const [hasMoreBelow, setHasMoreBelow] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState({
+    Agent: false,
+    Obstacle: false,
+  });
+  const listRef = useRef(null);
 
   const entries = useMemo(() => {
     if (activeTab === EXPLORER_TABS.BEHAVIORS) {
@@ -92,6 +99,124 @@ export default function SimulationExplorer({
       : activeTab === EXPLORER_TABS.BEHAVIORS
         ? 'behaviors'
         : 'recordings';
+
+  function updateScrollHint() {
+    const list = listRef.current;
+
+    if (!list) return;
+
+    setHasMoreBelow(
+      list.scrollTop + list.clientHeight < list.scrollHeight - 2
+    );
+  }
+
+  useEffect(() => {
+    const list = listRef.current;
+
+    if (!list) return undefined;
+
+    updateScrollHint();
+
+    const resizeObserver = new ResizeObserver(updateScrollHint);
+    resizeObserver.observe(list);
+
+    return () => resizeObserver.disconnect();
+  }, [activeTab, searchTerm, visibleEntries.length, collapsedGroups]);
+
+  function toggleGroup(type) {
+    setCollapsedGroups((currentGroups) => ({
+      ...currentGroups,
+      [type]: !currentGroups[type],
+    }));
+  }
+
+  function renderEntry({ id, name, type, Icon, target, subtitle }) {
+    return (
+      <div className={styles.explorerEntry} key={id}>
+        <div className={styles.explorerEntryInfo}>
+          <Icon size={17} aria-hidden="true" />
+          <span>
+            <strong>{name}</strong>
+            <small>{subtitle || type}</small>
+          </span>
+        </div>
+
+        {/* If more entry types are added, come back here to assign their available actions. */}
+        {(type === 'Agent' || type === 'Obstacle') && (
+          <div className={styles.explorerEntryActions}>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`Edit ${name}`}
+              title={
+                type === 'Agent'
+                  ? 'Edit Agent'
+                  : 'Obstacle editing is coming next'
+              }
+              disabled={type === 'Obstacle'}
+              onClick={() => {
+                if (type === 'Agent') onEditAgent(target);
+                else onEditObstacle(target);
+              }}
+            >
+              {type === 'Agent' ? (
+                <UserRoundPen size={16} aria-hidden="true" />
+              ) : (
+                <PenLine size={16} aria-hidden="true" />
+              )}
+            </button>
+
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+              type="button"
+              aria-label={`Delete ${name}`}
+              title={`Delete ${type}`}
+              onClick={() => {
+                if (type === 'Agent') onDeleteAgent(target);
+                else onDeleteObstacle(target);
+              }}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
+        {type === 'Recording' && (
+          <div className={styles.explorerEntryActions}>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`Play ${name}`}
+              title="Open Playback"
+              onClick={() => onPlayRecording(target)}
+            >
+              <Play size={15} fill="currentColor" aria-hidden="true" />
+            </button>
+
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`Download ${name}`}
+              title="Download Recording"
+              onClick={() => onDownloadRecording(target)}
+            >
+              <Download size={15} aria-hidden="true" />
+            </button>
+
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+              type="button"
+              aria-label={`Delete ${name}`}
+              title="Delete Recording"
+              onClick={() => onDeleteRecording(target)}
+            >
+              <Trash2 size={15} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <aside className={`${styles.sidePanel} ${styles.workspaceSidePanel}`}>
@@ -157,100 +282,70 @@ export default function SimulationExplorer({
           />
         </label>
 
-        <div className={styles.explorerList}>
-          {visibleEntries.length > 0 ? (
-            visibleEntries.map(({ id, name, type, Icon, target, subtitle }) => (
-              <div className={styles.explorerEntry} key={id}>
-                <div className={styles.explorerEntryInfo}>
-                  <Icon size={17} aria-hidden="true" />
-                  <span>
-                    <strong>{name}</strong>
-                    <small>{subtitle || type}</small>
-                  </span>
-                </div>
+        <div
+          className={`${styles.explorerListViewport} ${
+            hasMoreBelow ? styles.hasMoreBelow : ''
+          }`}
+        >
+          <div
+            ref={listRef}
+            className={styles.explorerList}
+            onScroll={updateScrollHint}
+          >
+            {visibleEntries.length > 0 ? (
+              activeTab === EXPLORER_TABS.ENTITIES ? (
+                // If more entity types are added, come back here to add their Explorer group.
+                ['Agent', 'Obstacle'].map((type) => {
+                  const groupEntries = visibleEntries.filter(
+                    (entry) => entry.type === type
+                  );
 
-                {/* If more entry types are added, come back here to assign their available actions. */}
-                {(type === 'Agent' || type === 'Obstacle') && (
-                  <div className={styles.explorerEntryActions}>
-                    <button
-                      className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
-                      type="button"
-                      aria-label={`Edit ${name}`}
-                      title={
-                        type === 'Agent'
-                          ? 'Edit Agent'
-                          : 'Obstacle editing is coming next'
-                      }
-                      disabled={type === 'Obstacle'}
-                      onClick={() => {
-                        if (type === 'Agent') onEditAgent(target);
-                        else onEditObstacle(target);
-                      }}
-                    >
-                      {type === 'Agent' ? (
-                        <UserRoundPen size={16} aria-hidden="true" />
-                      ) : (
-                        <PenLine size={16} aria-hidden="true" />
+                  if (groupEntries.length === 0) return null;
+
+                  return (
+                    <section className={styles.explorerGroup} key={type}>
+                      <h3 className={styles.explorerGroupHeading}>
+                        <button
+                          className={styles.explorerGroupTrigger}
+                          type="button"
+                          aria-expanded={!collapsedGroups[type]}
+                          onClick={() => toggleGroup(type)}
+                        >
+                          <span className={styles.explorerGroupLabel}>
+                            <ChevronDown
+                              className={`${styles.explorerGroupChevron} ${
+                                collapsedGroups[type] ? styles.isCollapsed : ''
+                              }`}
+                              size={15}
+                              aria-hidden="true"
+                            />
+                            {type === 'Agent' ? 'Agents' : 'Obstacles'}
+                          </span>
+                          <span className={styles.explorerGroupCount}>
+                            {groupEntries.length}
+                          </span>
+                        </button>
+                      </h3>
+
+                      {!collapsedGroups[type] && (
+                        <div className={styles.explorerGroupEntries}>
+                          {groupEntries.map(renderEntry)}
+                        </div>
                       )}
-                    </button>
-
-                    <button
-                      className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
-                      type="button"
-                      aria-label={`Delete ${name}`}
-                      title={`Delete ${type}`}
-                      onClick={() => {
-                        if (type === 'Agent') onDeleteAgent(target);
-                        else onDeleteObstacle(target);
-                      }}
-                    >
-                      <Trash2 size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-
-                {type === 'Recording' && (
-                  <div className={styles.explorerEntryActions}>
-                    <button
-                      className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
-                      type="button"
-                      aria-label={`Play ${name}`}
-                      title="Open Playback"
-                      onClick={() => onPlayRecording(target)}
-                    >
-                      <Play size={15} fill="currentColor" aria-hidden="true" />
-                    </button>
-
-                    <button
-                      className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
-                      type="button"
-                      aria-label={`Download ${name}`}
-                      title="Download Recording"
-                      onClick={() => onDownloadRecording(target)}
-                    >
-                      <Download size={15} aria-hidden="true" />
-                    </button>
-
-                    <button
-                      className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
-                      type="button"
-                      aria-label={`Delete ${name}`}
-                      title="Delete Recording"
-                      onClick={() => onDeleteRecording(target)}
-                    >
-                      <Trash2 size={15} aria-hidden="true" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <p className={styles.explorerEmpty}>
-              {searchTerm
-                ? `No matching ${activeTabLabel}.`
-                : `No ${activeTabLabel} yet.`}
-            </p>
-          )}
+                    </section>
+                  );
+                })
+              ) : (
+                visibleEntries.map(renderEntry)
+              )
+            ) : (
+              <p className={styles.explorerEmpty}>
+                {searchTerm
+                  ? `No matching ${activeTabLabel}.`
+                  : `No ${activeTabLabel} yet.`}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </aside>
