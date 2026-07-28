@@ -273,14 +273,14 @@
 .explorerEntry {
   width: 100%;
   padding: 9px 10px;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 9px;
+  justify-content: space-between;
+  gap: 10px;
   border: 1px solid #e1e4e9;
   border-radius: 7px;
   background-color: #ffffff;
-  color: #012169;
-  text-align: left;
 }
 
 .explorerEntry:hover {
@@ -288,7 +288,15 @@
   background-color: #f2f6fc;
 }
 
-.explorerEntry > span {
+.explorerEntryInfo {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #012169;
+}
+
+.explorerEntryInfo > span {
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -305,6 +313,47 @@
 .explorerEntry small {
   color: #858a92;
   font-size: 0.68rem;
+}
+
+.explorerEntryActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.explorerIconButton {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 5px;
+}
+
+.explorerIconButton:disabled,
+.explorerIconButton:disabled:hover {
+  border-color: #e0e3e8;
+  background-color: #f3f4f6;
+  color: #a5aab2;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.explorerDeleteButton {
+  color: #8c3a3e;
+}
+
+.explorerDeleteButton:hover {
+  border-color: #d35b61;
+  background-color: #fff0f1;
+  color: #b4232a;
+}
+
+.explorerDeleteButton:active {
+  border-color: #b4232a;
+  background-color: #fbdfe1;
+  color: #941d23;
 }
 
 .explorerEmpty {
@@ -417,6 +466,14 @@
   text-transform: uppercase;
 }
 
+.runtimeStatusRunning {
+  background-color: #ff0000;
+}
+
+.runtimeStatusRecording {
+  background-color: #ff0000;
+}
+
 .primaryAction {
   display: inline-flex;
   align-items: center;
@@ -448,6 +505,15 @@
   outline-offset: 2px;
 }
 
+.primaryAction:disabled,
+.primaryAction:disabled:hover {
+  background-color: #aab2c0;
+  color: #ffffff;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
 .runtimeAction {
   width: 128px;
   min-height: 28px;
@@ -468,54 +534,7 @@
 }
 
 .recordOption {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
   color: #555555;
-  font-size: 0.82rem;
-  cursor: pointer;
-}
-
-.recordOption input {
-  width: 17px;
-  height: 17px;
-  margin: 0;
-  display: grid;
-  place-content: center;
-  appearance: none;
-  border: 1.5px solid #9aa3b2;
-  border-radius: 4px;
-  background-color: #ffffff;
-  cursor: pointer;
-  transition: background-color 0.16s, border-color 0.16s, transform 0.16s;
-}
-
-.recordOption input::before {
-  content: '';
-  width: 4px;
-  height: 8px;
-  border: solid #ffffff;
-  border-width: 0 2px 2px 0;
-  opacity: 0;
-  transform: translateY(-1px) rotate(45deg) scale(0.6);
-  transition: opacity 0.12s, transform 0.16s;
-}
-
-.recordOption input:checked {
-  border-color: #d28e00;
-  background-color: #d28e00;
-  animation: checkboxPop 0.2s ease-out;
-}
-
-.recordOption input:checked::before {
-  opacity: 1;
-  transform: translateY(-1px) rotate(45deg) scale(1);
-}
-
-@keyframes checkboxPop {
-  50% {
-    transform: scale(1.12);
-  }
 }
 
 .runtimeSettings {
@@ -750,6 +769,8 @@
   opacity: 1;
 }
 
+/* Shared base layout for forms rendered inside the Inspector. */
+.inspectorForm,
 .settingsForm {
   width: 100%;
   height: 100%;
@@ -762,6 +783,50 @@
   overscroll-behavior: contain;
   color: #202020;
   font-family: "Outfit", sans-serif;
+}
+
+.formHeadingRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.formHeadingIcon {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #012169;
+}
+
+.formBackButton {
+  width: max-content;
+  min-height: 30px;
+  margin: 0 0 12px;
+  padding: 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 5px;
+  background-color: transparent;
+  color: #012169;
+  font-family: "Outfit", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.formBackButton:hover {
+  background-color: #eef3fb;
+}
+
+.formBackButton:active {
+  background-color: #e1e9f5;
+  color: #012169;
+}
+
+.formBackButton:focus-visible {
+  outline: 3px solid #eaaa00;
+  outline-offset: 2px;
 }
 
 .formIntroduction {
@@ -866,12 +931,129 @@
   box-shadow: 0 0 0 3px rgba(210, 142, 0, 0.16);
 }
 
+.formColorControl {
+  min-height: 38px;
+  padding: 5px 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  border: 1px solid #d5d8de;
+  border-radius: 6px;
+  background-color: #ffffff;
+}
+
+.formColorControl:focus-within {
+  border-color: #d28e00;
+  box-shadow: 0 0 0 3px rgba(210, 142, 0, 0.16);
+}
+
+.formColorInput {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.formColorInput::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.formColorInput::-webkit-color-swatch {
+  border: 0;
+  border-radius: 4px;
+}
+
+.formColorInput::-moz-color-swatch {
+  border: 0;
+  border-radius: 4px;
+}
+
+.formColorValue {
+  min-width: 0;
+  color: #555b64;
+  font-size: 0.78rem;
+  letter-spacing: 0.025em;
+}
+
+.formCheckbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #404040;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.formCheckbox input {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  display: grid;
+  flex: 0 0 auto;
+  place-content: center;
+  border: 1px solid #aeb5c0;
+  border-radius: 4px;
+  background-color: #ffffff;
+  cursor: pointer;
+  transition:
+    border-color 0.16s,
+    background-color 0.16s,
+    transform 0.16s;
+}
+
+.formCheckbox input::before {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border-bottom: 2px solid #ffffff;
+  border-left: 2px solid #ffffff;
+  opacity: 0;
+  transform: translateY(-1px) rotate(-45deg) scale(0.7);
+  transition:
+    opacity 0.14s,
+    transform 0.14s;
+}
+
+.formCheckbox input:checked {
+  border-color: #d28e00;
+  background-color: #d28e00;
+}
+
+.formCheckbox input:checked::before {
+  opacity: 1;
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+
+.formCheckbox input:focus-visible {
+  outline: 3px solid rgba(210, 142, 0, 0.35);
+  outline-offset: 2px;
+}
+
 .formHelperText {
   margin: 0;
   color: #858a92;
   font-size: 0.72rem;
   font-weight: 400;
   line-height: 1.3;
+}
+
+.formError {
+  margin: 12px 0 0;
+  padding: 9px 10px;
+  border: 1px solid #efb2b5;
+  border-radius: 6px;
+  background-color: #fff1f1;
+  color: #9f1f25;
+  font-size: 0.76rem;
+  font-weight: 550;
+  line-height: 1.35;
 }
 
 .inputWithUnit {
@@ -1015,6 +1197,7 @@
   width: 100%;
   min-height: 38px;
   padding: 8px 14px;
+  gap: 8px;
   border-radius: 6px;
   font-size: 0.84rem;
   line-height: 1.2;

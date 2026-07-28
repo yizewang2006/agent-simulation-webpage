@@ -9,7 +9,7 @@ import {
     UserPlus,
 } from 'lucide-react'
 
-import { INSPECTOR_MODES } from '../inspectorModes';
+import { INSPECTOR_MODES } from '../modeConstants';
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
 export default function AddToSimulationMenu( {onSelectMode} ) {

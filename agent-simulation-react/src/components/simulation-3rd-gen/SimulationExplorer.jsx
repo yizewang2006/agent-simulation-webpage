@@ -3,11 +3,16 @@ import {
   Bot,
   BrainCircuit,
   Circle,
+  Download,
   FileUp,
   PencilRuler,
+  PenLine,
   ScanSearch,
   Search,
   Shapes,
+  Trash2,
+  UserRoundPen,
+  Play,
 } from 'lucide-react';
 import styles from '../../styles/3rd-gen/simulation.module.css';
 
@@ -25,6 +30,13 @@ export default function SimulationExplorer({
   recordings,
   onLoadJSON,
   onOpenScenarioBuilder,
+  onEditAgent,
+  onDeleteAgent,
+  onEditObstacle,
+  onDeleteObstacle,
+  onPlayRecording,
+  onDownloadRecording,
+  onDeleteRecording,
 }) {
   const [activeTab, setActiveTab] = useState(EXPLORER_TABS.ENTITIES);
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,6 +57,8 @@ export default function SimulationExplorer({
         name: recording.name || `Recording ${index + 1}`,
         type: 'Recording',
         Icon: Circle,
+        target: recording,
+        subtitle: `${recording.frames?.length ?? 0} frames`,
       }));
     }
 
@@ -54,12 +68,16 @@ export default function SimulationExplorer({
         name: agent.id || agent.name || `Agent ${index + 1}`,
         type: 'Agent',
         Icon: Bot,
+        target: agent,
+        subtitle: 'Agent',
       })),
       ...obstacles.map((obstacle, index) => ({
         id: obstacle.ID ?? obstacle.id ?? `obstacle-${index}`,
         name: obstacle.ID || obstacle.id || `Obstacle ${index + 1}`,
         type: 'Obstacle',
         Icon: Shapes,
+        target: obstacle,
+        subtitle: 'Obstacle',
       })),
     ];
   }, [activeTab, agents, behaviors, obstacles, recordings]);
@@ -141,14 +159,90 @@ export default function SimulationExplorer({
 
         <div className={styles.explorerList}>
           {visibleEntries.length > 0 ? (
-            visibleEntries.map(({ id, name, type, Icon }) => (
-              <button className={styles.explorerEntry} type="button" key={id}>
-                <Icon size={17} aria-hidden="true" />
-                <span>
-                  <strong>{name}</strong>
-                  <small>{type}</small>
-                </span>
-              </button>
+            visibleEntries.map(({ id, name, type, Icon, target, subtitle }) => (
+              <div className={styles.explorerEntry} key={id}>
+                <div className={styles.explorerEntryInfo}>
+                  <Icon size={17} aria-hidden="true" />
+                  <span>
+                    <strong>{name}</strong>
+                    <small>{subtitle || type}</small>
+                  </span>
+                </div>
+
+                {/* If more entry types are added, come back here to assign their available actions. */}
+                {(type === 'Agent' || type === 'Obstacle') && (
+                  <div className={styles.explorerEntryActions}>
+                    <button
+                      className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+                      type="button"
+                      aria-label={`Edit ${name}`}
+                      title={
+                        type === 'Agent'
+                          ? 'Edit Agent'
+                          : 'Obstacle editing is coming next'
+                      }
+                      disabled={type === 'Obstacle'}
+                      onClick={() => {
+                        if (type === 'Agent') onEditAgent(target);
+                        else onEditObstacle(target);
+                      }}
+                    >
+                      {type === 'Agent' ? (
+                        <UserRoundPen size={16} aria-hidden="true" />
+                      ) : (
+                        <PenLine size={16} aria-hidden="true" />
+                      )}
+                    </button>
+
+                    <button
+                      className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+                      type="button"
+                      aria-label={`Delete ${name}`}
+                      title={`Delete ${type}`}
+                      onClick={() => {
+                        if (type === 'Agent') onDeleteAgent(target);
+                        else onDeleteObstacle(target);
+                      }}
+                    >
+                      <Trash2 size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+
+                {type === 'Recording' && (
+                  <div className={styles.explorerEntryActions}>
+                    <button
+                      className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+                      type="button"
+                      aria-label={`Play ${name}`}
+                      title="Open Playback"
+                      onClick={() => onPlayRecording(target)}
+                    >
+                      <Play size={15} fill="currentColor" aria-hidden="true" />
+                    </button>
+
+                    <button
+                      className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+                      type="button"
+                      aria-label={`Download ${name}`}
+                      title="Download Recording"
+                      onClick={() => onDownloadRecording(target)}
+                    >
+                      <Download size={15} aria-hidden="true" />
+                    </button>
+
+                    <button
+                      className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+                      type="button"
+                      aria-label={`Delete ${name}`}
+                      title="Delete Recording"
+                      onClick={() => onDeleteRecording(target)}
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+              </div>
             ))
           ) : (
             <p className={styles.explorerEmpty}>

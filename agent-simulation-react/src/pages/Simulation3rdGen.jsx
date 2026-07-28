@@ -32,7 +32,88 @@ const CANVAS_HEIGHT = 500;
 const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
 
 // NEW 3rd Generation Imports
-import { INSPECTOR_MODES } from "../components/simulation-3rd-gen/inspector/inspectorModes.js"; // Inspector DISPLAY MODES
+import { INSPECTOR_MODES } from "../components/simulation-3rd-gen/inspector/modeConstants.js"; // Inspector DISPLAY MODES
+
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+// Parse and validate form strings before either previewing or creating agents.
+function normalizeAgentCreationConfig(values) {
+  const config = {
+    count: Number(values.count),
+    xMin: Number(values.xMin),
+    xMax: Number(values.xMax),
+    yMin: Number(values.yMin),
+    yMax: Number(values.yMax),
+    speedMin: Number(values.speedMin),
+    speedMax: Number(values.speedMax),
+    angleMin: Number(values.angleMin),
+    angleMax: Number(values.angleMax),
+    color: values.color,
+    showFOV: Boolean(values.showFOV),
+  };
+
+  const numericValues = [
+    config.count,
+    config.xMin,
+    config.xMax,
+    config.yMin,
+    config.yMax,
+    config.speedMin,
+    config.speedMax,
+    config.angleMin,
+    config.angleMax,
+  ];
+
+  if (!numericValues.every(Number.isFinite)) {
+    throw new Error('Complete every numeric Agent field.');
+  }
+  if (!Number.isInteger(config.count) || config.count < 1) {
+    throw new Error('Number of Agents must be a whole number greater than zero.');
+  }
+  if (config.xMin < 0 || config.xMax > CANVAS_WIDTH || config.xMin > config.xMax) {
+    throw new Error(`X spawn range must stay between 0 and ${CANVAS_WIDTH}, with Min no greater than Max.`);
+  }
+  if (config.yMin < 0 || config.yMax > CANVAS_HEIGHT || config.yMin > config.yMax) {
+    throw new Error(`Y spawn range must stay between 0 and ${CANVAS_HEIGHT}, with Min no greater than Max.`);
+  }
+  if (config.speedMin < 0 || config.speedMin > config.speedMax) {
+    throw new Error('Initial Speed Min must be non-negative and no greater than Max.');
+  }
+  if (config.angleMin > config.angleMax) {
+    throw new Error('Initial Angle Min cannot be greater than Max.');
+  }
+
+  return config;
+}
+
+// Pure randomization step shared by Regenerate Preview and Create Agents.
+function generateRandomizedAgentDrafts(config) {
+  return Array.from({ length: config.count }, () => {
+    const angleDegrees = randomBetween(config.angleMin, config.angleMax);
+    const angle = -angleDegrees * Math.PI / 180;
+    const speed = randomBetween(config.speedMin, config.speedMax);
+
+    return {
+      x: randomBetween(config.xMin, config.xMax),
+      y: randomBetween(config.yMin, config.yMax),
+      radius: 5,
+      dx: Math.cos(angle) * speed,
+      dy: Math.sin(angle) * speed,
+      speed,
+      angle,
+      color: config.color,
+      fovRadius: 100,
+      fovAngle: 150 * Math.PI / 180,
+      showFOV: config.showFOV,
+    };
+  });
+}
+
+function getAgentCreationConfigKey(config) {
+  return JSON.stringify(config);
+}
 
 // Capture one JSON-friendly frame. Playback can redraw from this data without running behavior again.
 function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingStartTime) {
@@ -216,7 +297,8 @@ function Simulation3rdGen() {
   const ctxRef = useRef(null); // Ref to hold the canvas context
   const agentsArrayRef = useRef([]); // Ref to hold the internal agents array (used by animation loop & Agent constructor)
   const obstaclesArrayRef = useRef([]); // Ref to hold obstacle objects used by the animation loop
-  const agentPreviewRef = useRef(null); // Draft single-agent preview drawn while creating an agent
+  const agentPreviewRef = useRef([]); // Randomized drafts shown before they enter the live roster.
+  const agentPreviewConfigKeyRef = useRef('');
   const obstaclePreviewRef = useRef(null); // Draft obstacle preview drawn over the canvas while creating
   const scenarioFileInputRef = useRef(null);
 
@@ -289,14 +371,8 @@ function Simulation3rdGen() {
     const nextMaxSpeed = Number(settings.maximumSpeed);
     const nextMaxAngle = Number(settings.maximumTurnAngle);
 
-    if (Number.isFinite(nextFPS) && nextFPS >= 0) {
+    if (Number.isFinite(nextFPS) && nextFPS >= 1) {
       setTargetFPS(String(nextFPS));
-
-      // Zero FPS means paused; do not leave the runtime marked as playing.
-      if (nextFPS === 0) {
-        setIsSimulationRunning(false);
-        isSimulationRunningRef.current = false;
-      }
     }
 
     if (Number.isFinite(nextMaxSpeed) && nextMaxSpeed >= 0) {
@@ -310,6 +386,111 @@ function Simulation3rdGen() {
     // Applying is an explicit commit, then return to the Inspector view that
     // was open before Runtime Settings.
     setInspectorMode(previousInspectorModeRef.current);
+  }
+
+  function clearAgentCreationPreview() {
+    agentPreviewRef.current = [];
+    agentPreviewConfigKeyRef.current = '';
+  }
+
+  function handleRegenerateAgentPreview(values) {
+    try {
+      const config = normalizeAgentCreationConfig(values);
+      const remainingCapacity = MAX_AGENTS - agentsArrayRef.current.length;
+
+      if (config.count > remainingCapacity) {
+        throw new Error(`Only ${remainingCapacity} more agents can be added.`);
+      }
+
+      agentPreviewRef.current = generateRandomizedAgentDrafts(config);
+      agentPreviewConfigKeyRef.current = getAgentCreationConfigKey(config);
+      return { ok: true };
+    } catch (error) {
+      clearAgentCreationPreview();
+      return { ok: false, error: error.message };
+    }
+  }
+
+  function handleUpdateAgentPreviewAppearance(values) {
+    try {
+      const config = normalizeAgentCreationConfig(values);
+
+      // Preserve randomized position and motion; replace appearance only.
+      agentPreviewRef.current = agentPreviewRef.current.map((draft) => ({
+        ...draft,
+        color: config.color,
+        showFOV: config.showFOV,
+      }));
+
+      /*
+       * Keep the cache key synchronized with the appearance change. Otherwise,
+       * Create Agents would treat the visible preview as stale and rerandomize
+       * the batch even though the user already approved this arrangement.
+       */
+      agentPreviewConfigKeyRef.current = getAgentCreationConfigKey(config);
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  function handleCreateAgents(values) {
+    try {
+      const canvas = canvasRef.current;
+      const ctx = ctxRef.current;
+      const roster = agentsArrayRef.current;
+
+      if (!canvas || !ctx) {
+        throw new Error('The simulation canvas is not ready.');
+      }
+
+      const config = normalizeAgentCreationConfig(values);
+      const remainingCapacity = MAX_AGENTS - roster.length;
+
+      if (config.count > remainingCapacity) {
+        throw new Error(`Only ${remainingCapacity} more agents can be added.`);
+      }
+
+      const configKey = getAgentCreationConfigKey(config);
+      const drafts =
+        agentPreviewConfigKeyRef.current === configKey &&
+        agentPreviewRef.current.length === config.count
+          ? agentPreviewRef.current
+          : generateRandomizedAgentDrafts(config);
+
+      drafts.forEach((draft) => {
+        const agent = new Agent(
+          draft.showFOV,
+          draft.x,
+          draft.y,
+          draft.radius,
+          draft.dx,
+          draft.dy,
+          draft.color,
+          draft.fovRadius,
+          draft.fovAngle,
+          draft.angle,
+          `Agent_${roster.length + 1}`,
+          ctx,
+          canvas,
+          roster
+        );
+
+        agent.showFOV = draft.showFOV;
+      });
+
+      setAgents([...roster]);
+      clearAgentCreationPreview();
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  function handleCancelAgentCreation() {
+    clearAgentCreationPreview();
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
   }
 
   // ---- Handlers ----
@@ -364,8 +545,8 @@ function Simulation3rdGen() {
   }
 
   function handleOpenPlayback(recording) {
-    // Open the popup synchronously from the click so browser popup blockers allow
-    // it. The popup performs its own Loading Screen → Playback transition.
+    // Open a normal browser tab and keep this Simulation tab alive underneath.
+    // Do not provide popup dimensions; the browser can treat it like a regular tab.
     const loadingQuery = new URLSearchParams({
       from: 'Main Simulation',
       to: 'Playback',
@@ -373,12 +554,11 @@ function Simulation3rdGen() {
     });
     const recWin = window.open(
       `/loading?${loadingQuery.toString()}`,
-      'AgentSimulationPlayback',
-      'width=700,height=820'
+      '_blank'
     );
-    // If no window, display error message
+    // If no tab opens, display an error message.
     if (!recWin) {
-      setRecordingMessage('Playback window was blocked by the browser.');
+      setRecordingMessage('The Playback tab was blocked by the browser.');
       return;
     }
 
@@ -415,6 +595,22 @@ function Simulation3rdGen() {
 
     // Release the temporary URL after the browser starts the download.
     URL.revokeObjectURL(url);
+  }
+
+  function requestDeleteRecording(recording) {
+    if (!recording) return;
+
+    setPendingDeletion({
+      type: 'recording',
+      target: recording,
+      name: recording.name,
+    });
+  }
+
+  function handleDeleteRecording(recordingToDelete) {
+    setRecordings((currentRecordings) =>
+      currentRecordings.filter((recording) => recording !== recordingToDelete)
+    );
   }
 
   async function handleLoadScenario(event) {
@@ -474,7 +670,7 @@ function Simulation3rdGen() {
       setShowAddAgent(false);
       setShowAddMultipleAgents(false);
       setShowAddObstacle(false);
-      agentPreviewRef.current = null;
+      clearAgentCreationPreview();
       obstaclePreviewRef.current = null;
       setScenarioLoadAlert({
         type: 'default',
@@ -713,7 +909,7 @@ function Simulation3rdGen() {
   useEffect(() => {
     const parsedFPS = Number(targetFPS);
     fpsRef.current =
-      Number.isFinite(parsedFPS) && parsedFPS >= 0 ? parsedFPS : 30;
+      Number.isFinite(parsedFPS) && parsedFPS >= 1 ? parsedFPS : 30;
   }, [targetFPS]);
 
   useEffect(() => { maxSpeedRef.current = maxSpeed; }, [maxSpeed]);
@@ -734,15 +930,14 @@ function Simulation3rdGen() {
       return;
     }
 
-    if (recordWhenPlaying) {
-      // The recording handler validates that agents exist and starts both the
-      // recorder and simulation, keeping their start times synchronized.
-      handleStartRecording();
+    if (agentsArrayRef.current.length === 0) {
+      setShowNoAgentsAlert(true);
       return;
     }
 
-    if (agentsArrayRef.current.length === 0) {
-      setShowNoAgentsAlert(true);
+    if (recordWhenPlaying) {
+      // Start recording and playback together after runtime validation passes.
+      handleStartRecording();
       return;
     }
 
@@ -786,7 +981,9 @@ function Simulation3rdGen() {
         ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
         obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
         drawObstaclePreview(ctx, obstaclePreviewRef.current);
-        drawAgentPreview(ctx, agentPreviewRef.current);
+        agentPreviewRef.current.forEach((preview) => {
+          drawAgentPreview(ctx, preview);
+        });
 
         // Always read the current roster from the ref. Entity editing can change
         // the roster after this animation effect is created, so closing over the
@@ -846,8 +1043,7 @@ function Simulation3rdGen() {
     });
 
     if (clicked) {
-      setSelectedAgent(clicked);
-      setSelectedObstacle(null);
+      selectAgentForEditing(clicked);
       return;
     }
 
@@ -870,6 +1066,10 @@ function Simulation3rdGen() {
   function selectAgentForEditing(agent) {
     setSelectedAgent(agent);
     setSelectedObstacle(null);
+    setInspectorMode({
+      mode: INSPECTOR_MODES.EDIT_AGENT,
+      agentId: agent.id,
+    });
   }
 
   function selectObstacleForEditing(obstacle) {
@@ -882,17 +1082,98 @@ function Simulation3rdGen() {
     setSelectedObstacle(null);
   }
 
-  function handleApplyAgentEdits({ name, color, showFOV, fovAngle }) {
-    if (!selectedAgent) return;
+  function getAgentEditValues(agent) {
+    if (!agent) return null;
 
+    // Convert runtime vectors and radians into values people can edit directly.
+    const speed = Math.hypot(agent.dx, agent.dy);
+    const angle = -agent.angle * 180 / Math.PI;
+    const roundForForm = (value) => String(Math.round(value * 100) / 100);
+
+    return {
+      name: agent.id,
+      // Round display values only; the live Agent keeps its full precision.
+      x: roundForForm(agent.position.x),
+      y: roundForForm(agent.position.y),
+      speed: roundForForm(speed),
+      angle: roundForForm(angle),
+      color: getAgentColor(agent),
+      showFOV: agent.showFOV !== false,
+      fovAngle: roundForForm(agent.fovAngle * 180 / Math.PI),
+    };
+  }
+
+  function handleApplyAgentEdits(values) {
+    if (!selectedAgent) {
+      return { ok: false, error: 'Select an agent before applying changes.' };
+    }
+
+    // Step 1: Parse every numeric field before changing the live Agent.
+    const x = Number(values.x);
+    const y = Number(values.y);
+    const speed = Number(values.speed);
+    const angleDegrees = Number(values.angle);
+    const fovAngleDegrees = Number(values.fovAngle);
+    const name = values.name.trim();
+
+    if (!name) {
+      return { ok: false, error: 'Agent name cannot be empty.' };
+    }
+    if (
+      agentsArrayRef.current.some(
+        (agent) => agent !== selectedAgent && agent.id === name
+      )
+    ) {
+      return { ok: false, error: `An agent named “${name}” already exists.` };
+    }
+    if (!Number.isFinite(x) || x < 0 || x > CANVAS_WIDTH) {
+      return { ok: false, error: `X Position must be between 0 and ${CANVAS_WIDTH}.` };
+    }
+    if (!Number.isFinite(y) || y < 0 || y > CANVAS_HEIGHT) {
+      return { ok: false, error: `Y Position must be between 0 and ${CANVAS_HEIGHT}.` };
+    }
+    if (!Number.isFinite(speed) || speed < 0) {
+      return { ok: false, error: 'Speed must be zero or greater.' };
+    }
+    if (!Number.isFinite(angleDegrees)) {
+      return { ok: false, error: 'Angle must be a valid number.' };
+    }
+    if (
+      !Number.isFinite(fovAngleDegrees) ||
+      fovAngleDegrees < 0 ||
+      fovAngleDegrees > 360
+    ) {
+      return { ok: false, error: 'FOV Angle must be between 0 and 360 degrees.' };
+    }
+
+    // Step 2: Convert the displayed clockwise degrees back to canvas radians.
+    const angle = -angleDegrees * Math.PI / 180;
+
+    // Step 3: Commit all edits together so Cancel never partially changes an Agent.
     selectedAgent.id = name;
-    selectedAgent.originalColor = color;
-    selectedAgent.colorHex = color;
-    selectedAgent.showFOV = showFOV;
-    selectedAgent.isSpecial = showFOV; // isSpecial gates FOV drawing in agent.js — must stay in sync with showFOV
-    const parsedFovAngle = Number(fovAngle);
-    selectedAgent.fovAngle = (fovAngle === '' || !Number.isFinite(parsedFovAngle) ? 150 : parsedFovAngle) * Math.PI / 180;
+    selectedAgent.position.x = x;
+    selectedAgent.position.y = y;
+    selectedAgent.dx = Math.cos(angle) * speed;
+    selectedAgent.dy = Math.sin(angle) * speed;
+    selectedAgent.angle = angle;
+    selectedAgent.steeringAngle = angle;
+    selectedAgent.originalColor = values.color;
+    selectedAgent.colorHex = values.color;
+    selectedAgent.showFOV = values.showFOV;
+    selectedAgent.isSpecial = values.showFOV;
+    selectedAgent.fovAngle = fovAngleDegrees * Math.PI / 180;
+
+    // Step 4: Refresh React UI, then close the editor.
     setAgents([...agentsArrayRef.current]);
+    setSelectedAgent(null);
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+    return { ok: true };
+  }
+
+  function handleCancelAgentEdit() {
+    // Form values are local, so closing here leaves the live Agent unchanged.
+    setSelectedAgent(null);
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
   }
 
   // Delete selected agent workflow:
@@ -902,7 +1183,13 @@ function Simulation3rdGen() {
   function requestDeleteSelectedAgent() {
     if (!selectedAgent) return;
 
-    setPendingDeletion({ type: 'agent', target: selectedAgent, name: selectedAgent.id });
+    requestDeleteAgent(selectedAgent);
+  }
+
+  function requestDeleteAgent(agent) {
+    if (!agent) return;
+
+    setPendingDeletion({ type: 'agent', target: agent, name: agent.id });
   }
 
   function handleDeleteSelectedAgent(agentToDelete) {
@@ -916,6 +1203,7 @@ function Simulation3rdGen() {
     if (agentIndex !== -1) roster.splice(agentIndex, 1);
     setAgents([...roster]);
     setSelectedAgent(null);
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
   }
 
   function handleApplyObstacleEdits(updates) {
@@ -943,10 +1231,16 @@ function Simulation3rdGen() {
   function requestDeleteSelectedObstacle() {
     if (!selectedObstacle) return;
 
+    requestDeleteObstacle(selectedObstacle);
+  }
+
+  function requestDeleteObstacle(obstacle) {
+    if (!obstacle) return;
+
     setPendingDeletion({
       type: 'obstacle',
-      target: selectedObstacle,
-      name: selectedObstacle.ID ?? selectedObstacle.id,
+      target: obstacle,
+      name: obstacle.ID ?? obstacle.id,
     });
   }
 
@@ -956,6 +1250,7 @@ function Simulation3rdGen() {
     obstaclesArrayRef.current = obstaclesArrayRef.current.filter((obstacle) => obstacle !== obstacleToDelete);
     setObstacles([...obstaclesArrayRef.current]);
     setSelectedObstacle(null);
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
   }
 
   function handleConfirmDeletion() {
@@ -974,6 +1269,8 @@ function Simulation3rdGen() {
       obstaclesArrayRef.current.length = 0;
       setObstacles([]);
       setSelectedObstacle(null);
+    } else if (pendingDeletion.type === 'recording') {
+      handleDeleteRecording(pendingDeletion.target);
     }
 
     setPendingDeletion(null);
@@ -1010,6 +1307,13 @@ function Simulation3rdGen() {
         secondary: 'This action cannot be undone.',
       };
     }
+    if (pendingDeletion.type === 'recording') {
+      return {
+        title: 'Delete This Recording?',
+        primary: `Are you sure you want to delete “${pendingDeletion.name}”?`,
+        secondary: 'Downloaded files will not be affected.',
+      };
+    }
   }
 
   const deletionAlertContent = getDeletionAlertContent();
@@ -1023,6 +1327,32 @@ function Simulation3rdGen() {
   // Main Simulation
   return (
     <div className={styles.simulationPage}>
+      {pendingDeletion && deletionAlertContent && (
+        <AlertBox
+          title={deletionAlertContent.title}
+          primMessage={deletionAlertContent.primary}
+          secMessage={deletionAlertContent.secondary}
+          type="danger"
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={handleConfirmDeletion}
+          onCancel={() => setPendingDeletion(null)}
+        />
+      )}
+
+      {showNoAgentsAlert && (
+        <AlertBox
+          title="Add an Agent First"
+          primMessage="The simulation needs at least one Agent before it can play."
+          secMessage="Create an Agent in the Inspector, then try again."
+          type="warning"
+          confirmLabel="Got It"
+          cancelLabel="Close"
+          onConfirm={() => setShowNoAgentsAlert(false)}
+          onCancel={() => setShowNoAgentsAlert(false)}
+        />
+      )}
+
       <Header title="Main Simulation" />
 
       <main className={styles.simulationArea}>
@@ -1040,6 +1370,13 @@ function Simulation3rdGen() {
               path: '/scenario-builder',
             },
           })}
+          onEditAgent={selectAgentForEditing}
+          onDeleteAgent={requestDeleteAgent}
+          onEditObstacle={selectObstacleForEditing}
+          onDeleteObstacle={requestDeleteObstacle}
+          onPlayRecording={handleOpenPlayback}
+          onDownloadRecording={handleDownloadPlayback}
+          onDeleteRecording={requestDeleteRecording}
         />
 
         <input
@@ -1069,6 +1406,13 @@ function Simulation3rdGen() {
           <RuntimeControlCard
             isSettingsOpen={isRuntimeSettingsOpen}
             onToggleSettings={toggleRuntimeSettings}
+            isSimulationRunning={isSimulationRunning}
+            onToggleSimulation={toggleSimulationRunning}
+            recordWhenPlaying={recordWhenPlaying}
+            onRecordWhenPlayingChange={setRecordWhenPlaying}
+            isRecording={isRecording}
+            onStartRecording={handleStartRecording}
+            onStopRecording={handleStopRecording}
           />
         </section>
 
@@ -1086,6 +1430,14 @@ function Simulation3rdGen() {
           }}
           onApplyRuntimeSettings={applyRuntimeSettings}
           onCloseRuntimeSettings={toggleRuntimeSettings}
+          onCreateAgents={handleCreateAgents}
+          onRegenerateAgentPreview={handleRegenerateAgentPreview}
+          onUpdateAgentPreviewAppearance={handleUpdateAgentPreviewAppearance}
+          onCancelAgentCreation={handleCancelAgentCreation}
+          selectedAgent={selectedAgent}
+          agentEditValues={getAgentEditValues(selectedAgent)}
+          onApplyAgentEdits={handleApplyAgentEdits}
+          onCancelAgentEdit={handleCancelAgentEdit}
         />
       </main>
 

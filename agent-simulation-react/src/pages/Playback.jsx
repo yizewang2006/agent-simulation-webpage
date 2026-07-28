@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, FileUp, MonitorPlay, Pause, Play, House } from 'lucide-react';
-import Header from '../components/shared/Header.jsx';
+import Header from '../components/simulation-3rd-gen/Header3rdGen.jsx';
 import Footer from '../components/shared/Footer.jsx';
 import AlertBox from '../components/simulation/AlertBox.jsx';
 import '../styles/playback.css';
@@ -244,6 +244,24 @@ export default function Playback() {
     setCurrentFrame((frame) => Math.min(frameCount - 1, frame + 1));
   }
 
+  function handleBackToSimulation() {
+    // A Playback tab opened by Simulation can close itself without reloading
+    // the still-running Simulation page underneath it.
+    if (window.opener && !window.opener.closed) {
+      window.close();
+      return;
+    }
+
+    // Direct visits have no opener, so provide a safe navigation fallback.
+    navigate('/loading', {
+      state: {
+        from: 'Playback',
+        to: 'Main Simulation',
+        path: '/simulation-3rd-gen',
+      },
+    });
+  }
+
   function applyRecording(recordingData) {
     const frames = Array.isArray(recordingData) ? recordingData : recordingData?.frames;
     if (!Array.isArray(frames) || frames.length === 0) {
@@ -287,7 +305,7 @@ export default function Playback() {
           onCancel={() => setFileError('')}
         />
       )}
-      <Header title="Playback" />
+      <Header title="Playback Window" />
       <main className="playback-main">
         <section className="playback-shell">
           <div className="playback-canvas-wrap">
@@ -379,12 +397,10 @@ export default function Playback() {
             <button
               className="btn-secondary icon-button playback-back-button"
               type="button"
-              onClick={() => navigate('/loading', {
-                state: { from: 'Playback', to: 'Main Simulation', path: '/simulation' },
-              })}
+              onClick={handleBackToSimulation}
             >
               <ArrowLeft className="button-icon" size={16} aria-hidden="true" />
-              Back to Main Simulation
+              Back to Simulation
             </button>
 
             <button

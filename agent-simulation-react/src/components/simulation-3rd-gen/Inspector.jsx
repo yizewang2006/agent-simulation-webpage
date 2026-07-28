@@ -1,9 +1,10 @@
 import { ClipboardPen } from "lucide-react";
-import { INSPECTOR_MODES } from "./inspector/inspectorModes.js";
+import { FORM_MODES, INSPECTOR_MODES } from "./inspector/modeConstants.js";
 import InspectorBuild from "./inspector/forms/InspectorBuild.jsx";
 import styles from "../../styles/3rd-gen/simulation.module.css";
 
 import RuntimeSettingsForm from "./inspector/forms/RuntimeSettingsForm.jsx";
+import AgentForm from "./inspector/forms/AgentForm.jsx";
 
 export default function Inspector({
   view,
@@ -12,23 +13,46 @@ export default function Inspector({
   runtimeSettings,
   onApplyRuntimeSettings,
   onCloseRuntimeSettings,
+  onCreateAgents,
+  onRegenerateAgentPreview,
+  onUpdateAgentPreviewAppearance,
+  onCancelAgentCreation,
+  selectedAgent,
+  agentEditValues,
+  onApplyAgentEdits,
+  onCancelAgentEdit,
 }) {
   function renderContent() {
     switch (view.mode) {
       case INSPECTOR_MODES.ADD_AGENT:
         return (
-          <div>
-            <p>Add Agent will go here.</p>
+          <AgentForm
+            mode={FORM_MODES.CREATE}
+            onRegeneratePreview={onRegenerateAgentPreview}
+            onUpdatePreviewAppearance={onUpdateAgentPreviewAppearance}
+            onSubmit={onCreateAgents}
+            onCancel={onCancelAgentCreation}
+        />
+      );
 
-            <button
-              type="button"
-              onClick={() =>
-                onChangeView({ mode: INSPECTOR_MODES.EMPTY })
-              }
-            >
-              Back
-            </button>
-          </div>
+      case INSPECTOR_MODES.EDIT_AGENT:
+        if (!selectedAgent || !agentEditValues) {
+          return (
+            <InspectorBuild
+              hasContent={hasSimulationContent}
+              onChangeView={onChangeView}
+            />
+          );
+        }
+
+        return (
+          <AgentForm
+            key={selectedAgent.id}
+            mode={FORM_MODES.EDIT}
+            initialValues={agentEditValues}
+            onSubmit={onApplyAgentEdits}
+            onCancel={onCancelAgentEdit}
+          />
         );
         
       case INSPECTOR_MODES.RUNTIME_SETTINGS:

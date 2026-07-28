@@ -12,7 +12,7 @@ const DEFAULT_SETTINGS = {
   smoothingFactor: "0",
 };
 
-const MIN_FPS = 0;
+const MIN_FPS = 1;
 const MAX_FPS = 60;
 
 export default function RuntimeSettingsForm({
@@ -117,7 +117,7 @@ export default function RuntimeSettingsForm({
             value={settings.targetFPS}
             min={MIN_FPS}
             max={MAX_FPS}
-            step="5"
+            step="1"
             style={{ "--range-progress": `${fpsProgress}%` }}
             onChange={updateSettings}
           />
