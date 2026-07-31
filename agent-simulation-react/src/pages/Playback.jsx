@@ -262,6 +262,25 @@ export default function Playback() {
     });
   }
 
+  function handleBackToMainPage() {
+    // When Playback was opened from Simulation, send the original tab to the
+    // landing page first, then close this Playback tab.
+    if (window.opener && !window.opener.closed) {
+      window.opener.location.href = '/';
+      window.close();
+      return;
+    }
+
+    // Direct visits have no opener, so navigate within the current tab.
+    navigate('/loading', {
+      state: {
+        from: 'Playback',
+        to: 'Main Page',
+        path: '/',
+      },
+    });
+  }
+
   function applyRecording(recordingData) {
     const frames = Array.isArray(recordingData) ? recordingData : recordingData?.frames;
     if (!Array.isArray(frames) || frames.length === 0) {
@@ -406,12 +425,10 @@ export default function Playback() {
             <button
               className="btn-secondary icon-button playback-back-button"
               type="button"
-              onClick={() => navigate('/loading', {
-                state: { from: 'Playback', to: 'Home Page', path: '/' },
-              })}
+              onClick={handleBackToMainPage}
             >
               <House className="button-icon" size={16} aria-hidden="true" />
-              Back to Home Page
+              Back to Main Page
             </button>
 
           </div>

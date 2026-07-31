@@ -15,7 +15,7 @@ function drawObstacleLabel(ctx, label, x, y) {
 
 /* Have properties: 
 Speed, Heading, Position
-Only Self-Space
+Only Self-Reference
 Change Size
 Able to drag around
 

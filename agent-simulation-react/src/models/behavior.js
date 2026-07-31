@@ -498,13 +498,14 @@ export function isAngleInRange(value, low, high) {
   return value >= low || value <= high;
 }
 
-// Smoothing Calculator (based on smoothing factor)
-export function smoothTowardAngle(initial, final, smoothingFactor) {
-  let diff = final - initial;
-  if (diff > Math.PI) diff -= 2 * Math.PI;
-  if (diff < -Math.PI) diff += 2 * Math.PI;
+// Move partway toward the target using the shortest rotation direction.
+export function smoothTowardAngle(currentAngle, targetAngle, smoothingFactor) {
+  const shortestDifference = Math.atan2(
+    Math.sin(targetAngle - currentAngle),
+    Math.cos(targetAngle - currentAngle)
+  );
 
-  return initial + diff * smoothingFactor;
+  return currentAngle + shortestDifference * smoothingFactor;
 }
 
 // Smoothing Calculator (based on max angle)

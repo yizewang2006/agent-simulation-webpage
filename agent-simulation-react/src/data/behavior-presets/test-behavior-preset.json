@@ -1,14 +1,14 @@
 {
   "behaviors": [
     {
-      "name": "Self-Space Speed Up",
+      "name": "Keep the Snake Moving",
       "option": 1,
       "targetProperty": 1,
       "offset": 0.21,
       "filters": []
     },
     {
-      "name": "Slow Near Closest Neighbor",
+      "name": "Keep Snake Spacing",
       "option": 0,
       "targetProperty": 1,
       "offset": -0.21,
@@ -27,26 +27,7 @@
       ]
     },
     {
-      "name": "Head-On Angle Adjustment",
-      "option": 0,
-      "targetProperty": 2,
-      "offset": 15,
-      "filters": [
-        {
-          "filterType": "ranged",
-          "filteredProperty": 2,
-          "low": 150,
-          "high": 210
-        },
-        {
-          "filterType": "method",
-          "filteredProperty": 0,
-          "methodType": 0
-        }
-      ]
-    },
-    {
-      "name": "Follow Closest Neighbor",
+      "name": "Follow the Snake Ahead",
       "option": 0,
       "targetProperty": 0,
       "offset": 0,
@@ -59,7 +40,7 @@
       ]
     },
     {
-      "name": "Align With Closest Neighbor",
+      "name": "Align With the Snake",
       "option": 0,
       "targetProperty": 2,
       "offset": 0,

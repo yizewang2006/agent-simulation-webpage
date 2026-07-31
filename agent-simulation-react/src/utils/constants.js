@@ -34,7 +34,7 @@ export const OBSTACLE_SHAPE_TYPES = {
 
 export const REFERENCE_TYPES = {
   NEIGHBOR_REFERENCE: 0,
-  SELF_SPACE: 1,
+  SELF_REFERENCE: 1,
 };
 
 // Human-readable labels for the UI
@@ -100,7 +100,7 @@ export const METHOD_LABELS_BY_PROPERTY = {
 
 export const REFERENCE_LABELS = {
   [REFERENCE_TYPES.NEIGHBOR_REFERENCE]: 'Neighbor Reference',
-  [REFERENCE_TYPES.SELF_SPACE]: 'Self-Space',
+  [REFERENCE_TYPES.SELF_REFERENCE]: 'Self-Reference',
 };
 
 // Short simulation-themed messages shown at random during route transitions.
@@ -119,7 +119,7 @@ export const LOADING_MESSAGES = [
   'Calculating average neighbor properties...',
   'Calculating relative bearings...',
   'Calculating heading differences...',
-  'Calculating self-space properties...',
+  'Calculating self-reference properties...',
   'Calculating neighbor reference properties...',
   'Calculating distances to neighbors...',
   'Calculating speeds of neighbors...',

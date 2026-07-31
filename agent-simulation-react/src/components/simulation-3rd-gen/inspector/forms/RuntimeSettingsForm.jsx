@@ -9,7 +9,7 @@ const DEFAULT_SETTINGS = {
   canvasHeight: "500",
   maximumSpeed: "5.0",
   maximumTurnAngle: "45",
-  smoothingFactor: "0",
+  smoothingFactor: "0.15",
 };
 
 const MIN_FPS = 1;
@@ -241,15 +241,14 @@ export default function RuntimeSettingsForm({
             type="number"
             name="smoothingFactor"
             value={settings.smoothingFactor}
-            min="0"
+            min="0.05"
             max="1"
-            step="0.1"
-            disabled
+            step="0.05"
             onChange={updateSettings}
           />
 
           <p className={styles.formHelperText}>
-            Applied globally to all agents.
+            Lower values turn more smoothly. Applied globally to all agents.
           </p>
         </div>
       </fieldset>

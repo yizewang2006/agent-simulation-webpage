@@ -5,6 +5,8 @@ import styles from "../../styles/3rd-gen/simulation.module.css";
 
 import RuntimeSettingsForm from "./inspector/forms/RuntimeSettingsForm.jsx";
 import AgentForm from "./inspector/forms/AgentForm.jsx";
+import ObstacleForm from "./inspector/forms/ObstacleForm.jsx";
+import BehaviorForm from "./inspector/forms/BehaviorForm.jsx";
 
 export default function Inspector({
   view,
@@ -17,6 +19,19 @@ export default function Inspector({
   onRegenerateAgentPreview,
   onUpdateAgentPreviewAppearance,
   onCancelAgentCreation,
+  onUpdateObstaclePreview,
+  onClearObstaclePreview,
+  onCreateObstacle,
+  onCancelObstacleCreation,
+  selectedObstacle,
+  obstacleEditValues,
+  onApplyObstacleEdits,
+  onCancelObstacleEdit,
+  onCreateBehavior,
+  selectedBehavior,
+  behaviorEditValues,
+  onApplyBehaviorEdits,
+  onCancelBehaviorEdit,
   selectedAgent,
   agentEditValues,
   onApplyAgentEdits,
@@ -52,6 +67,68 @@ export default function Inspector({
             initialValues={agentEditValues}
             onSubmit={onApplyAgentEdits}
             onCancel={onCancelAgentEdit}
+          />
+        );
+
+      case INSPECTOR_MODES.ADD_OBSTACLE:
+        return (
+          <ObstacleForm
+            mode={FORM_MODES.CREATE}
+            onUpdatePreview={onUpdateObstaclePreview}
+            onClearPreview={onClearObstaclePreview}
+            onSubmit={onCreateObstacle}
+            onCancel={onCancelObstacleCreation}
+          />
+        );
+
+      case INSPECTOR_MODES.EDIT_OBSTACLE:
+        if (!selectedObstacle || !obstacleEditValues) {
+          return (
+            <InspectorBuild
+              hasContent={hasSimulationContent}
+              onChangeView={onChangeView}
+            />
+          );
+        }
+
+        return (
+          <ObstacleForm
+            key={selectedObstacle.ID ?? selectedObstacle.id}
+            mode={FORM_MODES.EDIT}
+            initialValues={obstacleEditValues}
+            onSubmit={onApplyObstacleEdits}
+            onCancel={onCancelObstacleEdit}
+          />
+        );
+
+      case INSPECTOR_MODES.CREATE_BEHAVIOR:
+        return (
+          <BehaviorForm
+            mode={FORM_MODES.CREATE}
+            onSubmit={onCreateBehavior}
+            onCancel={() =>
+              onChangeView({ mode: INSPECTOR_MODES.EMPTY })
+            }
+          />
+        );
+
+      case INSPECTOR_MODES.EDIT_BEHAVIOR:
+        if (!selectedBehavior || !behaviorEditValues) {
+          return (
+            <InspectorBuild
+              hasContent={hasSimulationContent}
+              onChangeView={onChangeView}
+            />
+          );
+        }
+
+        return (
+          <BehaviorForm
+            key={selectedBehavior.id}
+            mode={FORM_MODES.EDIT}
+            initialValues={behaviorEditValues}
+            onSubmit={onApplyBehaviorEdits}
+            onCancel={onCancelBehaviorEdit}
           />
         );
         

@@ -1,0 +1,61 @@
+{
+  "behaviors": [
+    {
+      "name": "Keep the Snake Moving",
+      "option": 1,
+      "targetProperty": 1,
+      "offset": 0.21,
+      "filters": []
+    },
+    {
+      "name": "Keep Snake Spacing",
+      "option": 0,
+      "targetProperty": 1,
+      "offset": -0.21,
+      "filters": [
+        {
+          "filterType": "ranged",
+          "filteredProperty": 0,
+          "low": 0,
+          "high": 15
+        },
+        {
+          "filterType": "method",
+          "filteredProperty": 0,
+          "methodType": 0
+        }
+      ]
+    },
+    {
+      "name": "Follow the Snake Ahead",
+      "option": 0,
+      "targetProperty": 0,
+      "offset": 0,
+      "filters": [
+        {
+          "filterType": "method",
+          "filteredProperty": 0,
+          "methodType": 0
+        }
+      ]
+    },
+    {
+      "name": "Align With the Snake",
+      "option": 0,
+      "targetProperty": 2,
+      "offset": 0,
+      "filters": [
+        {
+          "filterType": "method",
+          "filteredProperty": 0,
+          "methodType": 0
+        }
+      ]
+    }
+  ],
+  "globalSettings": {
+    "maximumSpeed": 3,
+    "maximumAngle": 45,
+    "fps": 30
+  }
+}

@@ -1,6 +1,6 @@
 import { Entity } from "./entity.js";
-import { Position, getBehaviorTarget, getEntityDetectionPoints, getWrappedOffset, turnTowardAngle } from "./behavior.js";
-import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES } from "../utils/constants.js";
+import { Position, getBehaviorTarget, getEntityDetectionPoints, getWrappedOffset, smoothTowardAngle, turnTowardAngle } from "./behavior.js";
+import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNumberOrDefault } from "../utils/utilities.js";
 
 /*
@@ -159,16 +159,20 @@ export class Agent extends Entity{
     }
 
     // Phase 2: detect and apply behaviors using consistent post-move positions
-    behave(allEntities, behaviors = [], maxSpeed = null, maxAngle = null) {
+    behave(allEntities, behaviors = [], maxSpeed = null, maxAngle = null, smoothingFactor = 0.15) {
         this.detectEntities(allEntities);
         let sinSum = 0, cosSum = 0, angleCount = 0;
         const speedCap = parseNumberCap(maxSpeed);
         const angleCap = parseNumberCap(maxAngle) * Math.PI / 180;
+        const smoothing = Math.min(
+            Math.max(parseNumberOrDefault(smoothingFactor, 0.15), 0.05),
+            1
+        );
 
         for (const behavior of behaviors) {
             const offset = parseNumberOrDefault(behavior.offset, 0);
 
-            if (behavior.action === REFERENCE_TYPES.SELF_SPACE) {
+            if (behavior.action === REFERENCE_TYPES.SELF_REFERENCE) {
                 switch (behavior.targetProperty) {
                     case TARGET_PROPERTIES.SPEED: {
                         const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
@@ -222,8 +226,13 @@ export class Agent extends Entity{
         }
         if (angleCount > 0) {
             const desiredAngle = Math.atan2(sinSum / angleCount, cosSum / angleCount);
-            this.steeringAngle = desiredAngle;
-            this.angle = turnTowardAngle(this.angle, desiredAngle, angleCap);
+            // Smooth the behavior target first, then respect the turn-angle cap.
+            this.steeringAngle = smoothTowardAngle(
+                this.steeringAngle,
+                desiredAngle,
+                smoothing
+            );
+            this.angle = turnTowardAngle(this.angle, this.steeringAngle, angleCap);
 
             const currentSpeed = Math.min(Math.sqrt(this.dx ** 2 + this.dy ** 2), speedCap);
             this.dx = Math.cos(this.angle) * currentSpeed;
@@ -268,6 +277,16 @@ export class Agent extends Entity{
                     const isVisible = detectionPoints.some((point) => {
                         const { diffX: refDiffX, diffY: refDiffY } =
                             getWrappedOffset(this.position, point, this.canvas);
+
+                        // A polygon's bounding radius is only a broad-phase check.
+                        // Its closest real edge must also be inside the FOV radius.
+                        if (
+                            entity.entityType === ENTITY_TYPES.OBSTACLE &&
+                            entity.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON &&
+                            Math.hypot(refDiffX, refDiffY) > this.fovRadius
+                        ) {
+                            return false;
+                        }
 
                         const targetAngle = Math.atan2(refDiffY, refDiffX);
                         const currentAgentAngle = this.angle;

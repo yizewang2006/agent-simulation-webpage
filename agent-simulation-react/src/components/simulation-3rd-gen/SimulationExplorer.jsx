@@ -30,11 +30,15 @@ export default function SimulationExplorer({
   behaviors,
   recordings,
   onLoadJSON,
+  onLoadBehaviorPreset,
   onOpenScenarioBuilder,
   onEditAgent,
   onDeleteAgent,
+  onDeleteAllAgents,
   onEditObstacle,
   onDeleteObstacle,
+  onDeleteAllObstacles,
+  onEditBehavior,
   onPlayRecording,
   onDownloadRecording,
   onDeleteRecording,
@@ -55,6 +59,8 @@ export default function SimulationExplorer({
         name: behavior.name || `Behavior ${index + 1}`,
         type: 'Behavior',
         Icon: BrainCircuit,
+        target: behavior,
+        subtitle: 'Behavior',
       }));
     }
 
@@ -151,9 +157,8 @@ export default function SimulationExplorer({
               title={
                 type === 'Agent'
                   ? 'Edit Agent'
-                  : 'Obstacle editing is coming next'
+                  : 'Edit Obstacle'
               }
-              disabled={type === 'Obstacle'}
               onClick={() => {
                 if (type === 'Agent') onEditAgent(target);
                 else onEditObstacle(target);
@@ -177,6 +182,20 @@ export default function SimulationExplorer({
               }}
             >
               <Trash2 size={16} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
+        {type === 'Behavior' && (
+          <div className={styles.explorerEntryActions}>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`Edit ${name}`}
+              title="Edit Behavior"
+              onClick={() => onEditBehavior(target)}
+            >
+              <PenLine size={16} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -282,6 +301,19 @@ export default function SimulationExplorer({
           />
         </label>
 
+        {activeTab === EXPLORER_TABS.BEHAVIORS && (
+          <div className={styles.explorerPresetAction}>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerPresetButton}`}
+              type="button"
+              onClick={onLoadBehaviorPreset}
+            >
+              <FileUp size={16} aria-hidden="true" />
+              Load Behavior Preset
+            </button>
+          </div>
+        )}
+
         <div
           className={`${styles.explorerListViewport} ${
             hasMoreBelow ? styles.hasMoreBelow : ''
@@ -324,6 +356,16 @@ export default function SimulationExplorer({
                           <span className={styles.explorerGroupCount}>
                             {groupEntries.length}
                           </span>
+                        </button>
+
+                        <button
+                          className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton} ${styles.explorerDeleteAllButton}`}
+                          type="button"
+                          aria-label={`Delete all ${type === 'Agent' ? 'agents' : 'obstacles'}`}
+                          title={`Delete All ${type === 'Agent' ? 'Agents' : 'Obstacles'}`}
+                          onClick={type === 'Agent' ? onDeleteAllAgents : onDeleteAllObstacles}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
                         </button>
                       </h3>
 

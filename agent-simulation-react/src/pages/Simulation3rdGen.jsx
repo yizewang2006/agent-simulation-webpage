@@ -115,6 +115,68 @@ function getAgentCreationConfigKey(config) {
   return JSON.stringify(config);
 }
 
+// Preview and Create use the same obstacle geometry checks.
+function normalizeObstacleFormValues(values) {
+  const common = {
+    name: (values.name ?? '').trim(),
+    color: values.color,
+  };
+
+  if (values.shape === 'circle') {
+    const center = {
+      x: Number(values.centerX),
+      y: Number(values.centerY),
+    };
+    const radius = Number(values.radius);
+
+    if (!Number.isFinite(center.x) || !Number.isFinite(center.y)) {
+      throw new Error('Circle Center X and Y must be valid numbers.');
+    }
+    if (!Number.isFinite(radius) || radius <= 0) {
+      throw new Error('Circle Radius must be greater than zero.');
+    }
+    if (
+      center.x - radius < 0 ||
+      center.x + radius > CANVAS_WIDTH ||
+      center.y - radius < 0 ||
+      center.y + radius > CANVAS_HEIGHT
+    ) {
+      throw new Error('The circle must fit completely inside the canvas.');
+    }
+
+    return {
+      ...common,
+      shapeType: OBSTACLE_SHAPE_TYPES.CIRCLE,
+      center,
+      radius,
+    };
+  }
+
+  if (!Array.isArray(values.vertices) || values.vertices.length < 3) {
+    throw new Error('A polygon needs at least three vertices.');
+  }
+
+  const vertices = values.vertices.map((vertex, index) => {
+    const x = Number(vertex.x);
+    const y = Number(vertex.y);
+
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      throw new Error(`Vertex ${index + 1} needs valid X and Y values.`);
+    }
+    if (x < 0 || x > CANVAS_WIDTH || y < 0 || y > CANVAS_HEIGHT) {
+      throw new Error(`Vertex ${index + 1} must stay inside the canvas.`);
+    }
+
+    return { x, y };
+  });
+
+  return {
+    ...common,
+    shapeType: OBSTACLE_SHAPE_TYPES.POLYGON,
+    vertices,
+  };
+}
+
 // Capture one JSON-friendly frame. Playback can redraw from this data without running behavior again.
 function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingStartTime) {
   return {
@@ -301,14 +363,17 @@ function Simulation3rdGen() {
   const agentPreviewConfigKeyRef = useRef('');
   const obstaclePreviewRef = useRef(null); // Draft obstacle preview drawn over the canvas while creating
   const scenarioFileInputRef = useRef(null);
+  const behaviorPresetFileInputRef = useRef(null);
 
   const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
   const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
   const fpsRef = useRef(targetFPS); // Ref to hold the current FPS value, reference this value without the need of rendering
   const [maxSpeed, setMaxSpeed] = useState('3');
   const [maxAngle, setMaxAngle] = useState('45');
+  const [smoothingFactor, setSmoothingFactor] = useState('0.15');
   const maxSpeedRef = useRef(maxSpeed);
   const maxAngleRef = useRef(maxAngle);
+  const smoothingFactorRef = useRef(smoothingFactor);
 
   // Simulation Play/Pause
   const [isSimulationRunning, setIsSimulationRunning] = useState(false); // State to track if the simulation is running or paused
@@ -332,6 +397,7 @@ function Simulation3rdGen() {
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
   const [selectedObstacle, setSelectedObstacle] = useState(null); // the live Obstacle object
+  const [selectedBehavior, setSelectedBehavior] = useState(null); // the saved Behavior draft source
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -370,6 +436,7 @@ function Simulation3rdGen() {
     const nextFPS = Number(settings.targetFPS);
     const nextMaxSpeed = Number(settings.maximumSpeed);
     const nextMaxAngle = Number(settings.maximumTurnAngle);
+    const nextSmoothingFactor = Number(settings.smoothingFactor);
 
     if (Number.isFinite(nextFPS) && nextFPS >= 1) {
       setTargetFPS(String(nextFPS));
@@ -381,6 +448,14 @@ function Simulation3rdGen() {
 
     if (Number.isFinite(nextMaxAngle) && nextMaxAngle >= 0) {
       setMaxAngle(String(nextMaxAngle));
+    }
+
+    if (
+      Number.isFinite(nextSmoothingFactor) &&
+      nextSmoothingFactor >= 0.05 &&
+      nextSmoothingFactor <= 1
+    ) {
+      setSmoothingFactor(String(nextSmoothingFactor));
     }
 
     // Applying is an explicit commit, then return to the Inspector view that
@@ -695,6 +770,167 @@ function Simulation3rdGen() {
     setBehaviorList((currentList) => [...currentList, createBehavior(currentList)]);
   }
 
+  function normalizeBehaviorDraft(values, behaviorToIgnore = null) {
+    const name = values.name.trim();
+    const offset = values.offset === '' ? '' : Number(values.offset);
+
+    if (!name) throw new Error('Behavior Name cannot be empty.');
+    if (
+      behaviorList.some(
+        (behavior) => behavior !== behaviorToIgnore && behavior.name === name
+      )
+    ) {
+      throw new Error(`A behavior named “${name}” already exists.`);
+    }
+    if (!Object.values(TARGET_PROPERTIES).includes(values.targetProperty)) {
+      throw new Error('Choose a valid Target Property.');
+    }
+    if (!Object.values(REFERENCE_TYPES).includes(values.referenceSource)) {
+      throw new Error('Choose a valid Reference Source.');
+    }
+    if (offset !== '' && !Number.isFinite(offset)) {
+      throw new Error('Offset must be a valid number.');
+    }
+
+    const filters = values.filters.map((filter, index) => {
+        const obstacleTargets = filter.targets[ENTITY_TYPES.OBSTACLE];
+        const hasTarget =
+          Boolean(filter.targets[ENTITY_TYPES.AGENT]) ||
+          Boolean(filter.targets[ENTITY_TYPES.LEADER]) ||
+          Boolean(filter.targets[ENTITY_TYPES.EXIT]) ||
+          Boolean(obstacleTargets?.enabled);
+
+        if (!hasTarget) {
+          throw new Error(`Filter ${index + 1} needs at least one Target Entity Type.`);
+        }
+        if (
+          obstacleTargets?.enabled &&
+          !obstacleTargets[OBSTACLE_SHAPE_TYPES.CIRCLE] &&
+          !obstacleTargets[OBSTACLE_SHAPE_TYPES.POLYGON]
+        ) {
+          throw new Error(`Filter ${index + 1} needs at least one Obstacle shape.`);
+        }
+        if (!Object.values(FILTER_TYPES).includes(filter.propertyType)) {
+          throw new Error(`Filter ${index + 1} needs a valid Property.`);
+        }
+
+        if (filter.filterType === 'method') {
+          if (!Object.values(METHOD_TYPES).includes(filter.methodType)) {
+            throw new Error(`Filter ${index + 1} needs a valid Method.`);
+          }
+        } else if (filter.filterType === 'ranged') {
+          const low = Number(filter.low);
+          const high = Number(filter.high);
+
+          if (!Number.isFinite(low) || !Number.isFinite(high)) {
+            throw new Error(`Filter ${index + 1} needs valid Low and High values.`);
+          }
+          if (low > high) {
+            throw new Error(`Filter ${index + 1} Low cannot be greater than High.`);
+          }
+        } else {
+          throw new Error(`Filter ${index + 1} needs a valid Type.`);
+        }
+
+      return {
+          ...filter,
+          targets: {
+            ...filter.targets,
+            [ENTITY_TYPES.OBSTACLE]: { ...obstacleTargets },
+          },
+          low: filter.filterType === 'ranged' ? Number(filter.low) : filter.low,
+          high: filter.filterType === 'ranged' ? Number(filter.high) : filter.high,
+      };
+    });
+
+    return {
+      name,
+      targetProperty: values.targetProperty,
+      action: values.referenceSource,
+      offset,
+      filters,
+    };
+  }
+
+  function handleCreateBehavior(values) {
+    try {
+      // Create and Edit share the same validation path.
+      const config = normalizeBehaviorDraft(values);
+      const behavior = {
+        id: createStableId(),
+        ...config,
+      };
+
+      setBehaviorList((currentList) => [...currentList, behavior]);
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  function selectBehaviorForEditing(behavior) {
+    setSelectedBehavior(behavior);
+    setSelectedAgent(null);
+    setSelectedObstacle(null);
+    setInspectorMode({
+      mode: INSPECTOR_MODES.EDIT_BEHAVIOR,
+      behaviorId: behavior.id,
+    });
+  }
+
+  function getBehaviorEditValues(behavior) {
+    if (!behavior) return null;
+
+    // Deep-copy nested targets so Cancel cannot change the saved Behavior.
+    return {
+      name: behavior.name,
+      targetProperty: behavior.targetProperty,
+      referenceSource: behavior.action,
+      offset: String(behavior.offset ?? ''),
+      filters: behavior.filters.map((filter) => ({
+        ...filter,
+        targets: {
+          ...filter.targets,
+          [ENTITY_TYPES.OBSTACLE]: {
+            ...filter.targets[ENTITY_TYPES.OBSTACLE],
+          },
+        },
+        low: String(filter.low ?? ''),
+        high: String(filter.high ?? ''),
+      })),
+    };
+  }
+
+  function handleApplyBehaviorEdits(values) {
+    if (!selectedBehavior) {
+      return { ok: false, error: 'Select a behavior before applying changes.' };
+    }
+
+    try {
+      const config = normalizeBehaviorDraft(values, selectedBehavior);
+
+      // Keep the stable ID while replacing the complete saved draft.
+      setBehaviorList((currentList) =>
+        currentList.map((behavior) =>
+          behavior.id === selectedBehavior.id
+            ? { id: behavior.id, ...config }
+            : behavior
+        )
+      );
+      setSelectedBehavior(null);
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  function handleCancelBehaviorEdit() {
+    setSelectedBehavior(null);
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+  }
+
   function handleUpdateBehavior(behaviorId, updates) {
     // Update the behavior with the matching behaviorId.
     setBehaviorList((currentList) => currentList.map((behavior) => (
@@ -732,6 +968,36 @@ function Simulation3rdGen() {
       loadedBehaviorIds.forEach((behaviorId) => nextIds.add(behaviorId));
       return nextIds;
     });
+
+    return loadedBehaviorIds.length;
+  }
+
+  async function handleLoadBehaviorPresetFile(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      // Read here so the Explorer remains only a temporary entry point.
+      const presetData = JSON.parse(await file.text());
+      const loadedCount = handleLoadBehaviorPreset(presetData);
+
+      setScenarioLoadAlert({
+        type: 'default',
+        title: 'Behavior Preset Loaded',
+        primary: `Loaded ${loadedCount} ${loadedCount === 1 ? 'behavior' : 'behaviors'}.`,
+        secondary: 'The imported behaviors are now available in the Behaviors tab.',
+      });
+    } catch (error) {
+      setScenarioLoadAlert({
+        type: 'warning',
+        title: 'Unable to Load Behavior Preset',
+        primary: error instanceof SyntaxError
+          ? 'The selected file does not contain valid JSON.'
+          : error.message,
+        secondary: 'Choose a valid behavior preset JSON file and try again.',
+      });
+    }
   }
 
   function handleToggleBehaviorCollapsed(behaviorId) {
@@ -914,6 +1180,9 @@ function Simulation3rdGen() {
 
   useEffect(() => { maxSpeedRef.current = maxSpeed; }, [maxSpeed]);
   useEffect(() => { maxAngleRef.current = maxAngle; }, [maxAngle]);
+  useEffect(() => {
+    smoothingFactorRef.current = Number(smoothingFactor);
+  }, [smoothingFactor]);
 
   // Simulation Play/Pause
   useEffect(() => {
@@ -1001,7 +1270,13 @@ function Simulation3rdGen() {
             agent.behaviorAngle = agent.angle;
           });
           const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
-          runtimeAgents.forEach(agent => agent.behave(allEntities, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
+          runtimeAgents.forEach(agent => agent.behave(
+            allEntities,
+            behaviorListRef.current,
+            maxSpeedRef.current,
+            maxAngleRef.current,
+            smoothingFactorRef.current
+          ));
 
           // Record only frames in which the simulation actually advanced.
           if (isRecordingRef.current) {
@@ -1075,6 +1350,10 @@ function Simulation3rdGen() {
   function selectObstacleForEditing(obstacle) {
     setSelectedObstacle(obstacle);
     setSelectedAgent(null);
+    setInspectorMode({
+      mode: INSPECTOR_MODES.EDIT_OBSTACLE,
+      obstacleId: obstacle.ID ?? obstacle.id,
+    });
   }
 
   function clearSelectedEntity() {
@@ -1100,6 +1379,29 @@ function Simulation3rdGen() {
       color: getAgentColor(agent),
       showFOV: agent.showFOV !== false,
       fovAngle: roundForForm(agent.fovAngle * 180 / Math.PI),
+    };
+  }
+
+  function getObstacleEditValues(obstacle) {
+    if (!obstacle) return null;
+
+    // Copy values into the form so Cancel cannot mutate the live obstacle.
+    return {
+      shape:
+        obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+          ? 'circle'
+          : 'polygon',
+      name: obstacle.ID ?? obstacle.id ?? '',
+      color: getObstacleColor(obstacle),
+      centerX: String(obstacle.center?.x ?? 250),
+      centerY: String(obstacle.center?.y ?? 250),
+      radius: String(obstacle.radius ?? 50),
+      vertices: Array.isArray(obstacle.vertices)
+        ? obstacle.vertices.map((vertex) => ({
+            x: String(vertex.x),
+            y: String(vertex.y),
+          }))
+        : [],
     };
   }
 
@@ -1176,6 +1478,88 @@ function Simulation3rdGen() {
     setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
   }
 
+  function handleUpdateObstaclePreview(values) {
+    try {
+      obstaclePreviewRef.current = normalizeObstacleFormValues(values);
+    } catch {
+      // Invalid drafts stay hidden until the fields make sense again.
+      obstaclePreviewRef.current = null;
+    }
+  }
+
+  function handleCreateObstacle(values) {
+    try {
+      // Step 1: Validate the exact fields currently shown in the preview.
+      const config = normalizeObstacleFormValues(values);
+      const ctx = ctxRef.current;
+
+      if (!ctx) {
+        throw new Error('The simulation canvas is not ready.');
+      }
+
+      // Step 2: Use the next available default name when the field is blank.
+      let obstacleName = config.name;
+      if (!obstacleName) {
+        let nextNumber = obstaclesArrayRef.current.length + 1;
+        do {
+          obstacleName = `Obstacle_${nextNumber}`;
+          nextNumber += 1;
+        } while (
+          obstaclesArrayRef.current.some(
+            (obstacle) => (obstacle.ID ?? obstacle.id) === obstacleName
+          )
+        );
+      }
+
+      if (
+        obstaclesArrayRef.current.some(
+          (obstacle) => (obstacle.ID ?? obstacle.id) === obstacleName
+        )
+      ) {
+        throw new Error(`An obstacle named “${obstacleName}” already exists.`);
+      }
+
+      // Step 3: Create the matching existing model.
+      const obstacle =
+        config.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+          ? new CircleObstacle(
+              obstacleName,
+              config.center,
+              config.radius,
+              config.color,
+              ctx
+            )
+          : new PolygonObstacle(
+              obstacleName,
+              config.vertices,
+              config.color,
+              ctx
+            );
+
+      // Step 4: Commit once, then close the draft form.
+      obstaclesArrayRef.current.push(obstacle);
+      setObstacles([...obstaclesArrayRef.current]);
+      handleClearObstaclePreview();
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        error: error.message,
+      };
+    }
+  }
+
+  function handleClearObstaclePreview() {
+    obstaclePreviewRef.current = null;
+  }
+
+  function handleCancelObstacleCreation() {
+    // The preview is only a draft, so Cancel can discard it safely.
+    handleClearObstaclePreview();
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+  }
+
   // Delete selected agent workflow:
   // EntityEditor calls this from the "Delete Agent" button. The live simulation
   // loop reads agentsArrayRef.current, so we remove from the ref first, then
@@ -1190,6 +1574,13 @@ function Simulation3rdGen() {
     if (!agent) return;
 
     setPendingDeletion({ type: 'agent', target: agent, name: agent.id });
+  }
+
+  function requestDeleteAllAgents() {
+    const count = agentsArrayRef.current.length;
+    if (count === 0) return;
+
+    setPendingDeletion({ type: 'all-agents', count });
   }
 
   function handleDeleteSelectedAgent(agentToDelete) {
@@ -1207,25 +1598,65 @@ function Simulation3rdGen() {
   }
 
   function handleApplyObstacleEdits(updates) {
-    if (!selectedObstacle) return;
-
-    selectedObstacle.ID = updates.name;
-    selectedObstacle.id = updates.name;
-    selectedObstacle.color = updates.color;
-
-    if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      selectedObstacle.position = updates.center;
-      selectedObstacle.center = selectedObstacle.position;
-      selectedObstacle.radius = updates.radius;
-    } else {
-      selectedObstacle.vertices = updates.vertices;
-      selectedObstacle.edges = selectedObstacle._buildEdges(updates.vertices);
-      selectedObstacle.position = selectedObstacle._computeCentroid(updates.vertices);
-      selectedObstacle.centroid = selectedObstacle.position;
-      selectedObstacle.radius = selectedObstacle._computeBoundingRadius(updates.vertices, selectedObstacle.position);
+    if (!selectedObstacle) {
+      return { ok: false, error: 'Select an obstacle before applying changes.' };
     }
 
-    setObstacles([...obstaclesArrayRef.current]);
+    try {
+      // Step 1: Reuse the same validation as Create and Preview.
+      const config = normalizeObstacleFormValues(updates);
+      const currentShapeType = selectedObstacle.shapeType;
+
+      if (!config.name) {
+        throw new Error('Obstacle Name cannot be empty.');
+      }
+      if (config.shapeType !== currentShapeType) {
+        throw new Error('An existing obstacle cannot change its shape.');
+      }
+      if (
+        obstaclesArrayRef.current.some(
+          (obstacle) =>
+            obstacle !== selectedObstacle &&
+            (obstacle.ID ?? obstacle.id) === config.name
+        )
+      ) {
+        throw new Error(`An obstacle named “${config.name}” already exists.`);
+      }
+
+      // Step 2: Commit only after every field is valid.
+      selectedObstacle.ID = config.name;
+      selectedObstacle.id = config.name;
+      selectedObstacle.color = config.color;
+
+      if (currentShapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+        selectedObstacle.position = config.center;
+        selectedObstacle.center = selectedObstacle.position;
+        selectedObstacle.radius = config.radius;
+      } else {
+        selectedObstacle.vertices = config.vertices;
+        selectedObstacle.edges = selectedObstacle._buildEdges(config.vertices);
+        selectedObstacle.position = selectedObstacle._computeCentroid(config.vertices);
+        selectedObstacle.centroid = selectedObstacle.position;
+        selectedObstacle.radius = selectedObstacle._computeBoundingRadius(
+          config.vertices,
+          selectedObstacle.position
+        );
+      }
+
+      // Step 3: Refresh the UI and close the editor.
+      setObstacles([...obstaclesArrayRef.current]);
+      setSelectedObstacle(null);
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  function handleCancelObstacleEdit() {
+    // Form values are local, so Cancel leaves the live obstacle unchanged.
+    setSelectedObstacle(null);
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
   }
 
   function requestDeleteSelectedObstacle() {
@@ -1242,6 +1673,13 @@ function Simulation3rdGen() {
       target: obstacle,
       name: obstacle.ID ?? obstacle.id,
     });
+  }
+
+  function requestDeleteAllObstacles() {
+    const count = obstaclesArrayRef.current.length;
+    if (count === 0) return;
+
+    setPendingDeletion({ type: 'all-obstacles', count });
   }
 
   function handleDeleteSelectedObstacle(obstacleToDelete) {
@@ -1353,6 +1791,19 @@ function Simulation3rdGen() {
         />
       )}
 
+      {scenarioLoadAlert && (
+        <AlertBox
+          title={scenarioLoadAlert.title}
+          primMessage={scenarioLoadAlert.primary}
+          secMessage={scenarioLoadAlert.secondary}
+          type={scenarioLoadAlert.type}
+          confirmLabel="Got It"
+          cancelLabel="Close"
+          onConfirm={() => setScenarioLoadAlert(null)}
+          onCancel={() => setScenarioLoadAlert(null)}
+        />
+      )}
+
       <Header title="Main Simulation" />
 
       <main className={styles.simulationArea}>
@@ -1363,6 +1814,7 @@ function Simulation3rdGen() {
           behaviors={behaviorList}
           recordings={recordings}
           onLoadJSON={() => scenarioFileInputRef.current?.click()}
+          onLoadBehaviorPreset={() => behaviorPresetFileInputRef.current?.click()}
           onOpenScenarioBuilder={() => navigate('/loading', {
             state: {
               from: 'Main Simulation',
@@ -1372,8 +1824,11 @@ function Simulation3rdGen() {
           })}
           onEditAgent={selectAgentForEditing}
           onDeleteAgent={requestDeleteAgent}
+          onDeleteAllAgents={requestDeleteAllAgents}
           onEditObstacle={selectObstacleForEditing}
           onDeleteObstacle={requestDeleteObstacle}
+          onDeleteAllObstacles={requestDeleteAllObstacles}
+          onEditBehavior={selectBehaviorForEditing}
           onPlayRecording={handleOpenPlayback}
           onDownloadRecording={handleDownloadPlayback}
           onDeleteRecording={requestDeleteRecording}
@@ -1385,6 +1840,14 @@ function Simulation3rdGen() {
           type="file"
           accept=".json,application/json"
           onChange={handleLoadScenario}
+        />
+
+        <input
+          ref={behaviorPresetFileInputRef}
+          className={styles.visuallyHidden}
+          type="file"
+          accept=".json,application/json"
+          onChange={handleLoadBehaviorPresetFile}
         />
 
         <section className={styles.centerWorkspace} aria-label="Simulation canvas">
@@ -1426,7 +1889,7 @@ function Simulation3rdGen() {
             canvasHeight: String(CANVAS_HEIGHT),
             maximumSpeed: maxSpeed,
             maximumTurnAngle: maxAngle,
-            smoothingFactor: "0",
+            smoothingFactor,
           }}
           onApplyRuntimeSettings={applyRuntimeSettings}
           onCloseRuntimeSettings={toggleRuntimeSettings}
@@ -1434,6 +1897,19 @@ function Simulation3rdGen() {
           onRegenerateAgentPreview={handleRegenerateAgentPreview}
           onUpdateAgentPreviewAppearance={handleUpdateAgentPreviewAppearance}
           onCancelAgentCreation={handleCancelAgentCreation}
+          onUpdateObstaclePreview={handleUpdateObstaclePreview}
+          onClearObstaclePreview={handleClearObstaclePreview}
+          onCreateObstacle={handleCreateObstacle}
+          onCancelObstacleCreation={handleCancelObstacleCreation}
+          selectedObstacle={selectedObstacle}
+          obstacleEditValues={getObstacleEditValues(selectedObstacle)}
+          onApplyObstacleEdits={handleApplyObstacleEdits}
+          onCancelObstacleEdit={handleCancelObstacleEdit}
+          onCreateBehavior={handleCreateBehavior}
+          selectedBehavior={selectedBehavior}
+          behaviorEditValues={getBehaviorEditValues(selectedBehavior)}
+          onApplyBehaviorEdits={handleApplyBehaviorEdits}
+          onCancelBehaviorEdit={handleCancelBehaviorEdit}
           selectedAgent={selectedAgent}
           agentEditValues={getAgentEditValues(selectedAgent)}
           onApplyAgentEdits={handleApplyAgentEdits}
