@@ -15,15 +15,21 @@ import {
   UserRoundPen,
   Play,
 } from 'lucide-react';
+import {
+  BEHAVIOR_GROUP_DEFINITIONS,
+  getBehaviorGroupKey,
+} from '../../utils/behaviorGroups.js';
 import styles from '../../styles/3rd-gen/simulation.module.css';
 
-const EXPLORER_TABS = Object.freeze({
+export const EXPLORER_TABS = Object.freeze({
   ENTITIES: 'entities',
   BEHAVIORS: 'behaviors',
   RECORDINGS: 'recordings',
 });
 
 export default function SimulationExplorer({
+  activeTab,
+  onTabChange,
   scenarioName,
   agents,
   obstacles,
@@ -31,6 +37,7 @@ export default function SimulationExplorer({
   recordings,
   onLoadJSON,
   onLoadBehaviorPreset,
+  onExportBehaviors,
   onOpenScenarioBuilder,
   onEditAgent,
   onDeleteAgent,
@@ -39,11 +46,13 @@ export default function SimulationExplorer({
   onDeleteObstacle,
   onDeleteAllObstacles,
   onEditBehavior,
+  onSetBehaviorEnabled,
+  onDeleteBehavior,
+  onDeleteAllBehaviors,
   onPlayRecording,
   onDownloadRecording,
   onDeleteRecording,
 }) {
-  const [activeTab, setActiveTab] = useState(EXPLORER_TABS.ENTITIES);
   const [searchTerm, setSearchTerm] = useState('');
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState({
@@ -60,7 +69,8 @@ export default function SimulationExplorer({
         type: 'Behavior',
         Icon: BrainCircuit,
         target: behavior,
-        subtitle: 'Behavior',
+        subtitle: behavior.enabled === false ? 'Disabled' : 'Enabled',
+        trimmedId: behavior.id ? `#${behavior.id.slice(0, 6)}` : '',
       }));
     }
 
@@ -136,13 +146,16 @@ export default function SimulationExplorer({
     }));
   }
 
-  function renderEntry({ id, name, type, Icon, target, subtitle }) {
+  function renderEntry({ id, name, type, Icon, target, subtitle, trimmedId }) {
     return (
       <div className={styles.explorerEntry} key={id}>
         <div className={styles.explorerEntryInfo}>
           <Icon size={17} aria-hidden="true" />
           <span>
-            <strong>{name}</strong>
+            <span className={styles.explorerEntryTitleRow}>
+              <strong>{name}</strong>
+              {trimmedId && <small>{trimmedId}</small>}
+            </span>
             <small>{subtitle || type}</small>
           </span>
         </div>
@@ -188,6 +201,22 @@ export default function SimulationExplorer({
 
         {type === 'Behavior' && (
           <div className={styles.explorerEntryActions}>
+            <label
+              className={styles.formSwitch}
+              title={target.enabled === false ? 'Enable Behavior' : 'Disable Behavior'}
+            >
+              <input
+                type="checkbox"
+                role="switch"
+                aria-label={`${target.enabled === false ? 'Enable' : 'Disable'} ${name}`}
+                aria-checked={target.enabled !== false}
+                checked={target.enabled !== false}
+                onChange={(event) =>
+                  onSetBehaviorEnabled(target.id, event.target.checked)
+                }
+              />
+              <span aria-hidden="true" />
+            </label>
             <button
               className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
               type="button"
@@ -196,6 +225,16 @@ export default function SimulationExplorer({
               onClick={() => onEditBehavior(target)}
             >
               <PenLine size={16} aria-hidden="true" />
+            </button>
+
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+              type="button"
+              aria-label={`Delete ${name}`}
+              title="Delete Behavior"
+              onClick={() => onDeleteBehavior(target)}
+            >
+              <Trash2 size={16} aria-hidden="true" />
             </button>
           </div>
         )}
@@ -237,6 +276,53 @@ export default function SimulationExplorer({
     );
   }
 
+  function renderGroup(groupKey, label, groupEntries, onDeleteAll) {
+    if (groupEntries.length === 0) return null;
+
+    return (
+      <section className={styles.explorerGroup} key={groupKey}>
+        <h3 className={styles.explorerGroupHeading}>
+          <button
+            className={styles.explorerGroupTrigger}
+            type="button"
+            aria-expanded={!collapsedGroups[groupKey]}
+            onClick={() => toggleGroup(groupKey)}
+          >
+            <span className={styles.explorerGroupLabel}>
+              <ChevronDown
+                className={`${styles.explorerGroupChevron} ${
+                  collapsedGroups[groupKey] ? styles.isCollapsed : ''
+                }`}
+                size={15}
+                aria-hidden="true"
+              />
+              {label}
+            </span>
+            <span className={styles.explorerGroupCount}>
+              {groupEntries.length}
+            </span>
+          </button>
+
+          <button
+            className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton} ${styles.explorerDeleteAllButton}`}
+            type="button"
+            aria-label={`Delete all ${label.toLowerCase()}`}
+            title={`Delete All ${label}`}
+            onClick={onDeleteAll}
+          >
+            <Trash2 size={14} aria-hidden="true" />
+          </button>
+        </h3>
+
+        {!collapsedGroups[groupKey] && (
+          <div className={styles.explorerGroupEntries}>
+            {groupEntries.map(renderEntry)}
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <aside className={`${styles.sidePanel} ${styles.workspaceSidePanel}`}>
       <header className={styles.panelHeader}>
@@ -244,7 +330,11 @@ export default function SimulationExplorer({
         <h2 className={styles.panelTitle}>Simulation Explorer</h2>
       </header>
 
-      <div className={styles.explorerContent}>
+      <div
+        className={`${styles.explorerContent} ${
+          hasMoreBelow ? styles.hasMoreBelow : ''
+        }`}
+      >
         <section className={styles.scenarioCard} aria-labelledby="current-scenario-title">
           <p className={styles.scenarioEyebrow} id="current-scenario-title">
             Current Scenario
@@ -281,7 +371,7 @@ export default function SimulationExplorer({
               role="tab"
               aria-selected={activeTab === tab}
               onClick={() => {
-                setActiveTab(tab);
+                onTabChange(tab);
                 setSearchTerm('');
               }}
             >
@@ -311,14 +401,19 @@ export default function SimulationExplorer({
               <FileUp size={16} aria-hidden="true" />
               Load Behavior Preset
             </button>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerPresetButton}`}
+              type="button"
+              disabled={behaviors.length === 0}
+              onClick={onExportBehaviors}
+            >
+              <Download size={16} aria-hidden="true" />
+              Export Behaviors
+            </button>
           </div>
         )}
 
-        <div
-          className={`${styles.explorerListViewport} ${
-            hasMoreBelow ? styles.hasMoreBelow : ''
-          }`}
-        >
+        <div className={styles.explorerListViewport}>
           <div
             ref={listRef}
             className={styles.explorerList}
@@ -332,49 +427,24 @@ export default function SimulationExplorer({
                     (entry) => entry.type === type
                   );
 
-                  if (groupEntries.length === 0) return null;
+                  return renderGroup(
+                    type,
+                    type === 'Agent' ? 'Agents' : 'Obstacles',
+                    groupEntries,
+                    type === 'Agent' ? onDeleteAllAgents : onDeleteAllObstacles
+                  );
+                })
+              ) : activeTab === EXPLORER_TABS.BEHAVIORS ? (
+                BEHAVIOR_GROUP_DEFINITIONS.map(({ key, label }) => {
+                  const groupEntries = visibleEntries.filter(
+                    (entry) => getBehaviorGroupKey(entry.target.targetProperty) === key
+                  );
 
-                  return (
-                    <section className={styles.explorerGroup} key={type}>
-                      <h3 className={styles.explorerGroupHeading}>
-                        <button
-                          className={styles.explorerGroupTrigger}
-                          type="button"
-                          aria-expanded={!collapsedGroups[type]}
-                          onClick={() => toggleGroup(type)}
-                        >
-                          <span className={styles.explorerGroupLabel}>
-                            <ChevronDown
-                              className={`${styles.explorerGroupChevron} ${
-                                collapsedGroups[type] ? styles.isCollapsed : ''
-                              }`}
-                              size={15}
-                              aria-hidden="true"
-                            />
-                            {type === 'Agent' ? 'Agents' : 'Obstacles'}
-                          </span>
-                          <span className={styles.explorerGroupCount}>
-                            {groupEntries.length}
-                          </span>
-                        </button>
-
-                        <button
-                          className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton} ${styles.explorerDeleteAllButton}`}
-                          type="button"
-                          aria-label={`Delete all ${type === 'Agent' ? 'agents' : 'obstacles'}`}
-                          title={`Delete All ${type === 'Agent' ? 'Agents' : 'Obstacles'}`}
-                          onClick={type === 'Agent' ? onDeleteAllAgents : onDeleteAllObstacles}
-                        >
-                          <Trash2 size={14} aria-hidden="true" />
-                        </button>
-                      </h3>
-
-                      {!collapsedGroups[type] && (
-                        <div className={styles.explorerGroupEntries}>
-                          {groupEntries.map(renderEntry)}
-                        </div>
-                      )}
-                    </section>
+                  return renderGroup(
+                    `behavior-${key}`,
+                    label,
+                    groupEntries,
+                    () => onDeleteAllBehaviors(key)
                   );
                 })
               ) : (

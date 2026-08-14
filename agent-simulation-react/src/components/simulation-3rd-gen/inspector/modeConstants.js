@@ -12,6 +12,7 @@ export const INSPECTOR_MODES = Object.freeze({
 });
 
 export const FORM_MODES = Object.freeze({
+    // A shared form uses this mode to choose its create or edit fields.
     CREATE: "create",
     EDIT: "edit"
 })

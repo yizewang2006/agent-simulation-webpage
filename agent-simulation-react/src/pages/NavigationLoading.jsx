@@ -4,7 +4,7 @@ import { LOADING_MESSAGES } from '../utils/constants.js';
 import '../styles/landing.css';
 import '../styles/navigation-loading.css';
 
-const TRANSITION_DELAY_MS = 2000;
+const TRANSITION_DELAY_MS = 1000;
 
 export default function NavigationLoading() {
   const navigate = useNavigate();

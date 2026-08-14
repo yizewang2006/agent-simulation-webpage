@@ -1,13 +1,20 @@
 .fancy-page {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: #f6f7fb;
 }
 
+.fancy-page > header,
+.fancy-page > footer {
+  flex: 0 0 auto;
+}
+
 .fancy-scroll {
-  flex: 1;
-  height: calc(100vh - 150px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
@@ -15,7 +22,7 @@
 
 .fancy-section {
   position: relative;
-  min-height: calc(100vh - 150px);
+  min-height: 100%;
   scroll-snap-align: start;
   display: flex;
   align-items: center;
@@ -269,6 +276,7 @@
 }
 
 .fancy-feature-grid,
+.fancy-updates-grid,
 .fancy-team-grid,
 .fancy-launch-grid {
   width: 100%;
@@ -279,6 +287,60 @@
 
 .fancy-feature-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fancy-updates-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fancy-update-card {
+  min-height: 160px;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid #d9deea;
+  border-top: 4px solid #d4a017;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(48, 48, 48, 0.09);
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.fancy-update-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.8rem;
+  color: #667085;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.fancy-update-meta span {
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #f6e8b8;
+  color: #725400;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fancy-update-card h3 {
+  margin: 0 0 0.7rem;
+  color: #102f6d;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.fancy-update-card p {
+  margin: 0;
+  color: #5f6675;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.92rem;
+  line-height: 1.6;
 }
 
 .fancy-feature-card,
@@ -372,8 +434,36 @@
 }
 
 .fancy-launch-button {
+  position: relative;
   min-height: 54px;
   font-size: 1rem;
+}
+
+.fancy-launch-version::after {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.fancy-launch-beta::after {
+  content: 'Beta';
+}
+
+.fancy-launch-stable::after {
+  content: 'Stable';
+  background: #e4f3e8;
+  color: #28653a;
+}
+
+.fancy-launch-button-wide {
+  grid-column: 1 / -1;
 }
 
 @keyframes fancyRiseIn {
@@ -425,10 +515,9 @@
 }
 
 @media (max-width: 760px) {
-  .fancy-scroll,
   .fancy-section {
     height: auto;
-    min-height: calc(100vh - 150px);
+    min-height: 100%;
   }
 
   .fancy-section {
@@ -446,9 +535,14 @@
   }
 
   .fancy-feature-grid,
+  .fancy-updates-grid,
   .fancy-team-grid,
   .fancy-launch-grid {
     grid-template-columns: 1fr;
+  }
+
+  .fancy-launch-button-wide {
+    grid-column: auto;
   }
 
   .fancy-obstacle-one,

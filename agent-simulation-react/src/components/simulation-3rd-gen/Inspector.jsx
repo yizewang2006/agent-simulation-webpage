@@ -1,12 +1,11 @@
+import { useEffect, useRef, useState } from "react";
 import { ClipboardPen } from "lucide-react";
 import { FORM_MODES, INSPECTOR_MODES } from "./inspector/modeConstants.js";
 import InspectorBuild from "./inspector/forms/InspectorBuild.jsx";
 import styles from "../../styles/3rd-gen/simulation.module.css";
 
 import RuntimeSettingsForm from "./inspector/forms/RuntimeSettingsForm.jsx";
-import AgentForm from "./inspector/forms/AgentForm.jsx";
-import ObstacleForm from "./inspector/forms/ObstacleForm.jsx";
-import BehaviorForm from "./inspector/forms/BehaviorForm.jsx";
+import { getFormComponent } from "./inspector/formRegistry.js";
 
 export default function Inspector({
   view,
@@ -28,20 +27,65 @@ export default function Inspector({
   onApplyObstacleEdits,
   onCancelObstacleEdit,
   onCreateBehavior,
+  behaviors,
   selectedBehavior,
   behaviorEditValues,
   onApplyBehaviorEdits,
+  onApplyActivation,
   onCancelBehaviorEdit,
   selectedAgent,
   agentEditValues,
   onApplyAgentEdits,
   onCancelAgentEdit,
 }) {
+  const contentRef = useRef(null);
+  const [hasMoreBelow, setHasMoreBelow] = useState(false);
+
+  // Inspector owns one scroll hint shared by every form.
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return undefined;
+
+    function getScroller() {
+      return content.querySelector(
+        `.${styles.inspectorForm}, .${styles.settingsForm}`
+      );
+    }
+
+    function updateScrollHint() {
+      const scroller = getScroller();
+      setHasMoreBelow(Boolean(
+        scroller &&
+        scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 2
+      ));
+    }
+
+    updateScrollHint();
+    content.addEventListener("scroll", updateScrollHint, true);
+
+    const resizeObserver = new ResizeObserver(updateScrollHint);
+    resizeObserver.observe(content);
+    const scroller = getScroller();
+    if (scroller) resizeObserver.observe(scroller);
+
+    const mutationObserver = new MutationObserver(updateScrollHint);
+    mutationObserver.observe(content, { childList: true, subtree: true });
+
+    return () => {
+      content.removeEventListener("scroll", updateScrollHint, true);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [view.mode]);
+
   function renderContent() {
+    // The registry is also what enables or disables Add-menu entries.
+    const FormComponent = getFormComponent(view.mode);
+
     switch (view.mode) {
       case INSPECTOR_MODES.ADD_AGENT:
         return (
-          <AgentForm
+          <FormComponent
             mode={FORM_MODES.CREATE}
             onRegeneratePreview={onRegenerateAgentPreview}
             onUpdatePreviewAppearance={onUpdateAgentPreviewAppearance}
@@ -61,7 +105,7 @@ export default function Inspector({
         }
 
         return (
-          <AgentForm
+          <FormComponent
             key={selectedAgent.id}
             mode={FORM_MODES.EDIT}
             initialValues={agentEditValues}
@@ -72,7 +116,7 @@ export default function Inspector({
 
       case INSPECTOR_MODES.ADD_OBSTACLE:
         return (
-          <ObstacleForm
+          <FormComponent
             mode={FORM_MODES.CREATE}
             onUpdatePreview={onUpdateObstaclePreview}
             onClearPreview={onClearObstaclePreview}
@@ -92,7 +136,7 @@ export default function Inspector({
         }
 
         return (
-          <ObstacleForm
+          <FormComponent
             key={selectedObstacle.ID ?? selectedObstacle.id}
             mode={FORM_MODES.EDIT}
             initialValues={obstacleEditValues}
@@ -103,9 +147,21 @@ export default function Inspector({
 
       case INSPECTOR_MODES.CREATE_BEHAVIOR:
         return (
-          <BehaviorForm
+          <FormComponent
             mode={FORM_MODES.CREATE}
             onSubmit={onCreateBehavior}
+            onCancel={() =>
+              onChangeView({ mode: INSPECTOR_MODES.EMPTY })
+            }
+          />
+        );
+
+      case INSPECTOR_MODES.CREATE_ACTIVATION:
+        return (
+          <FormComponent
+            mode={FORM_MODES.CREATE}
+            behaviors={behaviors}
+            onApply={onApplyActivation}
             onCancel={() =>
               onChangeView({ mode: INSPECTOR_MODES.EMPTY })
             }
@@ -123,7 +179,7 @@ export default function Inspector({
         }
 
         return (
-          <BehaviorForm
+          <FormComponent
             key={selectedBehavior.id}
             mode={FORM_MODES.EDIT}
             initialValues={behaviorEditValues}
@@ -166,7 +222,12 @@ export default function Inspector({
         </h2>
       </header>
 
-      <div className={styles.inspectorContent}>
+      <div
+        ref={contentRef}
+        className={`${styles.inspectorContent} ${
+          hasMoreBelow ? styles.hasMoreBelow : ""
+        }`}
+      >
         {renderContent()}
       </div>
     </aside>

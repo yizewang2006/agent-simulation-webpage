@@ -10,7 +10,7 @@ export default function InspectorBuild({ hasContent, onChangeView }) {
 
     const instruction = hasContent
     ? "Select an item from the Simulation Explorer to inspect it, or add another component."
-    : "Add components to configure how your simulation looks and behaves.";
+    : "Add or configure components that control how your simulation looks and behaves.";
 
     // render based on answer
     return (

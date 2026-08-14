@@ -1,20 +1,51 @@
 import { useId, useState } from 'react';
 import {
-    Activity,
+    // Activity, // Standalone Activation menu entry is intentionally hidden.
     BrainCircuit,
     ChevronDown,
     CirclePlus,
-    ListPlus,
+    Flag,
+    LogOut,
     Shapes,
     UserPlus,
 } from 'lucide-react'
 
 import { INSPECTOR_MODES } from '../modeConstants';
+import {
+    ENTITY_CREATE_MODES,
+    hasFormComponent,
+} from '../formRegistry.js';
+import { ENTITY_LABELS, ENTITY_TYPES } from '../../../../utils/constants.js';
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
+
+const ENTITY_MENU_DETAILS = Object.freeze({
+    [ENTITY_TYPES.AGENT]: {
+        Icon: UserPlus,
+        description: 'Create one or more simulation agents.',
+    },
+    [ENTITY_TYPES.OBSTACLE]: {
+        Icon: Shapes,
+        description: 'Add a circle or polygon obstacle.',
+    },
+    [ENTITY_TYPES.LEADER]: {
+        Icon: Flag,
+        description: 'Add a designated simulation leader.',
+    },
+    [ENTITY_TYPES.EXIT]: {
+        Icon: LogOut,
+        description: 'Add an exit or escape point.',
+    },
+});
 
 export default function AddToSimulationMenu( {onSelectMode} ) {
     const [isExpanded, setIsExpanded] = useState(false);
     const menuId = useId();
+    const availableEntityTypes = Object.values(ENTITY_TYPES).filter(
+        (entityType) => hasFormComponent(ENTITY_CREATE_MODES[entityType])
+    );
+    const hasBehaviorForm = hasFormComponent(INSPECTOR_MODES.CREATE_BEHAVIOR);
+    // Activation is configured inside BehaviorForm, not added as a separate component.
+    // const hasActivationForm = hasFormComponent(INSPECTOR_MODES.CREATE_ACTIVATION);
 
     // Select Mode (when clicking on an entry)
     function selectMode(mode) {
@@ -39,7 +70,7 @@ export default function AddToSimulationMenu( {onSelectMode} ) {
             >
                 <span className={styles.addMenuTriggerContent}>
                     <CirclePlus size={18} aria-hidden="true" />
-                    Add to Simulation
+                    Simulation Components
                 </span>
                 <ChevronDown
                 className={`${styles.addMenuChevron} ${
@@ -60,34 +91,38 @@ export default function AddToSimulationMenu( {onSelectMode} ) {
                     <section className={styles.addMenuSection}>
                         <h4 className={styles.addMenuSectionTitle}>Entities</h4>
 
-                        <button
-                            type="button"
-                            className={styles.listEntry}
-                            onClick={() => selectMode(INSPECTOR_MODES.ADD_AGENT)}
-                        >
-                            <UserPlus className={styles.listEntryIcon} size={19} aria-hidden="true" />
-                            <span className={styles.listEntryText}>
-                                <span className={styles.listEntryName}>Agent</span>
-                                <span className={styles.listEntryDescription}>
-                                    Create one or more simulation agents
-                                </span>
-                            </span>
-                        </button>
-                        <button
-                            type="button"
-                            className={styles.listEntry}
-                            onClick={() => selectMode(INSPECTOR_MODES.ADD_OBSTACLE)}
-                        >
-                            <Shapes className={styles.listEntryIcon} size={19} aria-hidden="true" />
-                            <span className={styles.listEntryText}>
-                                <span className={styles.listEntryName}>Obstacle</span>
-                                <span className={styles.listEntryDescription}>
-                                    Add a circle or polygon obstacle
-                                </span>
-                            </span>
-                        </button>
+                        {/* Hide entity types until their creation form is registered. */}
+                        {availableEntityTypes.map((entityType) => {
+                            const createMode = ENTITY_CREATE_MODES[entityType];
+                            const details = ENTITY_MENU_DETAILS[entityType] ?? {};
+                            const EntityIcon = details.Icon ?? Shapes;
+
+                            return (
+                                <button
+                                    key={entityType}
+                                    type="button"
+                                    className={styles.listEntry}
+                                    onClick={() => selectMode(createMode)}
+                                >
+                                    <EntityIcon
+                                        className={styles.listEntryIcon}
+                                        size={19}
+                                        aria-hidden="true"
+                                    />
+                                    <span className={styles.listEntryText}>
+                                        <span className={styles.listEntryName}>
+                                            {ENTITY_LABELS[entityType] ?? `Entity ${entityType}`}
+                                        </span>
+                                        <span className={styles.listEntryDescription}>
+                                            {details.description}
+                                        </span>
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </section>
 
+                    {hasBehaviorForm && (
                     <section className={styles.addMenuSection}>
                         <h4 className={styles.addMenuSectionTitle}>Behaviors</h4>
 
@@ -100,12 +135,16 @@ export default function AddToSimulationMenu( {onSelectMode} ) {
                             <span className={styles.listEntryText}>
                                 <span className={styles.listEntryName}>Behavior</span>
                                 <span className={styles.listEntryDescription}>
-                                    Define what agents do
+                                    Create a definition of how agents respond to other entities.
                                 </span>
                             </span>
                         </button>
                     </section>
+                    )}
 
+                    {/* Activation belongs to a Behavior. Keep this standalone entry
+                        commented out so users do not mistake it for a component.
+                    {hasActivationForm && (
                     <section className={styles.addMenuSection}>
                         <h4 className={styles.addMenuSectionTitle}>Activations</h4>
 
@@ -116,34 +155,15 @@ export default function AddToSimulationMenu( {onSelectMode} ) {
                         >
                             <Activity className={styles.listEntryIcon} size={19} aria-hidden="true" />
                             <span className={styles.listEntryText}>
-                                <span className={styles.listEntryName}>Activation</span>
+                                <span className={styles.listEntryName}>Configure Activation</span>
                                 <span className={styles.listEntryDescription}>
-                                    Define how weights are distributed across behaviors. This is behavior-specific.
+                                    Configure how a behavior calculates its weight. Each behavior must have one and only one activation function.
                                 </span>
                             </span>
                         </button>
                     </section>
-
-                    <section className={styles.addMenuSection}>
-                        <h4 className={styles.addMenuSectionTitle}>Properties</h4>
-
-                        <button
-                            type="button"
-                            className={styles.listEntry}
-                            disabled
-                        >
-                            <ListPlus className={styles.listEntryIcon} size={19} aria-hidden="true" />
-                            <span className={styles.listEntryText}>
-                                <span className={styles.listEntryNameRow}>
-                                    <span className={styles.listEntryName}>Custom Property</span>
-                                    <span className={styles.listEntryBadge}>Coming Soon</span>
-                                </span>
-                                <span className={styles.listEntryDescription}>
-                                    Create custom data at the simulation level
-                                </span>
-                            </span>
-                        </button>
-                    </section>
+                    )}
+                    */}
                     </div>
                 </div>
             )}

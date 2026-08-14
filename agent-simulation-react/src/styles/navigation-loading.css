@@ -39,7 +39,7 @@
 .loading-agent {
   left: 0;
   top: 0;
-  animation: loading-agent-forward 2s linear forwards;
+  animation: loading-agent-forward 1s linear forwards;
 }
 
 .loading-progress-track {
@@ -58,7 +58,7 @@
   background: #d4a017;
   transform: scaleX(0);
   transform-origin: left center;
-  animation: loading-progress 2s linear forwards;
+  animation: loading-progress 1s linear forwards;
 }
 
 .loading-progress-labels {

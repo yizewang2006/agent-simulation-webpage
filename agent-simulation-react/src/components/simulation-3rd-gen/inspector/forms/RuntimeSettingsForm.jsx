@@ -1,6 +1,7 @@
 // Brought up by the Runtime Settings toggle button.
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
+import { Check } from "lucide-react";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
 const DEFAULT_SETTINGS = {
@@ -14,6 +15,8 @@ const DEFAULT_SETTINGS = {
 
 const MIN_FPS = 1;
 const MAX_FPS = 60;
+const MIN_SMOOTHING_FACTOR = 0.05;
+const MAX_SMOOTHING_FACTOR = 1;
 
 export default function RuntimeSettingsForm({
   initialSettings,
@@ -24,32 +27,6 @@ export default function RuntimeSettingsForm({
     ...DEFAULT_SETTINGS,
     ...initialSettings,
   }));
-  const [hasMoreBelow, setHasMoreBelow] = useState(false);
-  const formRef = useRef(null);
-
-  function updateScrollHint() {
-    const form = formRef.current;
-
-    if (!form) return;
-
-    const isAboveBottom =
-      form.scrollTop + form.clientHeight < form.scrollHeight - 2;
-
-    setHasMoreBelow(isAboveBottom);
-  }
-
-  useEffect(() => {
-    const form = formRef.current;
-
-    if (!form) return undefined;
-
-    updateScrollHint();
-
-    const resizeObserver = new ResizeObserver(updateScrollHint);
-    resizeObserver.observe(form);
-
-    return () => resizeObserver.disconnect();
-  }, []);
 
   function updateSettings(event) {
     const { name, value } = event.target;
@@ -71,17 +48,14 @@ export default function RuntimeSettingsForm({
 
   const fpsProgress =
     ((Number(settings.targetFPS) - MIN_FPS) / (MAX_FPS - MIN_FPS)) * 100;
+  const smoothingProgress =
+    ((Number(settings.smoothingFactor) - MIN_SMOOTHING_FACTOR) /
+      (MAX_SMOOTHING_FACTOR - MIN_SMOOTHING_FACTOR)) * 100;
 
   return (
-    <div
-      className={`${styles.inspectorFormViewport} ${
-        hasMoreBelow ? styles.hasMoreBelow : ""
-      }`}
-    >
+    <div className={styles.inspectorFormViewport}>
     <form
-      ref={formRef}
       className={styles.settingsForm}
-      onScroll={updateScrollHint}
       onSubmit={submitSettings}
     >
       <div className={styles.formIntroduction}>
@@ -231,21 +205,36 @@ export default function RuntimeSettingsForm({
         </div>
 
         <div className={styles.inputGroup}>
-          <label className={styles.formLabel} htmlFor="smoothing-factor">
-            Smoothing Factor
-          </label>
+          <div className={styles.rangeHeader}>
+            <label className={styles.formLabel} htmlFor="smoothing-factor">
+              Smoothing Factor
+            </label>
+
+            <output
+              className={styles.rangeValue}
+              htmlFor="smoothing-factor"
+            >
+              {Number(settings.smoothingFactor).toFixed(2)}
+            </output>
+          </div>
 
           <input
             id="smoothing-factor"
-            className={styles.formInput}
-            type="number"
+            className={styles.formRange}
+            type="range"
             name="smoothingFactor"
             value={settings.smoothingFactor}
-            min="0.05"
-            max="1"
+            min={MIN_SMOOTHING_FACTOR}
+            max={MAX_SMOOTHING_FACTOR}
             step="0.05"
+            style={{ "--range-progress": `${smoothingProgress}%` }}
             onChange={updateSettings}
           />
+
+          <div className={styles.rangeLabels} aria-hidden="true">
+            <span>{MIN_SMOOTHING_FACTOR}</span>
+            <span>{MAX_SMOOTHING_FACTOR.toFixed(2)}</span>
+          </div>
 
           <p className={styles.formHelperText}>
             Lower values turn more smoothly. Applied globally to all agents.
@@ -258,6 +247,7 @@ export default function RuntimeSettingsForm({
           className={`${styles.primaryAction} ${styles.formActionButton}`}
           type="submit"
         >
+          <Check size={16} aria-hidden="true" />
           Apply Settings
         </button>
 

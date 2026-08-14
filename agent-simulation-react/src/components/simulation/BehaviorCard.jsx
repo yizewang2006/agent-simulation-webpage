@@ -5,7 +5,7 @@ import {
   METHOD_LABELS,
   PROPERTY_LABELS,
   METHOD_LABELS_BY_PROPERTY,
-  FILTER_LABELS,
+  MEASUREMENT_LABELS,
   REFERENCE_LABELS,
   ENTITY_TYPES, // New
   ENTITY_LABELS,
@@ -328,7 +328,7 @@ function BehaviorCard({
                                   Filter {filterIndex + 1}
                                 </h4>
                                 <span style={{ color: '#888', fontSize: 12 }}>
-                                  {filterTypeLabel} | {FILTER_LABELS[filter.propertyType]}
+                                  {filterTypeLabel} | {MEASUREMENT_LABELS[filter.propertyType]}
                                 </span>
                               </div>
 
@@ -411,7 +411,7 @@ function BehaviorCard({
                                   <div className="input-group">
                                     <label>Property</label>
                                     <select value={filter.propertyType} onChange={(e) => onUpdateFilter(behavior.id, filter.id, { propertyType: Number(e.target.value) })}>
-                                      {Object.entries(FILTER_LABELS).map(([val, label]) => (
+                                      {Object.entries(MEASUREMENT_LABELS).map(([val, label]) => (
                                         <option key={val} value={val}>{label}</option>
                                       ))}
                                     </select>

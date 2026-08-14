@@ -12,12 +12,13 @@ export const METHOD_TYPES = {
   FARTHEST: 2,
 };
 
-export const FILTER_TYPES = {
+export const MEASUREMENT_TYPES = {
   DISTANCE: 0,
   SPEED: 1,
-  HEADING_DIFFERENCE: 2, // Heading difference
-  HEADING_RAW: 3, // Raw Heading
-  RELATIVE_BEARING: 4, // Target position relative to self heading
+  HEADING_DIFFERENCE: 2,
+  HEADING: 3,
+  RELATIVE_BEARING: 4,
+  SPEED_DIFFERENCE: 5,
 };
 
 export const ENTITY_TYPES = {
@@ -44,13 +45,30 @@ export const PROPERTY_LABELS = {
   [TARGET_PROPERTIES.ANGLE]: 'Angle',
 };
 
-export const FILTER_LABELS = {
-  [FILTER_TYPES.DISTANCE]: 'Distance',
-  [FILTER_TYPES.SPEED]: 'Speed',
-  [FILTER_TYPES.HEADING_DIFFERENCE]: 'Heading Difference',
-  [FILTER_TYPES.HEADING_RAW]: 'Raw Heading',
-  [FILTER_TYPES.RELATIVE_BEARING]: 'Relative Bearing',
+export const MEASUREMENT_LABELS = {
+  [MEASUREMENT_TYPES.DISTANCE]: 'Distance',
+  [MEASUREMENT_TYPES.SPEED]: 'Speed',
+  [MEASUREMENT_TYPES.HEADING_DIFFERENCE]: 'Heading Difference',
+  [MEASUREMENT_TYPES.HEADING]: 'Heading Angle',
+  [MEASUREMENT_TYPES.RELATIVE_BEARING]: 'Relative Bearing',
+  [MEASUREMENT_TYPES.SPEED_DIFFERENCE]: 'Speed Difference',
 };
+
+// Value to Check options allowed for each Activation source.
+export const ACTIVATION_MEASUREMENT_OPTIONS = Object.freeze({
+  self: [
+    [MEASUREMENT_TYPES.SPEED, 'Self’s Speed'],
+    [MEASUREMENT_TYPES.HEADING, 'Self’s Heading Angle'],
+  ],
+  neighbor: [
+    [MEASUREMENT_TYPES.DISTANCE, 'Distance'],
+    [MEASUREMENT_TYPES.HEADING, 'Neighbor’s Heading Angle'],
+    [MEASUREMENT_TYPES.HEADING_DIFFERENCE, 'Heading Difference'],
+    [MEASUREMENT_TYPES.RELATIVE_BEARING, 'Relative Bearing'],
+    [MEASUREMENT_TYPES.SPEED, 'Neighbor’s Speed'],
+    [MEASUREMENT_TYPES.SPEED_DIFFERENCE, 'Speed Difference'],
+  ],
+});
 
 export const ENTITY_LABELS = {
   [ENTITY_TYPES.AGENT]: 'Agent',
@@ -71,29 +89,34 @@ export const METHOD_LABELS = {
 };
 
 export const METHOD_LABELS_BY_PROPERTY = {
-  [FILTER_TYPES.DISTANCE]: {
+  [MEASUREMENT_TYPES.DISTANCE]: {
     [METHOD_TYPES.CLOSEST]: 'Closest',
     [METHOD_TYPES.FARTHEST]: 'Farthest',
     [METHOD_TYPES.AVERAGE]: 'Average',
   },
-  [FILTER_TYPES.SPEED]: {
+  [MEASUREMENT_TYPES.SPEED]: {
     [METHOD_TYPES.CLOSEST]: 'Slowest',
     [METHOD_TYPES.FARTHEST]: 'Fastest',
     [METHOD_TYPES.AVERAGE]: 'Average',
   },
-  [FILTER_TYPES.HEADING_DIFFERENCE]: {
+  [MEASUREMENT_TYPES.HEADING_DIFFERENCE]: {
     [METHOD_TYPES.CLOSEST]: 'Smallest Heading Difference',
     [METHOD_TYPES.FARTHEST]: 'Largest Heading Difference',
     [METHOD_TYPES.AVERAGE]: 'Average',
   },
-  [FILTER_TYPES.HEADING_RAW]: {
+  [MEASUREMENT_TYPES.HEADING]: {
     [METHOD_TYPES.CLOSEST]: 'Lowest Heading',
     [METHOD_TYPES.FARTHEST]: 'Highest Heading',
     [METHOD_TYPES.AVERAGE]: 'Average',
   },
-  [FILTER_TYPES.RELATIVE_BEARING]: {
+  [MEASUREMENT_TYPES.RELATIVE_BEARING]: {
     [METHOD_TYPES.CLOSEST]: 'Smallest Relative Bearing',
     [METHOD_TYPES.FARTHEST]: 'Largest Relative Bearing',
+    [METHOD_TYPES.AVERAGE]: 'Average',
+  },
+  [MEASUREMENT_TYPES.SPEED_DIFFERENCE]: {
+    [METHOD_TYPES.CLOSEST]: 'Smallest Speed Difference',
+    [METHOD_TYPES.FARTHEST]: 'Largest Speed Difference',
     [METHOD_TYPES.AVERAGE]: 'Average',
   },
 };

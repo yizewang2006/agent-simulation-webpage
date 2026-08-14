@@ -4,7 +4,7 @@
 import { FORM_MODES } from "../modeConstants";
 
 import { useEffect, useRef, useState } from "react";
-import { CopyPlus, RefreshCw, X } from "lucide-react";
+import { Check, CopyPlus, RefreshCw, X } from "lucide-react";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
 const AGENT_CREATION_DEFAULTS = {
@@ -34,34 +34,8 @@ export default function AgentForm({
         ...initialValues,
     }));
     const [formError, setFormError] = useState("");
-    const [hasMoreBelow, setHasMoreBelow] = useState(false);
-    const formRef = useRef(null);
     const regeneratePreviewRef = useRef(onRegeneratePreview);
     const updatePreviewAppearanceRef = useRef(onUpdatePreviewAppearance);
-
-    function updateScrollHint() {
-      const form = formRef.current;
-
-      if (!form) return;
-
-      setHasMoreBelow(
-        form.scrollTop + form.clientHeight < form.scrollHeight - 2
-      );
-    }
-
-    // Recheck when the form changes between the shorter and longer modes.
-    useEffect(() => {
-      const form = formRef.current;
-
-      if (!form) return undefined;
-
-      updateScrollHint();
-
-      const resizeObserver = new ResizeObserver(updateScrollHint);
-      resizeObserver.observe(form);
-
-      return () => resizeObserver.disconnect();
-    }, [mode]);
 
     // Keep the latest parent callback without making the preview effect rerun
     // whenever Simulation3rdGen renders for an unrelated reason.
@@ -72,6 +46,19 @@ export default function AgentForm({
     useEffect(() => {
       updatePreviewAppearanceRef.current = onUpdatePreviewAppearance;
     }, [onUpdatePreviewAppearance]);
+
+    // Canvas dragging changes the live Agent while this form stays mounted.
+    // Pull only the position fields back into the draft so Apply cannot restore
+    // stale coordinates. Other unsaved form edits remain untouched.
+    useEffect(() => {
+      if (mode !== FORM_MODES.EDIT) return;
+
+      setValues((currentValues) => ({
+        ...currentValues,
+        x: initialValues?.x ?? currentValues.x,
+        y: initialValues?.y ?? currentValues.y,
+      }));
+    }, [mode, initialValues?.x, initialValues?.y]);
 
     /*
      * Only randomization fields belong in this dependency list. Changing one
@@ -161,15 +148,9 @@ export default function AgentForm({
       : "Create Agents";
 
     return (
-    <div
-      className={`${styles.inspectorFormViewport} ${
-        hasMoreBelow ? styles.hasMoreBelow : ""
-      }`}
-    >
+    <div className={styles.inspectorFormViewport}>
     <form
-      ref={formRef}
       className={styles.inspectorForm}
-      onScroll={updateScrollHint}
       onSubmit={submitForm}
     >
       <div className={styles.formIntroduction}>
@@ -557,7 +538,11 @@ export default function AgentForm({
           className={`${styles.primaryAction} ${styles.formActionButton}`}
           type="submit"
         >
-          <CopyPlus size={16} aria-hidden="true" />
+          {mode === FORM_MODES.EDIT ? (
+            <Check size={16} aria-hidden="true" />
+          ) : (
+            <CopyPlus size={16} aria-hidden="true" />
+          )}
           {mode === FORM_MODES.EDIT ? "Apply Changes" : "Create Agents"}
         </button>
 

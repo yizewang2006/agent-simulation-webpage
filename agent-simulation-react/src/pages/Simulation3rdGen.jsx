@@ -1,7 +1,7 @@
 import Header from "../components/simulation-3rd-gen/Header3rdGen.jsx";
 import Inspector from "../components/simulation-3rd-gen/Inspector.jsx";
 import RuntimeControlCard from "../components/simulation-3rd-gen/RuntimeControlCard.jsx";
-import SimulationExplorer from "../components/simulation-3rd-gen/SimulationExplorer.jsx";
+import SimulationExplorer, { EXPLORER_TABS } from "../components/simulation-3rd-gen/SimulationExplorer.jsx";
 import Footer from "../components/shared/Footer.jsx";
 import AddAgentCard from "../components/simulation/AddAgentCard.jsx";
 import AddMultipleAgentsCard from "../components/simulation/AddMultipleAgentsCard.jsx";
@@ -22,9 +22,18 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
-import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent } from "../utils/utilities.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS } from "../utils/constants.js";
+import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, isPointInsidePolygon, isPointNearPolygonEdge } from "../utils/utilities.js";
 import { loadScenarioFile } from "../utils/scenarioLoader.js";
+import {
+  createDefaultActivation,
+  normalizeActivationDraft,
+} from "../models/activation.js";
+import {
+  BEHAVIOR_GROUP_DEFINITIONS,
+  getBehaviorGroupKey,
+  groupBehaviors,
+} from "../utils/behaviorGroups.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -113,6 +122,20 @@ function generateRandomizedAgentDrafts(config) {
 
 function getAgentCreationConfigKey(config) {
   return JSON.stringify(config);
+}
+
+// Build one predictable document before the browser turns it into a file.
+function buildBehaviorExportDocument(behaviors) {
+  return {
+    version: 1,
+    behaviors: behaviors.map((behavior) => ({
+      ...behavior,
+      // Rebuild by type so fields from an old Activation type cannot leak out.
+      activation: normalizeActivationDraft(
+        behavior.activation ?? createDefaultActivation()
+      ),
+    })),
+  };
 }
 
 // Preview and Create use the same obstacle geometry checks.
@@ -292,41 +315,6 @@ function drawAgentPreview(ctx, preview) {
   ctx.restore();
 }
 
-function isPointInsidePolygon(point, vertices) {
-  let isInside = false;
-
-  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i, i += 1) {
-    const current = vertices[i];
-    const previous = vertices[j];
-    const crossesY = current.y > point.y !== previous.y > point.y;
-
-    if (crossesY) {
-      const crossingX = ((previous.x - current.x) * (point.y - current.y)) / (previous.y - current.y) + current.x;
-      if (point.x < crossingX) {
-        isInside = !isInside;
-      }
-    }
-  }
-
-  return isInside;
-}
-
-function getDistanceToSegment(point, start, end) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y);
-
-  const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
-  return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
-}
-
-function isPointNearPolygonEdge(point, vertices, tolerance = 6) {
-  return vertices.some((vertex, index) => (
-    getDistanceToSegment(point, vertex, vertices[(index + 1) % vertices.length]) <= tolerance
-  ));
-}
-
 function findObstacleAt(point, obstacles) {
   for (let i = obstacles.length - 1; i >= 0; i -= 1) {
     const obstacle = obstacles[i];
@@ -364,6 +352,7 @@ function Simulation3rdGen() {
   const obstaclePreviewRef = useRef(null); // Draft obstacle preview drawn over the canvas while creating
   const scenarioFileInputRef = useRef(null);
   const behaviorPresetFileInputRef = useRef(null);
+  const dragRef = useRef(null); // Ref to hold the current drag state (null if not dragging)
 
   const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
   const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
@@ -384,6 +373,9 @@ function Simulation3rdGen() {
   const [obstacles, setObstacles] = useState([]); // State to hold obstacles for display in the control panel
   const [obstaclesListExpanded, setObstaclesListExpanded] = useState(false); // State to toggle obstacles list visibility
 
+  // Keep this here so creation handlers can reveal their new Explorer entry.
+  const [explorerTab, setExplorerTab] = useState(EXPLORER_TABS.ENTITIES);
+
   // Adding Agent States
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [showAddMultipleAgents, setShowAddMultipleAgents] = useState(false);
@@ -392,7 +384,7 @@ function Simulation3rdGen() {
   // Behavior & Filter settings state & Ref
   const [behaviorList, setBehaviorList] = useState([]); // Behavior
   const [collapsedBehaviorIds, setCollapsedBehaviorIds] = useState(new Set());
-  const behaviorListRef = useRef([]); // Ref to hold the current behavior list for access in the animation loop
+  const behaviorGroupsRef = useRef(groupBehaviors([], true));
 
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
@@ -555,6 +547,7 @@ function Simulation3rdGen() {
       });
 
       setAgents([...roster]);
+      setExplorerTab(EXPLORER_TABS.ENTITIES);
       clearAgentCreationPreview();
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -617,6 +610,7 @@ function Simulation3rdGen() {
         frames: recordedFramesRef.current, // frames being recorded
       },
     ]);
+    setExplorerTab(EXPLORER_TABS.RECORDINGS);
   }
 
   function handleOpenPlayback(recording) {
@@ -669,6 +663,22 @@ function Simulation3rdGen() {
     link.click();
 
     // Release the temporary URL after the browser starts the download.
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDownloadBehaviors() {
+    const exportDocument = buildBehaviorExportDocument(behaviorList);
+    const blob = new Blob(
+      [JSON.stringify(exportDocument, null, 2)],
+      { type: 'application/json' }
+    );
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+
+    // This link exists only long enough to start the browser download.
+    link.href = url;
+    link.download = 'behaviors.json';
+    link.click();
     URL.revokeObjectURL(url);
   }
 
@@ -740,6 +750,7 @@ function Simulation3rdGen() {
       isSimulationRunningRef.current = false;
       setAgents([...runtimeAgents]);
       setObstacles([...runtimeObstacles]);
+      setExplorerTab(EXPLORER_TABS.ENTITIES);
       setSelectedAgent(null);
       setSelectedObstacle(null);
       setShowAddAgent(false);
@@ -810,7 +821,7 @@ function Simulation3rdGen() {
         ) {
           throw new Error(`Filter ${index + 1} needs at least one Obstacle shape.`);
         }
-        if (!Object.values(FILTER_TYPES).includes(filter.propertyType)) {
+        if (!Object.values(MEASUREMENT_TYPES).includes(filter.propertyType)) {
           throw new Error(`Filter ${index + 1} needs a valid Property.`);
         }
 
@@ -844,11 +855,16 @@ function Simulation3rdGen() {
     });
 
     return {
+      enabled: behaviorToIgnore?.enabled ?? values.enabled ?? true,
       name,
       targetProperty: values.targetProperty,
       action: values.referenceSource,
       offset,
       filters,
+      // Every Behavior owns exactly one Activation.
+      activation: normalizeActivationDraft(
+        values.activation ?? createDefaultActivation()
+      ),
     };
   }
 
@@ -862,6 +878,8 @@ function Simulation3rdGen() {
       };
 
       setBehaviorList((currentList) => [...currentList, behavior]);
+      // Show the behavior as soon as creation succeeds.
+      setExplorerTab(EXPLORER_TABS.BEHAVIORS);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
     } catch (error) {
@@ -884,6 +902,7 @@ function Simulation3rdGen() {
 
     // Deep-copy nested targets so Cancel cannot change the saved Behavior.
     return {
+      id: behavior.id,
       name: behavior.name,
       targetProperty: behavior.targetProperty,
       referenceSource: behavior.action,
@@ -899,6 +918,7 @@ function Simulation3rdGen() {
         low: String(filter.low ?? ''),
         high: String(filter.high ?? ''),
       })),
+      activation: behavior.activation ?? createDefaultActivation(),
     };
   }
 
@@ -931,6 +951,47 @@ function Simulation3rdGen() {
     setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
   }
 
+  function handleSetBehaviorEnabled(behaviorId, enabled) {
+    // Keep enabled as an explicit boolean for later runtime checks.
+    setBehaviorList((currentList) =>
+      currentList.map((behavior) =>
+        behavior.id === behaviorId ? { ...behavior, enabled } : behavior
+      )
+    );
+    setSelectedBehavior((currentBehavior) =>
+      currentBehavior?.id === behaviorId
+        ? { ...currentBehavior, enabled }
+        : currentBehavior
+    );
+  }
+
+  function handleApplyActivation(behaviorId, activationDraft) {
+    if (!behaviorId) {
+      return { ok: false, error: 'Select a behavior before applying Activation.' };
+    }
+
+    try {
+      const activation = normalizeActivationDraft(activationDraft);
+      const behaviorExists = behaviorList.some(
+        (behavior) => behavior.id === behaviorId
+      );
+      if (!behaviorExists) {
+        return { ok: false, error: 'The selected behavior no longer exists.' };
+      }
+
+      // Activation configuration does not replace the Behavior's Action data.
+      setBehaviorList((currentList) =>
+        currentList.map((behavior) =>
+          behavior.id === behaviorId ? { ...behavior, activation } : behavior
+        )
+      );
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
   function handleUpdateBehavior(behaviorId, updates) {
     // Update the behavior with the matching behaviorId.
     setBehaviorList((currentList) => currentList.map((behavior) => (
@@ -947,6 +1008,56 @@ function Simulation3rdGen() {
       nextIds.delete(behaviorId);
       return nextIds;
     });
+
+    if (selectedBehavior?.id === behaviorId) {
+      setSelectedBehavior(null);
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+    }
+  }
+
+  function requestDeleteBehavior(behavior) {
+    if (!behavior) return;
+
+    setPendingDeletion({
+      type: 'behavior',
+      target: behavior,
+      name: behavior.name,
+    });
+  }
+
+  function requestDeleteAllBehaviors(groupKey) {
+    const count = behaviorList.filter(
+      (behavior) => getBehaviorGroupKey(behavior.targetProperty) === groupKey
+    ).length;
+    if (count === 0) return;
+
+    setPendingDeletion({
+      type: 'behavior-group',
+      groupKey,
+      count,
+    });
+  }
+
+  function handleDeleteBehaviorGroup(groupKey) {
+    const deletedIds = new Set(
+      behaviorList
+        .filter((behavior) => getBehaviorGroupKey(behavior.targetProperty) === groupKey)
+        .map((behavior) => behavior.id)
+    );
+
+    setBehaviorList((currentList) =>
+      currentList.filter((behavior) => getBehaviorGroupKey(behavior.targetProperty) !== groupKey)
+    );
+    setCollapsedBehaviorIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      deletedIds.forEach((behaviorId) => nextIds.delete(behaviorId));
+      return nextIds;
+    });
+
+    if (getBehaviorGroupKey(selectedBehavior?.targetProperty) === groupKey) {
+      setSelectedBehavior(null);
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+    }
   }
 
   function handleLoadBehaviorPreset(presetData) {
@@ -962,6 +1073,7 @@ function Simulation3rdGen() {
     });
 
     setBehaviorList(nextList);
+    setExplorerTab(EXPLORER_TABS.BEHAVIORS);
     // Collapse imported behaviors by default so large presets stay easy to scan.
     setCollapsedBehaviorIds((currentIds) => {
       const nextIds = new Set(currentIds);
@@ -1016,6 +1128,7 @@ function Simulation3rdGen() {
   function createBehavior(existingBehaviors) {
     return {
       id: createStableId(),
+      enabled: true,
       name: getUniqueBehaviorName(existingBehaviors, 'Behavior'),
       targetProperty: TARGET_PROPERTIES.POSITION,
       action: REFERENCE_TYPES.NEIGHBOR_REFERENCE,
@@ -1027,6 +1140,7 @@ function Simulation3rdGen() {
   function createBehaviorFromPreset(behavior, existingBehaviors) {
     return {
       id: createStableId(),
+      enabled: behavior.enabled !== false,
       name: getUniqueBehaviorName(existingBehaviors, getPresetName(behavior.name)),
       targetProperty: getValidValue(behavior.targetProperty, TARGET_PROPERTIES, TARGET_PROPERTIES.POSITION),
       action: getValidValue(behavior.option, REFERENCE_TYPES, REFERENCE_TYPES.NEIGHBOR_REFERENCE),
@@ -1042,7 +1156,7 @@ function Simulation3rdGen() {
       id: createStableId(),
       targets: createDefaultFilterTargets(),
       filterType: 'method',
-      propertyType: FILTER_TYPES.DISTANCE,
+      propertyType: MEASUREMENT_TYPES.DISTANCE,
       methodType: METHOD_TYPES.CLOSEST,
       low: '',
       high: '',
@@ -1054,7 +1168,7 @@ function Simulation3rdGen() {
       id: createStableId(),
       targets: normalizeFilterTargets(filter.targets),
       filterType: filter.filterType === 'ranged' ? 'ranged' : 'method',
-      propertyType: getValidValue(filter.propertyType ?? filter.filteredProperty, FILTER_TYPES, FILTER_TYPES.DISTANCE),
+      propertyType: getValidValue(filter.propertyType ?? filter.filteredProperty, MEASUREMENT_TYPES, MEASUREMENT_TYPES.DISTANCE),
       methodType: getValidValue(filter.methodType, METHOD_TYPES, METHOD_TYPES.CLOSEST),
       low: filter.low ?? '',
       high: filter.high ?? '',
@@ -1217,7 +1331,7 @@ function Simulation3rdGen() {
 
   // Behavior List Ref Sync (ensuring the latest behavior list is available)
   useEffect(() => {
-    behaviorListRef.current = behaviorList;
+    behaviorGroupsRef.current = groupBehaviors(behaviorList, true);
   }, [behaviorList]);
 
   useEffect(() => {
@@ -1272,7 +1386,7 @@ function Simulation3rdGen() {
           const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
           runtimeAgents.forEach(agent => agent.behave(
             allEntities,
-            behaviorListRef.current,
+            behaviorGroupsRef.current,
             maxSpeedRef.current,
             maxAngleRef.current,
             smoothingFactorRef.current
@@ -1303,30 +1417,94 @@ function Simulation3rdGen() {
   }, []);
 
   // ---- Canvas Interaction Handlers ----
-  function handleCanvasClick(e) {
+  function findAgentAt(point) {
+    const roster = agentsArrayRef.current;
+
+    // Walk backwards so the last-drawn agent wins when entities overlap.
+    for (let index = roster.length - 1; index >= 0; index -= 1) {
+      const agent = roster[index];
+      if (Math.hypot(point.x - agent.position.x, point.y - agent.position.y) <= agent.radius + 4) {
+        return agent;
+      }
+    }
+
+    return null;
+  }
+
+  function handleCanvasPointerDown(event) {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    // Scale click coords to match the logical simulation size.
-    const { x: clickX, y: clickY } = getCanvasPointFromEvent(e, canvas);
+    const point = getCanvasPointFromEvent(event, canvas);
 
-    // Finds the first agent within the click area (agent radius + 4px tolerance) and selects it for editing.
-    // Agents are checked first so they win if they overlap with an obstacle.
-    const clicked = agentsArrayRef.current.find(agent => {
-      const dx = clickX - agent.position.x;
-      const dy = clickY - agent.position.y;
-      return Math.sqrt(dx * dx + dy * dy) <= agent.radius + 4; // +4px tolerance so small agents are easier to click
-    });
+    // Match Scenario Builder hit priority: agents win over obstacles.
+    const clickedAgent = findAgentAt(point);
+    const clickedObstacle = clickedAgent
+      ? null
+      : findObstacleAt(point, obstaclesArrayRef.current);
 
-    if (clicked) {
-      selectAgentForEditing(clicked);
+    if (clickedAgent) selectAgentForEditing(clickedAgent);
+    else if (clickedObstacle) selectObstacleForEditing(clickedObstacle);
+    else clearSelectedEntity();
+
+    // Runtime movement and pointer movement must never compete for ownership of
+    // an agent's position. Selection still works while playing, dragging does not.
+    if (isSimulationRunningRef.current || (!clickedAgent && !clickedObstacle)) {
+      dragRef.current = null;
       return;
     }
 
-    // Obstacle clicks use the same selection state as the Obstacle List edit button.
-    // This only selects for editing; live simulation intentionally does not support dragging.
-    const clickedObstacle = findObstacleAt({ x: clickX, y: clickY }, obstaclesArrayRef.current);
-    if (clickedObstacle) {
-      selectObstacleForEditing(clickedObstacle);
+    dragRef.current = {
+      type: clickedAgent ? 'agent' : 'obstacle',
+      entity: clickedAgent ?? clickedObstacle,
+      previous: point,
+      pointerId: event.pointerId,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  }
+
+  function handleCanvasPointerMove(event) {
+    const canvas = canvasRef.current;
+    const drag = dragRef.current;
+    if (!canvas || !drag || drag.pointerId !== event.pointerId) return;
+
+    const point = getCanvasPointFromEvent(event, canvas);
+    const dx = point.x - drag.previous.x;
+    const dy = point.y - drag.previous.y;
+    drag.previous = point;
+
+    if (drag.type === 'agent') {
+      const agent = drag.entity;
+      agent.position.x = Math.min(CANVAS_WIDTH, Math.max(0, agent.position.x + dx));
+      agent.position.y = Math.min(CANVAS_HEIGHT, Math.max(0, agent.position.y + dy));
+      setAgents([...agentsArrayRef.current]);
+      return;
+    }
+
+    const obstacle = drag.entity;
+    if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+      obstacle.center.x = Math.min(CANVAS_WIDTH, Math.max(0, obstacle.center.x + dx));
+      obstacle.center.y = Math.min(CANVAS_HEIGHT, Math.max(0, obstacle.center.y + dy));
+      obstacle.position = obstacle.center;
+    } else {
+      obstacle.vertices = obstacle.vertices.map((vertex) => ({
+        x: Math.min(CANVAS_WIDTH, Math.max(0, vertex.x + dx)),
+        y: Math.min(CANVAS_HEIGHT, Math.max(0, vertex.y + dy)),
+      }));
+      // Collision detection and labels use these derived geometry fields.
+      obstacle.edges = obstacle._buildEdges(obstacle.vertices);
+      obstacle.position = obstacle._computeCentroid(obstacle.vertices);
+      obstacle.centroid = obstacle.position;
+      obstacle.radius = obstacle._computeBoundingRadius(obstacle.vertices, obstacle.position);
+    }
+    setObstacles([...obstaclesArrayRef.current]);
+  }
+
+  function handleCanvasPointerUp(event) {
+    if (dragRef.current?.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
     }
   }
 
@@ -1384,6 +1562,7 @@ function Simulation3rdGen() {
 
   function getObstacleEditValues(obstacle) {
     if (!obstacle) return null;
+    const roundForForm = (value) => String(Math.round(value * 100) / 100);
 
     // Copy values into the form so Cancel cannot mutate the live obstacle.
     return {
@@ -1393,13 +1572,13 @@ function Simulation3rdGen() {
           : 'polygon',
       name: obstacle.ID ?? obstacle.id ?? '',
       color: getObstacleColor(obstacle),
-      centerX: String(obstacle.center?.x ?? 250),
-      centerY: String(obstacle.center?.y ?? 250),
+      centerX: roundForForm(obstacle.center?.x ?? 250),
+      centerY: roundForForm(obstacle.center?.y ?? 250),
       radius: String(obstacle.radius ?? 50),
       vertices: Array.isArray(obstacle.vertices)
         ? obstacle.vertices.map((vertex) => ({
-            x: String(vertex.x),
-            y: String(vertex.y),
+            x: roundForForm(vertex.x),
+            y: roundForForm(vertex.y),
           }))
         : [],
     };
@@ -1539,6 +1718,7 @@ function Simulation3rdGen() {
       // Step 4: Commit once, then close the draft form.
       obstaclesArrayRef.current.push(obstacle);
       setObstacles([...obstaclesArrayRef.current]);
+      setExplorerTab(EXPLORER_TABS.ENTITIES);
       handleClearObstaclePreview();
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -1707,6 +1887,10 @@ function Simulation3rdGen() {
       obstaclesArrayRef.current.length = 0;
       setObstacles([]);
       setSelectedObstacle(null);
+    } else if (pendingDeletion.type === 'behavior') {
+      handleDeleteBehavior(pendingDeletion.target.id);
+    } else if (pendingDeletion.type === 'behavior-group') {
+      handleDeleteBehaviorGroup(pendingDeletion.groupKey);
     } else if (pendingDeletion.type === 'recording') {
       handleDeleteRecording(pendingDeletion.target);
     }
@@ -1745,6 +1929,23 @@ function Simulation3rdGen() {
         secondary: 'This action cannot be undone.',
       };
     }
+    if (pendingDeletion.type === 'behavior') {
+      return {
+        title: 'Delete This Behavior?',
+        primary: `Are you sure you want to delete “${pendingDeletion.name}”?`,
+        secondary: 'This action cannot be undone.',
+      };
+    }
+    if (pendingDeletion.type === 'behavior-group') {
+      const groupLabel = BEHAVIOR_GROUP_DEFINITIONS.find(
+        ({ key }) => key === pendingDeletion.groupKey
+      )?.label ?? 'Selected Behaviors';
+      return {
+        title: `Delete All ${groupLabel}?`,
+        primary: `Are you sure you want to delete all ${pendingDeletion.count} ${groupLabel.toLowerCase()}?`,
+        secondary: 'This action cannot be undone.',
+      };
+    }
     if (pendingDeletion.type === 'recording') {
       return {
         title: 'Delete This Recording?',
@@ -1765,6 +1966,34 @@ function Simulation3rdGen() {
   // Main Simulation
   return (
     <div className={styles.simulationPage}>
+      {showWelcomeAlert && (
+        <AlertBox
+          title="You’re Using the Beta Simulation"
+          primMessage="This third-generation workspace is still under active development. Core features are available, but some tools may change or behave unexpectedly."
+          secMessage={(
+            <>
+              For the most reliable experience, you can continue in the{' '}
+              <Link
+                to="/loading"
+                state={{
+                  from: '3rd Gen Simulation',
+                  to: '2nd Gen Simulation',
+                  path: '/simulation',
+                }}
+              >
+                stable 2nd Gen simulation.
+              </Link>
+            </>
+          )}
+          confirmLabel="Continue with Beta"
+          cancelLabel="Close"
+          permanentDismiss
+          dismissStorageKey="simulation-3rd-gen-beta-notice-dismissed"
+          onConfirm={() => setShowWelcomeAlert(false)}
+          onCancel={() => setShowWelcomeAlert(false)}
+        />
+      )}
+
       {pendingDeletion && deletionAlertContent && (
         <AlertBox
           title={deletionAlertContent.title}
@@ -1804,10 +2033,12 @@ function Simulation3rdGen() {
         />
       )}
 
-      <Header title="Main Simulation" />
+      <Header title="Main Simulation" subtitle="3rd Generation" />
 
       <main className={styles.simulationArea}>
         <SimulationExplorer
+          activeTab={explorerTab}
+          onTabChange={setExplorerTab}
           scenarioName={scenarioName}
           agents={agents}
           obstacles={obstacles}
@@ -1815,6 +2046,7 @@ function Simulation3rdGen() {
           recordings={recordings}
           onLoadJSON={() => scenarioFileInputRef.current?.click()}
           onLoadBehaviorPreset={() => behaviorPresetFileInputRef.current?.click()}
+          onExportBehaviors={handleDownloadBehaviors}
           onOpenScenarioBuilder={() => navigate('/loading', {
             state: {
               from: 'Main Simulation',
@@ -1829,6 +2061,9 @@ function Simulation3rdGen() {
           onDeleteObstacle={requestDeleteObstacle}
           onDeleteAllObstacles={requestDeleteAllObstacles}
           onEditBehavior={selectBehaviorForEditing}
+          onSetBehaviorEnabled={handleSetBehaviorEnabled}
+          onDeleteBehavior={requestDeleteBehavior}
+          onDeleteAllBehaviors={requestDeleteAllBehaviors}
           onPlayRecording={handleOpenPlayback}
           onDownloadRecording={handleDownloadPlayback}
           onDeleteRecording={requestDeleteRecording}
@@ -1852,7 +2087,11 @@ function Simulation3rdGen() {
 
         <section className={styles.centerWorkspace} aria-label="Simulation canvas">
           {/* The display and world sizes are both 500 × 500 for the current version. */}
-          <figure className={styles.canvasWrapper}>
+          <figure
+            className={`${styles.canvasWrapper} ${
+              isRecording ? styles.canvasWrapperRecording : ''
+            }`}
+          >
             <figcaption className={styles.canvasSize}>
               Simulation Size: {CANVAS_WIDTH} × {CANVAS_HEIGHT}
             </figcaption>
@@ -1861,9 +2100,22 @@ function Simulation3rdGen() {
               <canvas
                 ref={canvasRef}
                 className={styles.canvas}
-                onClick={handleCanvasClick}
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={handleCanvasPointerUp}
+                onPointerCancel={handleCanvasPointerUp}
               />
             </div>
+
+            {isRecording && (
+              <p
+                className={styles.recordingIndicator}
+                role="status"
+                aria-live="polite"
+              >
+                RECORDING IN PROGRESS
+              </p>
+            )}
           </figure>
 
           <RuntimeControlCard
@@ -1906,9 +2158,11 @@ function Simulation3rdGen() {
           onApplyObstacleEdits={handleApplyObstacleEdits}
           onCancelObstacleEdit={handleCancelObstacleEdit}
           onCreateBehavior={handleCreateBehavior}
+          behaviors={behaviorList}
           selectedBehavior={selectedBehavior}
           behaviorEditValues={getBehaviorEditValues(selectedBehavior)}
           onApplyBehaviorEdits={handleApplyBehaviorEdits}
+          onApplyActivation={handleApplyActivation}
           onCancelBehaviorEdit={handleCancelBehaviorEdit}
           selectedAgent={selectedAgent}
           agentEditValues={getAgentEditValues(selectedAgent)}

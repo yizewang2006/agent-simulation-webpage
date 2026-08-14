@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { CirclePlus, CopyPlus, Trash2, X } from "lucide-react";
+import { Check, CirclePlus, CopyPlus, Trash2, X } from "lucide-react";
 import { FORM_MODES } from "../modeConstants.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
@@ -29,10 +29,11 @@ export default function ObstacleForm({
     initialValues?.vertices ?? DEFAULT_POLYGON_VERTICES
   );
   const [formError, setFormError] = useState("");
-  const [hasMoreBelow, setHasMoreBelow] = useState(false);
-  const formRef = useRef(null);
   const updatePreviewFunctionRef = useRef(onUpdatePreview);
   const clearPreviewFunctionRef = useRef(onClearPreview);
+  const liveVerticesKey = initialValues?.vertices
+    ? JSON.stringify(initialValues.vertices)
+    : "";
 
   // Keep callback changes separate from field changes.
   useEffect(() => {
@@ -42,6 +43,21 @@ export default function ObstacleForm({
   useEffect(() => {
     clearPreviewFunctionRef.current = onClearPreview;
   }, [onClearPreview]);
+
+  // Keep position controls connected to live Canvas dragging without replacing
+  // unrelated unsaved edits such as the obstacle name, color, or radius.
+  useEffect(() => {
+    if (mode !== FORM_MODES.EDIT || shape !== "circle") return;
+
+    setCenterX((currentCenterX) => initialValues?.centerX ?? currentCenterX);
+    setCenterY((currentCenterY) => initialValues?.centerY ?? currentCenterY);
+  }, [mode, shape, initialValues?.centerX, initialValues?.centerY]);
+
+  useEffect(() => {
+    if (mode !== FORM_MODES.EDIT || shape !== "polygon" || !liveVerticesKey) return;
+
+    setVertices(JSON.parse(liveVerticesKey));
+  }, [mode, shape, liveVerticesKey]);
 
   // Remove the draft when this form closes.
   useEffect(() => {
@@ -61,26 +77,6 @@ export default function ObstacleForm({
       vertices,
     });
   }, [mode, shape, color, centerX, centerY, radius, vertices]);
-
-  // Show the bottom fade only when more fields are below.
-  function updateScrollHint() {
-    const form = formRef.current;
-    if (!form) return;
-
-    setHasMoreBelow(
-      form.scrollTop + form.clientHeight < form.scrollHeight - 2
-    );
-  }
-
-  useEffect(() => {
-    const form = formRef.current;
-    if (!form) return undefined;
-
-    updateScrollHint();
-    const resizeObserver = new ResizeObserver(updateScrollHint);
-    resizeObserver.observe(form);
-    return () => resizeObserver.disconnect();
-  }, [shape, vertices.length]);
 
   // Change one coordinate without rebuilding the other vertices.
   function updateVertex(index, field, value) {
@@ -136,15 +132,9 @@ export default function ObstacleForm({
   }
 
   return (
-    <div
-      className={`${styles.inspectorFormViewport} ${
-        hasMoreBelow ? styles.hasMoreBelow : ""
-      }`}
-    >
+    <div className={styles.inspectorFormViewport}>
       <form
-        ref={formRef}
         className={styles.inspectorForm}
-        onScroll={updateScrollHint}
         onSubmit={submitForm}
       >
         <div className={styles.formIntroduction}>
@@ -234,6 +224,7 @@ export default function ObstacleForm({
                     type="number"
                     min="0"
                     max="500"
+                    step="0.01"
                     value={centerX}
                     onChange={(event) => setCenterX(event.target.value)}
                   />
@@ -248,6 +239,7 @@ export default function ObstacleForm({
                     type="number"
                     min="0"
                     max="500"
+                    step="0.01"
                     value={centerY}
                     onChange={(event) => setCenterY(event.target.value)}
                   />
@@ -306,6 +298,7 @@ export default function ObstacleForm({
                         type="number"
                         min="0"
                         max="500"
+                        step="0.01"
                         value={vertex[axis]}
                         onChange={(event) =>
                           updateVertex(index, axis, event.target.value)
@@ -353,7 +346,11 @@ export default function ObstacleForm({
             className={`${styles.primaryAction} ${styles.formActionButton}`}
             type="submit"
           >
-            <CopyPlus size={16} aria-hidden="true" />
+            {isEditing ? (
+              <Check size={16} aria-hidden="true" />
+            ) : (
+              <CopyPlus size={16} aria-hidden="true" />
+            )}
             {isEditing ? "Apply Changes" : `Add ${shapeLabel} Obstacle`}
           </button>
           <button

@@ -1,14 +1,15 @@
 import { Entity } from "./entity.js";
-import { Position, getBehaviorTarget, getEntityDetectionPoints, getWrappedOffset, smoothTowardAngle, turnTowardAngle } from "./behavior.js";
+import { Position,
+    calculateBehaviorValue,
+    getActivationInputValue,
+    getEntityDetectionPoints,
+    getShortestOffset,
+    smoothTowardAngle,
+    turnTowardAngle } from "./behavior.js";
+import { calculateActivationWeight, normalizeWeight } from "./activation.js";
 import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNumberOrDefault } from "../utils/utilities.js";
-
-/*
-Separate Page for Agent Creation AND Obstacles(dragging ...) Called: Scenario Configuration
-Everything involved in configuration of entities, group them together.
-Feature to Load Scenario Presets (JSON) and Save Scenario Presets (JSON)
-Pause the simulation?
-*/
+import { BEHAVIOR_GROUPS } from "../utils/behaviorGroups.js";
 
 class fovOffset {
     constructor(x, y) {
@@ -159,9 +160,9 @@ export class Agent extends Entity{
     }
 
     // Phase 2: detect and apply behaviors using consistent post-move positions
-    behave(allEntities, behaviors = [], maxSpeed = null, maxAngle = null, smoothingFactor = 0.15) {
+    behave(allEntities, behaviorGroups, maxSpeed = null, maxAngle = null, smoothingFactor = 0.15) {
         this.detectEntities(allEntities);
-        let sinSum = 0, cosSum = 0, angleCount = 0;
+        let weightedDirectionY = 0, weightedDirectionX = 0;
         const speedCap = parseNumberCap(maxSpeed);
         const angleCap = parseNumberCap(maxAngle) * Math.PI / 180;
         const smoothing = Math.min(
@@ -169,63 +170,92 @@ export class Agent extends Entity{
             1
         );
 
-        for (const behavior of behaviors) {
-            const offset = parseNumberOrDefault(behavior.offset, 0);
+        // Runtime Groups
+        const activeBehaviorGroups = {}; // Behaviors whose Activation Weight is valid for this frame.
 
-            if (behavior.action === REFERENCE_TYPES.SELF_REFERENCE) {
-                switch (behavior.targetProperty) {
-                    case TARGET_PROPERTIES.SPEED: {
-                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
-                        const newSpeed = Math.min(Math.max(0, currentSpeed + offset), speedCap);
-                        this.dx = Math.cos(this.angle) * newSpeed;
-                        this.dy = Math.sin(this.angle) * newSpeed;
-                        break;
-                    }
-                    case TARGET_PROPERTIES.ANGLE:
-                    case TARGET_PROPERTIES.POSITION: {
-                        const desired = this.angle + offset * Math.PI / 180;
-                        sinSum += Math.sin(desired);
-                        cosSum += Math.cos(desired);
-                        angleCount++;
-                        break;
-                    }
+        // Calculate Raw Weight (pre-normalization) for ALL behaviors (regardless of their behaviorGroup)
+        for (const groupName in behaviorGroups) {
+            const behaviors = behaviorGroups[groupName];
+
+            activeBehaviorGroups[groupName] = []; // Initialize one active list for each Behavior Group.
+
+            for (const behavior of behaviors) {
+                if (behavior.enabled !== true) continue;
+
+                // Get the value being checked based on condition 
+                // (source -> value to check -> use filters -> average if needed)
+                const activationValue =
+                    getActivationInputValue(
+                        behavior.activation,
+                        this,
+                        this.detectedEntities
+                    );
+
+                // Calculate the raw Activation Weight.
+                const rawActivationWeight =
+                    calculateActivationWeight(
+                        behavior.activation,
+                        activationValue
+                    );
+
+                if (!Number.isFinite(rawActivationWeight) || rawActivationWeight <= 0) continue;
+                
+                // Calculation actionValue once, not again below.
+                let actionValue = null;
+                if (behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE) {
+                    actionValue = calculateBehaviorValue(
+                        behavior,
+                        this,
+                        this.detectedEntities
+                    );
+
+                    if (actionValue === null) continue;
                 }
-                continue;
-            }
 
-            const targetVal = getBehaviorTarget(behavior, this, this.detectedEntities);
-
-            if (targetVal !== null && targetVal !== undefined) {
-                switch (behavior.targetProperty) {
-                    case TARGET_PROPERTIES.SPEED: {
-                        const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
-                        const base = (behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE) ? targetVal : currentSpeed;
-                        const newSpeed = Math.min(Math.max(0, base + offset), speedCap);
-                        this.dx = Math.cos(this.angle) * newSpeed;
-                        this.dy = Math.sin(this.angle) * newSpeed;
-                        break;
-                    }
-                    case TARGET_PROPERTIES.ANGLE: {
-                        const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
-                        const desired = base + offset * Math.PI / 180;
-                        sinSum += Math.sin(desired);
-                        cosSum += Math.cos(desired);
-                        angleCount++;
-                        break;
-                    }
-                    case TARGET_PROPERTIES.POSITION: {
-                        const base = behavior.action === REFERENCE_TYPES.NEIGHBOR_REFERENCE ? targetVal : this.angle;
-                        const desired = base + offset * Math.PI / 180;
-                        sinSum += Math.sin(desired);
-                        cosSum += Math.cos(desired);
-                        angleCount++;
-                        break;
-                    }
-                }
+                // Store the Behavior with its raw Activation Weight.
+                activeBehaviorGroups[groupName].push({
+                    behavior,
+                    rawActivationWeight,
+                    actionValue
+                });
             }
         }
-        if (angleCount > 0) {
-            const desiredAngle = Math.atan2(sinSum / angleCount, cosSum / angleCount);
+
+        // Normalize the weight for each runtime group.
+        for (const groupName in activeBehaviorGroups) {
+            const activeBehaviorGroup = activeBehaviorGroups[groupName];
+
+            for (const activeBehavior of activeBehaviorGroup) {
+                activeBehavior.normalizedActivationWeight = normalizeWeight(
+                    activeBehavior.rawActivationWeight,
+                    activeBehaviorGroup
+                );
+            }
+        }
+
+        // ---- HEADING DIRECTION GROUP ----
+        // Heading Direction uses a weighted circular mean because angles wrap at 360 degrees.
+        const activeHeadingBehaviors = activeBehaviorGroups[BEHAVIOR_GROUPS.HEADING_DIRECTION];
+
+        for (const activeBehavior of activeHeadingBehaviors) {
+            const behavior = activeBehavior.behavior;
+            const offset = parseNumberOrDefault(behavior.offset, 0);
+            let desiredAngle = null;
+
+            if (behavior.action === REFERENCE_TYPES.SELF_REFERENCE) {
+                desiredAngle = this.angle + offset * Math.PI / 180;
+            } else {
+                desiredAngle = activeBehavior.actionValue + offset * Math.PI / 180;
+            }
+
+            if (desiredAngle === null) continue;
+
+            weightedDirectionY += Math.sin(desiredAngle) * activeBehavior.normalizedActivationWeight;
+            weightedDirectionX += Math.cos(desiredAngle) * activeBehavior.normalizedActivationWeight;
+        }
+
+        if (activeHeadingBehaviors.length > 0 && (weightedDirectionY !== 0 || weightedDirectionX !== 0)) {
+            const desiredAngle = Math.atan2(weightedDirectionY, weightedDirectionX);
             // Smooth the behavior target first, then respect the turn-angle cap.
             this.steeringAngle = smoothTowardAngle(
                 this.steeringAngle,
@@ -233,11 +263,39 @@ export class Agent extends Entity{
                 smoothing
             );
             this.angle = turnTowardAngle(this.angle, this.steeringAngle, angleCap);
-
-            const currentSpeed = Math.min(Math.sqrt(this.dx ** 2 + this.dy ** 2), speedCap);
-            this.dx = Math.cos(this.angle) * currentSpeed;
-            this.dy = Math.sin(this.angle) * currentSpeed;
         }
+
+        // ---- SPEED BEHAVIOR GROUP ----
+        // Speed uses a weighted arithmetic mean within the Speed Group.
+        const activeSpeedBehaviors = activeBehaviorGroups[BEHAVIOR_GROUPS.SPEED]; // returns all valid speed behaviors
+        const currentSpeed = Math.min(Math.sqrt(this.dx ** 2 + this.dy ** 2), speedCap);
+        let finalSpeed = currentSpeed;
+        let weightedSpeedSum = 0;
+
+        for (const activeBehavior of activeSpeedBehaviors) {
+            const behavior = activeBehavior.behavior; // extract the behavior
+            const offset = parseNumberOrDefault(behavior.offset, 0); // grab the offset from ACTION
+            let desiredSpeed = null;
+
+            if (behavior.action === REFERENCE_TYPES.SELF_REFERENCE) { // if self-referenced action, don't enter weight calculation.
+                desiredSpeed = currentSpeed + offset;
+            } else {
+                desiredSpeed = activeBehavior.actionValue + offset;
+            }
+
+            if (desiredSpeed === null) continue;
+
+            desiredSpeed = Math.min(Math.max(0, desiredSpeed), speedCap);
+            weightedSpeedSum += desiredSpeed * activeBehavior.normalizedActivationWeight;
+        }
+
+        // Use the weighted sum because weights were already normalized above.
+        if (activeSpeedBehaviors.length > 0) finalSpeed = weightedSpeedSum;
+
+        // ------
+        // Apply the final Heading and Speed together so one Group does not overwrite the other.
+        this.dx = Math.cos(this.angle) * finalSpeed;
+        this.dy = Math.sin(this.angle) * finalSpeed;
     }
 
     // Wrap to the other side of the canvas if out of bounds
@@ -265,7 +323,7 @@ export class Agent extends Entity{
         // Loop through all entities to check if they are within FOV
         entities.forEach(entity => {
             if (entity !== this && entity.position) {
-                const { diffX, diffY } = getWrappedOffset(this.position, entity.position, this.canvas);
+                const { diffX, diffY } = getShortestOffset(this.position, entity.position, this.canvas);
 
                 const distanceBetweenEntities = Math.sqrt(diffX * diffX + diffY * diffY);
 
@@ -276,7 +334,7 @@ export class Agent extends Entity{
                     // The center/centroid is still used above as a cheap broad-phase distance check.
                     const isVisible = detectionPoints.some((point) => {
                         const { diffX: refDiffX, diffY: refDiffY } =
-                            getWrappedOffset(this.position, point, this.canvas);
+                            getShortestOffset(this.position, point, this.canvas);
 
                         // A polygon's bounding radius is only a broad-phase check.
                         // Its closest real edge must also be inside the FOV radius.
@@ -327,7 +385,7 @@ export class Agent extends Entity{
         if (!target) return;
 
         // Calculate the vector from this agent to the target
-        let { diffX, diffY } = getWrappedOffset(this.position, target.position, this.canvas);
+        let { diffX, diffY } = getShortestOffset(this.position, target.position, this.canvas);
 
         // Normalize the vector
         let dist = Math.sqrt(diffX * diffX + diffY * diffY);

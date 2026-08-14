@@ -19,7 +19,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, FILTER_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
 import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent } from "../utils/utilities.js";
 import { loadScenarioFile } from "../utils/scenarioLoader.js";
 
@@ -523,7 +523,7 @@ function Simulation2ndGen() {
       id: createStableId(),
       targets: createDefaultFilterTargets(),
       filterType: 'method',
-      propertyType: FILTER_TYPES.DISTANCE,
+      propertyType: MEASUREMENT_TYPES.DISTANCE,
       methodType: METHOD_TYPES.CLOSEST,
       low: '',
       high: '',
@@ -535,7 +535,7 @@ function Simulation2ndGen() {
       id: createStableId(),
       targets: normalizeFilterTargets(filter.targets),
       filterType: filter.filterType === 'ranged' ? 'ranged' : 'method',
-      propertyType: getValidValue(filter.propertyType ?? filter.filteredProperty, FILTER_TYPES, FILTER_TYPES.DISTANCE),
+      propertyType: getValidValue(filter.propertyType ?? filter.filteredProperty, MEASUREMENT_TYPES, MEASUREMENT_TYPES.DISTANCE),
       methodType: getValidValue(filter.methodType, METHOD_TYPES, METHOD_TYPES.CLOSEST),
       low: filter.low ?? '',
       high: filter.high ?? '',
