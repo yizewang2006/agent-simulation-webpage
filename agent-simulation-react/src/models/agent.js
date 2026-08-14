@@ -263,6 +263,9 @@ export class Agent extends Entity{
                 smoothing
             );
             this.angle = turnTowardAngle(this.angle, this.steeringAngle, angleCap);
+        } else {
+            // Do not carry an inactive Heading Behavior's target into a later frame.
+            this.steeringAngle = this.angle;
         }
 
         // ---- SPEED BEHAVIOR GROUP ----

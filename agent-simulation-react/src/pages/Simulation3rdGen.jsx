@@ -1332,6 +1332,11 @@ function Simulation3rdGen() {
   // Behavior List Ref Sync (ensuring the latest behavior list is available)
   useEffect(() => {
     behaviorGroupsRef.current = groupBehaviors(behaviorList, true);
+
+    // A changed Behavior configuration must not reuse the previous steering target.
+    agentsArrayRef.current.forEach((agent) => {
+      agent.steeringAngle = agent.angle;
+    });
   }, [behaviorList]);
 
   useEffect(() => {

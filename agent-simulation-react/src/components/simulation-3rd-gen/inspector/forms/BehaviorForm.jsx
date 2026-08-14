@@ -105,8 +105,14 @@ export default function BehaviorForm({
           </div>
         </div>
 
-        <fieldset className={styles.formSection}>
-          <legend className={styles.formSectionTitle}>General</legend>
+        <div
+          className={styles.formSection}
+          role="group"
+          aria-labelledby="behavior-general-title"
+        >
+          <div id="behavior-general-title" className={styles.formSectionTitle}>
+            General
+          </div>
 
           <div className={styles.inputGroup}>
             <label className={styles.formLabel} htmlFor="behavior-name">
@@ -126,13 +132,20 @@ export default function BehaviorForm({
               </p>
             )}
           </div>
-        </fieldset>
+        </div>
 
-        <fieldset className={`${styles.formSection} ${styles.specificationSection}`}>
-          <legend className={styles.formSectionTitle}>
+        <div
+          className={`${styles.formSection} ${styles.specificationSection}`}
+          role="group"
+          aria-labelledby="action-specifications-title"
+        >
+          <div
+            id="action-specifications-title"
+            className={styles.formSectionTitle}
+          >
             <span className={styles.actionFilterTitle}>Action</span>{" "}
             Specifications
-          </legend>
+          </div>
           <div className={styles.specificationSummary}>
             <p className={styles.formHelperText}>
               Current: {PROPERTY_LABELS[targetProperty]} · {REFERENCE_LABELS[referenceSource]}
@@ -228,13 +241,20 @@ export default function BehaviorForm({
               />
             </div>
           )}
-        </fieldset>
+        </div>
 
-        <fieldset className={`${styles.formSection} ${styles.specificationSection}`}>
-          <legend className={styles.formSectionTitle}>
+        <div
+          className={`${styles.formSection} ${styles.specificationSection}`}
+          role="group"
+          aria-labelledby="activation-specifications-title"
+        >
+          <div
+            id="activation-specifications-title"
+            className={styles.formSectionTitle}
+          >
             <span className={styles.activationFilterTitle}>Activation</span>{" "}
             Specifications
-          </legend>
+          </div>
           <div className={styles.specificationSummary}>
             <p className={styles.formHelperText}>
               Current: {getActivationSummary(activation)}
@@ -273,7 +293,7 @@ export default function BehaviorForm({
               />
             </div>
           )}
-        </fieldset>
+        </div>
 
         {formError && (
           <p className={styles.formError} role="alert">
