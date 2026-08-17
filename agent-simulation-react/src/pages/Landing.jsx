@@ -8,7 +8,7 @@ import haiPhoto from '../assets/headshots/hai_le_prof-2.jpg';
 import kevinPhoto from '../assets/headshots/DSC01602.jpg';
 import elainePhoto from '../assets/headshots/elaine_photo-2.jpg';
 import { whatsNewItems } from '../data/whatsNew.js';
-import { updatedDate } from '../utils/buildDate.js';
+import { updatedDate } from '../utils/utilities.js';
 
 const featureCards = [
   {
@@ -201,13 +201,13 @@ export default function Landing() {
             <h2>Choose where you want to begin.</h2>
             <div className="fancy-launch-grid">
               <button className="btn-primary fancy-launch-button fancy-launch-version fancy-launch-beta icon-button" onClick={() => navigate('/loading', {
-                state: { from: 'Home Page', to: '3rd Gen Simulation', path: '/simulation-3rd-gen' },
+                state: { from: 'Home Page', to: '3rd Gen Simulation', path: '/simulation' },
               })}>
                 <Play className="button-icon" size={18} aria-hidden="true" />
                 Launch 3rd Gen
               </button>
               <button className="btn-secondary fancy-launch-button fancy-launch-version fancy-launch-stable icon-button" onClick={() => navigate('/loading', {
-                state: { from: 'Home Page', to: '2nd Gen Simulation', path: '/simulation' },
+                state: { from: 'Home Page', to: '2nd Gen Simulation', path: '/simulation-2nd-gen' },
               })}>
                 <Play className="button-icon" size={18} aria-hidden="true" />
                 Launch 2nd Gen

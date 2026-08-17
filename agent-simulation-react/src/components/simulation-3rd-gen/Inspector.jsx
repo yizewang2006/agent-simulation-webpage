@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { ClipboardPen } from "lucide-react";
 import { FORM_MODES, INSPECTOR_MODES } from "./inspector/modeConstants.js";
 import InspectorBuild from "./inspector/forms/InspectorBuild.jsx";
+import WorkspaceInspector from '../workspace/WorkspaceInspector.jsx';
 import styles from "../../styles/3rd-gen/simulation.module.css";
 
 import RuntimeSettingsForm from "./inspector/forms/RuntimeSettingsForm.jsx";
@@ -41,7 +41,6 @@ export default function Inspector({
   const contentRef = useRef(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
 
-  // Inspector owns one scroll hint shared by every form.
   useEffect(() => {
     const content = contentRef.current;
     if (!content) return undefined;
@@ -209,19 +208,7 @@ export default function Inspector({
   }
 
   return (
-    <aside className={`${styles.sidePanel} ${styles.workspaceSidePanel}`}>
-      <header className={styles.panelHeader}>
-        <ClipboardPen
-          className={styles.panelTitleIcon}
-          size={20}
-          aria-hidden="true"
-        />
-
-        <h2 className={styles.panelTitle}>
-          Inspector
-        </h2>
-      </header>
-
+    <WorkspaceInspector>
       <div
         ref={contentRef}
         className={`${styles.inspectorContent} ${
@@ -230,6 +217,6 @@ export default function Inspector({
       >
         {renderContent()}
       </div>
-    </aside>
+    </WorkspaceInspector>
   );
 }

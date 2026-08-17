@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "behaviors": [
+    {
+      "id": "8c6defde-cf3c-4c82-9608-c2010a645749",
+      "enabled": true,
+      "name": "Always Speed Up",
+      "targetProperty": 1,
+      "action": 1,
+      "offset": 0.21,
+      "filters": [],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
+    },
+    {
+      "id": "8bb07d25-9d1f-4a68-8749-ec60ccaba9b1",
+      "enabled": true,
+      "name": "Slow Down When too Close",
+      "targetProperty": 1,
+      "action": 0,
+      "offset": -0.21,
+      "filters": [
+        {
+          "id": "3c96f6f5-0dbd-4493-a4be-02532440cd89",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "ranged",
+          "propertyType": 0,
+          "methodType": 0,
+          "low": 0,
+          "high": 50
+        }
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
+    },
+    {
+      "id": "f9e9891c-0d8d-4315-878b-a2dba28501d1",
+      "enabled": true,
+      "name": "Follow Nearest Agent",
+      "targetProperty": 0,
+      "action": 0,
+      "offset": 0,
+      "filters": [
+        {
+          "id": "946516c1-6554-4de1-a189-e20336b1619b",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "method",
+          "propertyType": 0,
+          "methodType": 0,
+          "low": "",
+          "high": ""
+        }
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
+    },
+    {
+      "id": "959f0701-aca2-482b-b19f-a8d66c45551f",
+      "enabled": true,
+      "name": "Heading Alignment",
+      "targetProperty": 2,
+      "action": 0,
+      "offset": 0,
+      "filters": [],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
+    },
+    {
+      "id": "be972177-4295-44ff-acee-636d3897011f",
+      "enabled": true,
+      "name": "Head-on Avoidance",
+      "targetProperty": 0,
+      "action": 0,
+      "offset": 30,
+      "filters": [
+        {
+          "id": "920b7af8-3a78-4c73-b2e8-ef47a3b72876",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "method",
+          "propertyType": 0,
+          "methodType": 0,
+          "low": "",
+          "high": ""
+        }
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
+    }
+  ]
+}

@@ -15,10 +15,10 @@ export const METHOD_TYPES = {
 export const MEASUREMENT_TYPES = {
   DISTANCE: 0,
   SPEED: 1,
-  HEADING_DIFFERENCE: 2,
-  HEADING: 3,
-  RELATIVE_BEARING: 4,
-  SPEED_DIFFERENCE: 5,
+  SPEED_DIFFERENCE: 2,
+  HEADING_DIFFERENCE: 3,
+  HEADING: 4,
+  RELATIVE_BEARING: 5,
 };
 
 export const ENTITY_TYPES = {
@@ -76,6 +76,14 @@ export const ENTITY_LABELS = {
   [ENTITY_TYPES.LEADER]: 'Leader',
   [ENTITY_TYPES.EXIT]: 'Exit/Escape Point',
 };
+
+// Tabs shown in the third-generation Simulation Explorer.
+export const EXPLORER_TABS = Object.freeze({
+  ENTITIES: 'entities',
+  BEHAVIORS: 'behaviors',
+  RECORDINGS: 'recordings',
+  HISTORY: 'history',
+});
 
 export const OBSTACLE_SHAPE_LABELS = {
   [OBSTACLE_SHAPE_TYPES.CIRCLE]: 'Circle',

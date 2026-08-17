@@ -1,3 +1,13 @@
+const buildDate = new Date(import.meta.env.VITE_BUILD_DATE);
+
+export const updatedDate = Number.isNaN(buildDate.getTime())
+  ? 'not long ago'
+  : new Intl.DateTimeFormat('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(buildDate);
+
 export function parseNumberCap(value) {
   if (value === '' || value === null || value === undefined) return Infinity;
   const parsed = parseFloat(value);
@@ -83,4 +93,46 @@ export function isPointNearPolygonEdge(point, vertices, tolerance = 6) {
   return vertices.some((vertex, index) => (
     getDistanceToSegment(point, vertex, vertices[(index + 1) % vertices.length]) <= tolerance
   ));
+}
+
+// Store information (triggered when playing)
+export function storeScenarioInformation(refs = {}) {
+  const scenarioData = {};
+
+  // Save values that can change while the simulation is playing.
+  Object.entries(refs).forEach(([entityType, ref]) => {
+    scenarioData[entityType] = ref.current.map((entity) => ({
+      entity,
+      position: entity.position ? { ...entity.position } : null,
+      dx: entity.dx,
+      dy: entity.dy,
+      angle: entity.angle,
+      steeringAngle: entity.steeringAngle,
+    }));
+  });
+
+  return scenarioData;
+}
+
+// Reset Scenario function
+export function resetScenario(scenarioData = {}) {
+  if (!scenarioData) return;
+
+  // Restore the existing instances so Entity methods and canvas refs remain.
+  Object.values(scenarioData).forEach((entities) => {
+    entities.forEach((savedEntity) => {
+      const { entity } = savedEntity;
+
+      if (savedEntity.position) {
+        entity.position.x = savedEntity.position.x;
+        entity.position.y = savedEntity.position.y;
+      }
+      if (savedEntity.dx !== undefined) entity.dx = savedEntity.dx;
+      if (savedEntity.dy !== undefined) entity.dy = savedEntity.dy;
+      if (savedEntity.angle !== undefined) entity.angle = savedEntity.angle;
+      if (savedEntity.steeringAngle !== undefined) {
+        entity.steeringAngle = savedEntity.steeringAngle;
+      }
+    });
+  });
 }

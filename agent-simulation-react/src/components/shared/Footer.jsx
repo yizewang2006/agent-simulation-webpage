@@ -1,6 +1,6 @@
 // Renders the footer section with copyright text
 import '../../styles/layout.css';
-import { updatedDate } from '../../utils/buildDate.js';
+import { updatedDate } from '../../utils/utilities.js';
 
 export default function Footer() {
   return (

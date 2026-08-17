@@ -1,4 +1,6 @@
-import { Circle, MonitorPlay, Pause, Play, Settings, Square } from 'lucide-react';
+import { useState } from 'react';
+import { Circle, MonitorPlay, Pause, Play, RotateCcw, Settings, Square } from 'lucide-react';
+import AlertBox from '../simulation/AlertBox.jsx';
 import styles from '../../styles/3rd-gen/simulation.module.css';
 
 export default function RuntimeControlCard({
@@ -11,9 +13,61 @@ export default function RuntimeControlCard({
   isRecording,
   onStartRecording,
   onStopRecording,
+  hasAgents,
+  hasSnapshots,
+  onNoAgents,
+  onRestoreLatest,
+  onOpenHistory,
 }) {
+  const [showRestoreAlert, setShowRestoreAlert] = useState(false);
+
+  function requestRestore() {
+    // Restore follows the same Agent requirement as Play.
+    if (!hasAgents) {
+      onNoAgents();
+      return;
+    }
+
+    setShowRestoreAlert(true);
+  }
+
+  function openHistory() {
+    // This card closes its AlertBox; Main only switches the Explorer tab.
+    setShowRestoreAlert(false);
+    onOpenHistory();
+  }
+
   return (
-    <section className={styles.runtimeCard} aria-labelledby="runtime-control-title">
+    <>
+      {showRestoreAlert && (
+        <AlertBox
+          title="Restore Latest Snapshot?"
+          primMessage="Restore the most recent state saved before Play?"
+          secMessage={(
+            <>
+              To restore an earlier snapshot, visit the{' '}
+              <button
+                className={styles.alertInlineLink}
+                type="button"
+                onClick={openHistory}
+              >
+                history
+              </button>{' '}
+              tab.
+            </>
+          )}
+          type="danger"
+          confirmLabel="Restore"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            onRestoreLatest();
+            setShowRestoreAlert(false);
+          }}
+          onCancel={() => setShowRestoreAlert(false)}
+        />
+      )}
+
+      <section className={styles.runtimeCard} aria-labelledby="runtime-control-title">
       <h2 className={styles.runtimeTitle} id="runtime-control-title">
         <MonitorPlay size={20} aria-hidden="true" />
         Runtime Control
@@ -79,17 +133,27 @@ export default function RuntimeControlCard({
           <span>Record when playing</span>
         </label>
 
-        {/* This becomes an active two-state toggle when Inspector logic is connected. */}
         <button
-          className={styles.runtimeSettings}
+          className={`${styles.dangerAction} ${styles.runtimeOptionButton}`}
           type="button"
-          aria-pressed={isSettingsOpen}
+          disabled={!hasSnapshots}
+          onClick={requestRestore}
+        >
+          <RotateCcw size={14} aria-hidden="true" />
+          Restore
+        </button>
+
+        <button
+          className={`${styles.secondaryAction} ${styles.runtimeOptionButton}`}
+          type="button"
+          aria-expanded={isSettingsOpen}
           onClick={onToggleSettings}
         >
           <Settings size={14} aria-hidden="true" />
           Runtime Settings
         </button>
       </div>
-    </section>
+      </section>
+    </>
   );
 }

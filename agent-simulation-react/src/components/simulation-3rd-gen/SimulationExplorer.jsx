@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
   BrainCircuit,
@@ -6,26 +6,24 @@ import {
   Circle,
   Download,
   FileUp,
+  History,
   PencilRuler,
   PenLine,
-  ScanSearch,
   Search,
   Shapes,
   Trash2,
   UserRoundPen,
   Play,
+  RotateCcw,
 } from 'lucide-react';
+import WorkspaceExplorer from '../workspace/WorkspaceExplorer.jsx';
+import AlertBox from '../simulation/AlertBox.jsx';
 import {
   BEHAVIOR_GROUP_DEFINITIONS,
   getBehaviorGroupKey,
 } from '../../utils/behaviorGroups.js';
+import { EXPLORER_TABS } from '../../utils/constants.js';
 import styles from '../../styles/3rd-gen/simulation.module.css';
-
-export const EXPLORER_TABS = Object.freeze({
-  ENTITIES: 'entities',
-  BEHAVIORS: 'behaviors',
-  RECORDINGS: 'recordings',
-});
 
 export default function SimulationExplorer({
   activeTab,
@@ -35,6 +33,7 @@ export default function SimulationExplorer({
   obstacles,
   behaviors,
   recordings,
+  snapshots,
   onLoadJSON,
   onLoadBehaviorPreset,
   onExportBehaviors,
@@ -52,8 +51,13 @@ export default function SimulationExplorer({
   onPlayRecording,
   onDownloadRecording,
   onDeleteRecording,
+  onRestoreSnapshot,
+  onRenameSnapshot,
+  onDeleteSnapshot,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [snapshotToRestore, setSnapshotToRestore] = useState(null);
+  const [snapshotToDelete, setSnapshotToDelete] = useState(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
   const [collapsedGroups, setCollapsedGroups] = useState({
     Agent: false,
@@ -85,6 +89,17 @@ export default function SimulationExplorer({
       }));
     }
 
+    if (activeTab === EXPLORER_TABS.HISTORY) {
+      return snapshots.map((snapshot) => ({
+        id: snapshot.id,
+        name: snapshot.name,
+        type: 'Snapshot',
+        Icon: History,
+        target: snapshot,
+        subtitle: snapshot.createdAt,
+      }));
+    }
+
     return [
       ...agents.map((agent, index) => ({
         id: agent.id ?? `agent-${index}`,
@@ -103,18 +118,13 @@ export default function SimulationExplorer({
         subtitle: 'Obstacle',
       })),
     ];
-  }, [activeTab, agents, behaviors, obstacles, recordings]);
+  }, [activeTab, agents, behaviors, obstacles, recordings, snapshots]);
 
   const visibleEntries = entries.filter((entry) =>
     entry.name.toLowerCase().includes(searchTerm.trim().toLowerCase())
   );
 
-  const activeTabLabel =
-    activeTab === EXPLORER_TABS.ENTITIES
-      ? 'entities'
-      : activeTab === EXPLORER_TABS.BEHAVIORS
-        ? 'behaviors'
-        : 'recordings';
+  const activeTabLabel = activeTab;
 
   function updateScrollHint() {
     const list = listRef.current;
@@ -146,11 +156,17 @@ export default function SimulationExplorer({
     }));
   }
 
+  function requestSnapshotRename(snapshot) {
+    // Renaming changes only the History label, not the saved Entity data.
+    const nextName = window.prompt('Rename snapshot:', snapshot.name)?.trim();
+    if (nextName) onRenameSnapshot(snapshot.id, nextName);
+  }
+
   function renderEntry({ id, name, type, Icon, target, subtitle, trimmedId }) {
     return (
       <div className={styles.explorerEntry} key={id}>
         <div className={styles.explorerEntryInfo}>
-          <Icon size={17} aria-hidden="true" />
+          {createElement(Icon, { size: 17, 'aria-hidden': true })}
           <span>
             <span className={styles.explorerEntryTitleRow}>
               <strong>{name}</strong>
@@ -272,6 +288,40 @@ export default function SimulationExplorer({
             </button>
           </div>
         )}
+
+        {type === 'Snapshot' && (
+          <div className={styles.explorerEntryActions}>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`Restore ${name}`}
+              title="Restore Snapshot"
+              onClick={() => setSnapshotToRestore(target)}
+            >
+              <RotateCcw size={15} aria-hidden="true" />
+            </button>
+
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`Rename ${name}`}
+              title="Rename Snapshot"
+              onClick={() => requestSnapshotRename(target)}
+            >
+              <PenLine size={15} aria-hidden="true" />
+            </button>
+
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+              type="button"
+              aria-label={`Delete ${name}`}
+              title="Delete Snapshot"
+              onClick={() => setSnapshotToDelete(target)}
+            >
+              <Trash2 size={15} aria-hidden="true" />
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -324,12 +374,42 @@ export default function SimulationExplorer({
   }
 
   return (
-    <aside className={`${styles.sidePanel} ${styles.workspaceSidePanel}`}>
-      <header className={styles.panelHeader}>
-        <ScanSearch className={styles.panelTitleIcon} size={20} aria-hidden="true" />
-        <h2 className={styles.panelTitle}>Simulation Explorer</h2>
-      </header>
+    <>
+      {snapshotToRestore && (
+        <AlertBox
+          title={`Restore ${snapshotToRestore.name}?`}
+          primMessage="Restore the simulation to this snapshot?"
+          secMessage="Current runtime progress will be lost."
+          type="danger"
+          confirmLabel="Restore"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            // Restore only after the user confirms the selected History item.
+            onRestoreSnapshot(snapshotToRestore.data);
+            setSnapshotToRestore(null);
+          }}
+          onCancel={() => setSnapshotToRestore(null)}
+        />
+      )}
 
+      {snapshotToDelete && (
+        <AlertBox
+          title={`Delete ${snapshotToDelete.name}?`}
+          primMessage="This snapshot will be permanently removed from History."
+          secMessage="This action cannot be undone."
+          type="danger"
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={() => {
+            // Delete only the selected Snapshot; the current Scenario is unchanged.
+            onDeleteSnapshot(snapshotToDelete.id);
+            setSnapshotToDelete(null);
+          }}
+          onCancel={() => setSnapshotToDelete(null)}
+        />
+      )}
+
+      <WorkspaceExplorer title="Simulation Explorer">
       <div
         className={`${styles.explorerContent} ${
           hasMoreBelow ? styles.hasMoreBelow : ''
@@ -460,6 +540,7 @@ export default function SimulationExplorer({
           </div>
         </div>
       </div>
-    </aside>
+      </WorkspaceExplorer>
+    </>
   );
 }

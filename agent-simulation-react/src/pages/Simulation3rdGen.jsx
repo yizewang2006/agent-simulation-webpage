@@ -1,7 +1,7 @@
 import Header from "../components/simulation-3rd-gen/Header3rdGen.jsx";
 import Inspector from "../components/simulation-3rd-gen/Inspector.jsx";
 import RuntimeControlCard from "../components/simulation-3rd-gen/RuntimeControlCard.jsx";
-import SimulationExplorer, { EXPLORER_TABS } from "../components/simulation-3rd-gen/SimulationExplorer.jsx";
+import SimulationExplorer from "../components/simulation-3rd-gen/SimulationExplorer.jsx";
 import Footer from "../components/shared/Footer.jsx";
 import AddAgentCard from "../components/simulation/AddAgentCard.jsx";
 import AddMultipleAgentsCard from "../components/simulation/AddMultipleAgentsCard.jsx";
@@ -22,8 +22,8 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS } from "../utils/constants.js";
-import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, isPointInsidePolygon, isPointNearPolygonEdge } from "../utils/utilities.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
+import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, isPointInsidePolygon, isPointNearPolygonEdge, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import { loadScenarioFile } from "../utils/scenarioLoader.js";
 import {
   createDefaultActivation,
@@ -395,6 +395,7 @@ function Simulation3rdGen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordWhenPlaying, setRecordWhenPlaying] = useState(false);
   const [recordings, setRecordings] = useState([]);
+  const [snapshots, setSnapshots] = useState([]);
   const [recordingMessage, setRecordingMessage] = useState('');
   const hasRecording = recordings.length > 0;
 
@@ -402,6 +403,7 @@ function Simulation3rdGen() {
   const recordedFramesRef = useRef([]);
   const recordingStartTimeRef = useRef(0);
   const recordedFrameIndexRef = useRef(0);
+  const skipNextSnapshotRef = useRef(false);
 
   // Inspector State
   const [inspectorMode, setInspectorMode] = useState({
@@ -1318,6 +1320,26 @@ function Simulation3rdGen() {
       return;
     }
 
+    if (skipNextSnapshotRef.current) {
+      // A restored state already exists in History, so do not save it twice.
+      skipNextSnapshotRef.current = false;
+    } else {
+      // Every normal Play creates one restorable point in Explorer History.
+      const snapshotData = storeScenarioInformation({
+        agents: agentsArrayRef,
+        obstacles: obstaclesArrayRef,
+      });
+      setSnapshots((currentSnapshots) => [
+        ...currentSnapshots,
+        {
+          id: crypto.randomUUID(),
+          name: `Snapshot ${currentSnapshots.length + 1}`,
+          createdAt: new Date().toLocaleTimeString(),
+          data: snapshotData,
+        },
+      ]);
+    }
+
     if (recordWhenPlaying) {
       // Start recording and playback together after runtime validation passes.
       handleStartRecording();
@@ -1327,6 +1349,41 @@ function Simulation3rdGen() {
     // Normal playback without recording.
     setIsSimulationRunning(true);
     isSimulationRunningRef.current = true;
+  }
+
+  function handleRestoreSnapshot(snapshotData) {
+    // Stop runtime activity before moving Entities back to a saved state.
+    setIsSimulationRunning(false);
+    isSimulationRunningRef.current = false;
+    if (isRecordingRef.current) handleStopRecording();
+
+    resetScenario(snapshotData);
+    // The next Play starts from an existing Snapshot and must not duplicate it.
+    skipNextSnapshotRef.current = true;
+
+    // Refresh Explorer after the Entity refs have been restored.
+    setAgents([...agentsArrayRef.current]);
+    setObstacles([...obstaclesArrayRef.current]);
+  }
+
+  function handleRestoreLatestSnapshot() {
+    const latestSnapshot = snapshots.at(-1);
+    if (latestSnapshot) handleRestoreSnapshot(latestSnapshot.data);
+  }
+
+  function handleRenameSnapshot(snapshotId, name) {
+    // Snapshot names are display metadata; saved Entity data stays unchanged.
+    setSnapshots((currentSnapshots) =>
+      currentSnapshots.map((snapshot) =>
+        snapshot.id === snapshotId ? { ...snapshot, name } : snapshot
+      )
+    );
+  }
+
+  function handleDeleteSnapshot(snapshotId) {
+    setSnapshots((currentSnapshots) =>
+      currentSnapshots.filter((snapshot) => snapshot.id !== snapshotId)
+    );
   }
 
   // Behavior List Ref Sync (ensuring the latest behavior list is available)
@@ -2015,7 +2072,7 @@ function Simulation3rdGen() {
       {showNoAgentsAlert && (
         <AlertBox
           title="Add an Agent First"
-          primMessage="The simulation needs at least one Agent before it can play."
+          primMessage="The simulation needs at least one Agent before your request can be completed."
           secMessage="Create an Agent in the Inspector, then try again."
           type="warning"
           confirmLabel="Got It"
@@ -2049,6 +2106,7 @@ function Simulation3rdGen() {
           obstacles={obstacles}
           behaviors={behaviorList}
           recordings={recordings}
+          snapshots={snapshots}
           onLoadJSON={() => scenarioFileInputRef.current?.click()}
           onLoadBehaviorPreset={() => behaviorPresetFileInputRef.current?.click()}
           onExportBehaviors={handleDownloadBehaviors}
@@ -2072,6 +2130,9 @@ function Simulation3rdGen() {
           onPlayRecording={handleOpenPlayback}
           onDownloadRecording={handleDownloadPlayback}
           onDeleteRecording={requestDeleteRecording}
+          onRestoreSnapshot={handleRestoreSnapshot}
+          onRenameSnapshot={handleRenameSnapshot}
+          onDeleteSnapshot={handleDeleteSnapshot}
         />
 
         <input
@@ -2133,6 +2194,11 @@ function Simulation3rdGen() {
             isRecording={isRecording}
             onStartRecording={handleStartRecording}
             onStopRecording={handleStopRecording}
+            hasAgents={agents.length > 0}
+            hasSnapshots={snapshots.length > 0}
+            onNoAgents={() => setShowNoAgentsAlert(true)}
+            onRestoreLatest={handleRestoreLatestSnapshot}
+            onOpenHistory={() => setExplorerTab(EXPLORER_TABS.HISTORY)}
           />
         </section>
 

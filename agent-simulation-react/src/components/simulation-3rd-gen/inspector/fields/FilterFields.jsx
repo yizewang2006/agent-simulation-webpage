@@ -1,17 +1,16 @@
 import { useState } from "react";
 import { ChevronDown, ListFilterPlus, Trash2 } from "lucide-react";
 import {
-  ENTITY_LABELS,
   ENTITY_TYPES,
   MEASUREMENT_LABELS,
   MEASUREMENT_TYPES,
   METHOD_LABELS,
   METHOD_LABELS_BY_PROPERTY,
   METHOD_TYPES,
-  OBSTACLE_SHAPE_LABELS,
   OBSTACLE_SHAPE_TYPES,
 } from "../../../../utils/constants.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
+import TargetEntitySelector from "../sub-components/TargetEntitySelector.jsx";
 
 export default function FilterFields({
   filterKind,
@@ -53,37 +52,6 @@ export default function FilterFields({
     });
   }
 
-  function updateEntityTarget(filter, entityType, checked) {
-    if (entityType === ENTITY_TYPES.OBSTACLE) {
-      updateFilter(filter.id, {
-        targets: {
-          ...filter.targets,
-          [ENTITY_TYPES.OBSTACLE]: {
-            ...filter.targets[ENTITY_TYPES.OBSTACLE],
-            enabled: checked,
-          },
-        },
-      });
-      return;
-    }
-
-    updateFilter(filter.id, {
-      targets: { ...filter.targets, [entityType]: checked },
-    });
-  }
-
-  function updateObstacleTarget(filter, shapeType, checked) {
-    updateFilter(filter.id, {
-      targets: {
-        ...filter.targets,
-        [ENTITY_TYPES.OBSTACLE]: {
-          ...filter.targets[ENTITY_TYPES.OBSTACLE],
-          [shapeType]: checked,
-        },
-      },
-    });
-  }
-
   return (
     <fieldset className={styles.formSection}>
       {/* The title makes the two independent filter sets easy to identify. */}
@@ -109,8 +77,6 @@ export default function FilterFields({
         <div className={styles.behaviorFilterList}>
           {filters.map((filter, index) => {
             const isCollapsed = collapsedFilterIds.has(filter.id);
-            const obstacleTargets = filter.targets[ENTITY_TYPES.OBSTACLE];
-
             return (
               <section className={styles.behaviorFilterCard} key={filter.id}>
                 <div className={styles.behaviorFilterHeader}>
@@ -150,73 +116,11 @@ export default function FilterFields({
                   <div className={styles.behaviorFilterBody}>
                     <div className={styles.inputGroup}>
                       <span className={styles.formLabel}>Target Entity Types</span>
-                      <div className={styles.behaviorTargetBox}>
-                        {Object.entries(ENTITY_LABELS).map(([value, label]) => {
-                          const entityType = Number(value);
-
-                          if (entityType === ENTITY_TYPES.OBSTACLE) {
-                            return (
-                              <div key={entityType}>
-                                <label className={styles.formCheckbox}>
-                                  <input
-                                    type="checkbox"
-                                    checked={obstacleTargets.enabled}
-                                    onChange={(event) =>
-                                      updateEntityTarget(
-                                        filter,
-                                        entityType,
-                                        event.target.checked
-                                      )
-                                    }
-                                  />
-                                  {label}
-                                </label>
-                                <div className={styles.behaviorObstacleTargets}>
-                                  {Object.entries(OBSTACLE_SHAPE_LABELS).map(
-                                    ([shapeValue, shapeLabel]) => {
-                                      const shapeType = Number(shapeValue);
-                                      return (
-                                        <label className={styles.formCheckbox} key={shapeType}>
-                                          <input
-                                            type="checkbox"
-                                            disabled={!obstacleTargets.enabled}
-                                            checked={obstacleTargets[shapeType]}
-                                            onChange={(event) =>
-                                              updateObstacleTarget(
-                                                filter,
-                                                shapeType,
-                                                event.target.checked
-                                              )
-                                            }
-                                          />
-                                          {shapeLabel}
-                                        </label>
-                                      );
-                                    }
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <label className={styles.formCheckbox} key={entityType}>
-                              <input
-                                type="checkbox"
-                                checked={filter.targets[entityType]}
-                                onChange={(event) =>
-                                  updateEntityTarget(
-                                    filter,
-                                    entityType,
-                                    event.target.checked
-                                  )
-                                }
-                              />
-                              {label}
-                            </label>
-                          );
-                        })}
-                      </div>
+                      <TargetEntitySelector
+                        value={filter.targets}
+                        idPrefix={`${idPrefix}-filter-${filter.id}`}
+                        onChange={(targets) => updateFilter(filter.id, { targets })}
+                      />
                     </div>
 
                     <div className={styles.inputGroup}>
