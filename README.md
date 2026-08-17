@@ -1,5 +1,3 @@
-# Agent Simulation Project
-
 ## About this Project
 Agent Simulation Project is a browser-based platform for creating and running agent-based simulations. The project aims to make agent-based simulation more accessible by providing visual tools for creating entities, configuring behaviors, running simulations, and reviewing results.
 
