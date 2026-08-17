@@ -134,7 +134,7 @@ export default function RuntimeControlCard({
         </label>
 
         <button
-          className={`${styles.dangerAction} ${styles.runtimeOptionButton}`}
+          className={`${styles.secondaryAction} ${styles.runtimeOptionButton}`}
           type="button"
           disabled={!hasSnapshots}
           onClick={requestRestore}

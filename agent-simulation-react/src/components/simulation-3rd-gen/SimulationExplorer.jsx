@@ -2,6 +2,7 @@ import { createElement, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
   BrainCircuit,
+  Camera,
   ChevronDown,
   Circle,
   Download,
@@ -54,6 +55,8 @@ export default function SimulationExplorer({
   onRestoreSnapshot,
   onRenameSnapshot,
   onDeleteSnapshot,
+  onCreateSnapshot,
+  snapshotLimit,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [snapshotToRestore, setSnapshotToRestore] = useState(null);
@@ -489,6 +492,25 @@ export default function SimulationExplorer({
             >
               <Download size={16} aria-hidden="true" />
               Export Behaviors
+            </button>
+          </div>
+        )}
+
+        {activeTab === EXPLORER_TABS.HISTORY && (
+          <div className={styles.explorerPresetAction}>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerPresetButton}`}
+              type="button"
+              disabled={snapshots.length >= snapshotLimit}
+              title={
+                snapshots.length >= snapshotLimit
+                  ? 'Delete a snapshot before creating another.'
+                  : 'Create a Snapshot'
+              }
+              onClick={onCreateSnapshot}
+            >
+              <Camera size={16} aria-hidden="true" />
+              Create a Snapshot ({snapshots.length}/{snapshotLimit})
             </button>
           </div>
         )}

@@ -1,5 +1,15 @@
 export const whatsNewItems = [
   {
+    date: '2026-08-17',
+    title: 'Target Selection and Snapshots',
+    description: 'Redesigned the Target Entity Selector after Google Flights’ airline filters and added snapshots for restoring earlier simulation states.',
+  },
+  {
+    date: '2026-08-14',
+    title: 'Activation System',
+    description: 'Implemented the Activation System for configuring when and how strongly behaviors affect agents.',
+  },
+  {
     date: '2026-08-08',
     title: 'Third Generation Experience',
     description: 'Introduced a redesigned simulation workspace and brought its shared navigation to the project homepage.',

@@ -1910,6 +1910,15 @@
   background-color: #f3f5f8;
 }
 
+.secondaryAction:disabled,
+.secondaryAction:disabled:hover {
+  border-color: #cfd4dc;
+  background-color: #eef0f3;
+  color: #9298a1;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .secondaryAction:active {
   border-color: #8793a4;
   background-color: #e8ecf1;

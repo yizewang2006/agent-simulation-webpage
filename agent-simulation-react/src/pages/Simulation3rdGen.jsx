@@ -38,7 +38,9 @@ import {
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
 const CANVAS_HEIGHT = 500;
+
 const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
+const MAX_SNAPSHOTS = 10;
 
 // NEW 3rd Generation Imports
 import { INSPECTOR_MODES } from "../components/simulation-3rd-gen/inspector/modeConstants.js"; // Inspector DISPLAY MODES
@@ -353,6 +355,7 @@ function Simulation3rdGen() {
   const scenarioFileInputRef = useRef(null);
   const behaviorPresetFileInputRef = useRef(null);
   const dragRef = useRef(null); // Ref to hold the current drag state (null if not dragging)
+  const lookAtAgentRef = useRef(null); // Double-clicked Agent that currently follows the cursor.
 
   const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
   const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
@@ -403,7 +406,7 @@ function Simulation3rdGen() {
   const recordedFramesRef = useRef([]);
   const recordingStartTimeRef = useRef(0);
   const recordedFrameIndexRef = useRef(0);
-  const skipNextSnapshotRef = useRef(false);
+  const hasInitialSnapshotRef = useRef(false);
 
   // Inspector State
   const [inspectorMode, setInspectorMode] = useState({
@@ -1320,24 +1323,13 @@ function Simulation3rdGen() {
       return;
     }
 
-    if (skipNextSnapshotRef.current) {
-      // A restored state already exists in History, so do not save it twice.
-      skipNextSnapshotRef.current = false;
-    } else {
-      // Every normal Play creates one restorable point in Explorer History.
-      const snapshotData = storeScenarioInformation({
-        agents: agentsArrayRef,
-        obstacles: obstaclesArrayRef,
-      });
-      setSnapshots((currentSnapshots) => [
-        ...currentSnapshots,
-        {
-          id: crypto.randomUUID(),
-          name: `Snapshot ${currentSnapshots.length + 1}`,
-          createdAt: new Date().toLocaleTimeString(),
-          data: snapshotData,
-        },
-      ]);
+    // Play gives movement control back to the simulation.
+    lookAtAgentRef.current = null;
+
+    // Create the automatic Initial State only once.
+    if (!hasInitialSnapshotRef.current) {
+      createSnapshot('Initial State');
+      hasInitialSnapshotRef.current = true;
     }
 
     if (recordWhenPlaying) {
@@ -1351,6 +1343,39 @@ function Simulation3rdGen() {
     isSimulationRunningRef.current = true;
   }
 
+  function createSnapshot(name = null) {
+    const snapshotData = storeScenarioInformation({
+      agents: agentsArrayRef,
+      obstacles: obstaclesArrayRef,
+    });
+
+    setSnapshots((currentSnapshots) => {
+      // Users must delete one Snapshot before exceeding the limit.
+      if (currentSnapshots.length >= MAX_SNAPSHOTS) return currentSnapshots;
+
+      return [
+        ...currentSnapshots,
+        {
+          id: crypto.randomUUID(),
+          name: name ?? `Snapshot ${currentSnapshots.length + 1}`,
+          createdAt: new Date().toLocaleTimeString(),
+          data: snapshotData,
+        },
+      ];
+    });
+  }
+
+  // Wrap with AlertBox
+  function handleCreateSnapshot() {
+    // A Snapshot needs at least one Agent, matching the Play requirement.
+    if (agentsArrayRef.current.length === 0) {
+      setShowNoAgentsAlert(true);
+      return;
+    }
+
+    createSnapshot();
+  }
+
   function handleRestoreSnapshot(snapshotData) {
     // Stop runtime activity before moving Entities back to a saved state.
     setIsSimulationRunning(false);
@@ -1358,8 +1383,6 @@ function Simulation3rdGen() {
     if (isRecordingRef.current) handleStopRecording();
 
     resetScenario(snapshotData);
-    // The next Play starts from an existing Snapshot and must not duplicate it.
-    skipNextSnapshotRef.current = true;
 
     // Refresh Explorer after the Entity refs have been restored.
     setAgents([...agentsArrayRef.current]);
@@ -1504,6 +1527,14 @@ function Simulation3rdGen() {
       ? null
       : findObstacleAt(point, obstaclesArrayRef.current);
 
+    // Keep Look at Cursor only when the user clicks the same Agent.
+    if (
+      lookAtAgentRef.current &&
+      clickedAgent !== lookAtAgentRef.current
+    ) {
+      lookAtAgentRef.current = null;
+    }
+
     if (clickedAgent) selectAgentForEditing(clickedAgent);
     else if (clickedObstacle) selectObstacleForEditing(clickedObstacle);
     else clearSelectedEntity();
@@ -1527,8 +1558,30 @@ function Simulation3rdGen() {
 
   function handleCanvasPointerMove(event) {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const lookAtAgent = lookAtAgentRef.current;
+
+    if (lookAtAgent && !isSimulationRunningRef.current) {
+      const point = getCanvasPointFromEvent(event, canvas);
+      const dx = point.x - lookAtAgent.position.x;
+      const dy = point.y - lookAtAgent.position.y;
+
+      // The center has no direction, so keep the previous angle there.
+      if (dx !== 0 || dy !== 0) {
+        const angle = Math.atan2(dy, dx);
+        const speed = Math.hypot(lookAtAgent.dx, lookAtAgent.dy);
+
+        // Keep drawing, steering, and future movement pointed the same way.
+        lookAtAgent.angle = angle;
+        lookAtAgent.steeringAngle = angle;
+        lookAtAgent.dx = Math.cos(angle) * speed;
+        lookAtAgent.dy = Math.sin(angle) * speed;
+      }
+    }
+
     const drag = dragRef.current;
-    if (!canvas || !drag || drag.pointerId !== event.pointerId) return;
+    if (!drag || drag.pointerId !== event.pointerId) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
     const dx = point.x - drag.previous.x;
@@ -1568,6 +1621,25 @@ function Simulation3rdGen() {
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+  }
+
+  function handleCanvasDoubleClick(event) {
+    if (isSimulationRunningRef.current) return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const point = getCanvasPointFromEvent(event, canvas);
+    const clickedAgent = findAgentAt(point);
+    if (!clickedAgent) return;
+
+    // Double-click the same Agent again to turn the mode off.
+    if (lookAtAgentRef.current === clickedAgent) {
+      lookAtAgentRef.current = null;
+    } else {
+      lookAtAgentRef.current = clickedAgent;
+    }
+    dragRef.current = null;
   }
 
   function getAgentColor(agent) {
@@ -2133,6 +2205,8 @@ function Simulation3rdGen() {
           onRestoreSnapshot={handleRestoreSnapshot}
           onRenameSnapshot={handleRenameSnapshot}
           onDeleteSnapshot={handleDeleteSnapshot}
+          onCreateSnapshot={handleCreateSnapshot}
+          snapshotLimit={MAX_SNAPSHOTS}
         />
 
         <input
@@ -2170,6 +2244,7 @@ function Simulation3rdGen() {
                 onPointerMove={handleCanvasPointerMove}
                 onPointerUp={handleCanvasPointerUp}
                 onPointerCancel={handleCanvasPointerUp}
+                onDoubleClick={handleCanvasDoubleClick}
               />
             </div>
 

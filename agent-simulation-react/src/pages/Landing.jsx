@@ -30,7 +30,7 @@ const featureCards = [
 
 const sortedUpdates = [...whatsNewItems].sort(
   (first, second) => new Date(second.date) - new Date(first.date),
-);
+).slice(0, 3);
 
 function formatUpdateDate(date) {
   return new Intl.DateTimeFormat('en-US', {
