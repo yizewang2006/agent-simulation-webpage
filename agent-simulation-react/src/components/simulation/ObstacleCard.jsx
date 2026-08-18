@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { CircleObstacle, PolygonObstacle } from '../../models/obstacle.js';
-import { OBSTACLE_SHAPE_TYPES } from '../../utils/constants.js';
+import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from '../../utils/constants.js';
+import { createEntityID } from '../../utils/utilities.js';
 import { CirclePlus, CircleX, SquarePlus, Trash2 } from 'lucide-react';
 
 const DEFAULT_POLYGON_VERTICES = [
@@ -127,10 +128,23 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, obstaclePrevie
 
       if (shapeType === 'circle') {
         const { center, radius } = parseCircle();
-        obstacle = new CircleObstacle(obstacleName, center, radius, color, ctx);
+        obstacle = new CircleObstacle(
+          createEntityID(ENTITY_TYPES.OBSTACLE),
+          obstacleName,
+          center,
+          radius,
+          color,
+          ctx
+        );
       } else {
         const vertices = parseVertices();
-        obstacle = new PolygonObstacle(obstacleName, vertices, color, ctx);
+        obstacle = new PolygonObstacle(
+          createEntityID(ENTITY_TYPES.OBSTACLE),
+          obstacleName,
+          vertices,
+          color,
+          ctx
+        );
       }
 
       obstaclesArrayRef.current.push(obstacle);

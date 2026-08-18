@@ -194,6 +194,30 @@
   white-space: nowrap;
 }
 
+.inlineNameEdit {
+  width: 100%;
+  padding: 0 0 2px;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background-color: transparent;
+  color: #202020;
+  font-family: "Outfit", sans-serif;
+  font-size: 1.12rem;
+  font-weight: 750;
+  line-height: 1.2;
+  outline: none;
+}
+
+.inlineNameEdit:hover {
+  border-bottom-color: #c8cdd5;
+}
+
+.inlineNameEdit:focus {
+  border-bottom-color: #012169;
+}
+
 .scenarioActions {
   margin-top: 10px;
   display: grid;
@@ -246,6 +270,11 @@
 .scenarioBuilderButton:active {
   border-color: #001747;
   background-color: #001747;
+}
+
+.scenarioLaunchButton {
+  width: 100%;
+  margin-top: 10px;
 }
 
 .explorerTabs {
@@ -439,12 +468,20 @@
   padding: 9px 10px;
   box-sizing: border-box;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 10px;
   border: 1px solid #e1e4e9;
   border-radius: 7px;
   background-color: #ffffff;
+}
+
+.explorerEntryMain {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .explorerEntry:hover {
@@ -479,6 +516,28 @@
 
 .explorerEntryTitleRow small {
   flex: 0 0 auto;
+}
+
+.explorerEntryNameInput {
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: #292929;
+  font: inherit;
+  font-size: 0.79rem;
+  font-weight: 700;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorerEntryNameInput:focus {
+  border-bottom-color: #012169;
 }
 
 .explorerEntry strong {
@@ -527,6 +586,80 @@
   border-color: #d35b61;
   background-color: #fff0f1;
   color: #b4232a;
+}
+
+.behaviorDetails {
+  width: 100%;
+  padding: 9px;
+  box-sizing: border-box;
+  border-top: 1px solid #e1e4e9;
+  color: #292929;
+  font-size: 0.72rem;
+}
+
+.behaviorDetails dl {
+  margin: 0 0 9px;
+}
+
+.behaviorDetails dl:last-child {
+  margin-bottom: 0;
+}
+
+.behaviorDetails h4,
+.behaviorDetails h5 {
+  margin: 0 0 4px;
+  color: #292929;
+}
+
+.behaviorDetails h4 {
+  font-size: 0.75rem;
+}
+
+.behaviorDetails h5 {
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.behaviorDetails dl > div {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 8px;
+}
+
+.behaviorDetails dt {
+  color: #858a92;
+}
+
+.behaviorDetails dd {
+  margin: 0;
+}
+
+.behaviorDetailsActions {
+  margin-top: 9px;
+  padding-top: 9px;
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid #e1e4e9;
+}
+
+.behaviorDetailsAction {
+  flex: 1;
+  min-width: 0;
+  padding: 6px;
+  gap: 5px;
+  font-size: 0.7rem;
+}
+
+.behaviorDetailsCollapseIcon {
+  transform: rotate(180deg);
+}
+
+.behaviorDetailsChevron {
+  transition: transform 160ms ease;
+}
+
+.behaviorDetailsChevron.isExpanded {
+  transform: rotate(180deg);
 }
 
 .explorerDeleteButton:active {

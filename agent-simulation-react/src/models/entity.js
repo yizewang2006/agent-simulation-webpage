@@ -1,7 +1,8 @@
 export class Entity {
-    constructor(ID, entityType) {
+    constructor(id, name, entityType) {
         // Who am I?
-        this.ID = ID;
+        this.id = id;
+        this.name = name; // NEW: name is different from id; id is a string created from UUID
         // What am I?
         this.entityType = entityType; // A number, defined in behavior.js
 

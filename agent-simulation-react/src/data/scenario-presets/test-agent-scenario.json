@@ -7,7 +7,7 @@
   "agents": [
     {
       "kind": "agent",
-      "id": "Agent_1",
+      "id": "AGT-57D5187D-11B7-40E3-BDEF-37C9A202A999",
       "x": 68.19556085795442,
       "y": 424.9695202263044,
       "radius": 5,
@@ -16,11 +16,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_1"
     },
     {
       "kind": "agent",
-      "id": "Agent_2",
+      "id": "AGT-8433EA06-AA04-47ED-921C-4D9A592C30D8",
       "x": 304.75840981945316,
       "y": 209.44674710321866,
       "radius": 5,
@@ -29,11 +30,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_2"
     },
     {
       "kind": "agent",
-      "id": "Agent_3",
+      "id": "AGT-A0B56544-DA38-40A6-BAAD-F851489C8EA9",
       "x": 239.97378830230105,
       "y": 446.4195171823464,
       "radius": 5,
@@ -42,11 +44,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_3"
     },
     {
       "kind": "agent",
-      "id": "Agent_4",
+      "id": "AGT-1DB04E0A-C08C-4886-A215-E55E41785D17",
       "x": 184.16699842363093,
       "y": 318.98339119523973,
       "radius": 5,
@@ -55,11 +58,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_4"
     },
     {
       "kind": "agent",
-      "id": "Agent_5",
+      "id": "AGT-49BED14C-37DE-496A-BD76-D51666FF2325",
       "x": 375.3916023365033,
       "y": 180.20336927246694,
       "radius": 5,
@@ -68,11 +72,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_5"
     },
     {
       "kind": "agent",
-      "id": "Agent_6",
+      "id": "AGT-20BD1A61-752C-4A9E-A580-F7CA391F18EA",
       "x": 307.2966872400332,
       "y": 296.3476756532838,
       "radius": 5,
@@ -81,11 +86,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_6"
     },
     {
       "kind": "agent",
-      "id": "Agent_7",
+      "id": "AGT-5FD3BC5E-218B-456A-991B-24BC66D4C64E",
       "x": 16.617426346729026,
       "y": 207.9329072844673,
       "radius": 5,
@@ -94,11 +100,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_7"
     },
     {
       "kind": "agent",
-      "id": "Agent_8",
+      "id": "AGT-773BD39A-A5B8-4BE9-98CA-C4575086B778",
       "x": 271.97348291297516,
       "y": 480.9319114537575,
       "radius": 5,
@@ -107,11 +114,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_8"
     },
     {
       "kind": "agent",
-      "id": "Agent_9",
+      "id": "AGT-35494B19-5D82-444C-AEC1-EFDAD08E5AC5",
       "x": 149.37159545421363,
       "y": 136.54941986919616,
       "radius": 5,
@@ -120,11 +128,12 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_9"
     },
     {
       "kind": "agent",
-      "id": "Agent_10",
+      "id": "AGT-84513948-927F-4505-8D59-3F71CAAC2906",
       "x": 267.6465049002373,
       "y": 121.20742024796783,
       "radius": 5,
@@ -133,14 +142,15 @@
       "colorHex": "#000000",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": true
+      "showFOV": true,
+      "name": "Agent_10"
     }
   ],
   "obstacles": [
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Polygon_Obstacle_1",
+      "id": "OBS-AE353CE3-2CAF-46DB-A514-8651955629AF",
       "color": "#ACAD9D",
       "vertices": [
         {
@@ -159,7 +169,8 @@
           "x": 0,
           "y": 30
         }
-      ]
+      ],
+      "name": "Polygon_Obstacle_1"
     }
   ]
 }

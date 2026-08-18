@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Agent } from "../../models/agent.js";
 import { CircleX, SquarePlus } from "lucide-react";
-import { parseNumberOrDefault } from "../../utils/utilities.js";
+import { createEntityID, parseNumberOrDefault } from "../../utils/utilities.js";
+import { ENTITY_TYPES } from '../../utils/constants.js';
 import AlertBox from "./AlertBox.jsx";
 
 // State variables
@@ -83,6 +84,7 @@ export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, agentP
       100,
       fovAngleRad,
       angleRad,
+      createEntityID(ENTITY_TYPES.AGENT),
       name || `Agent_${roster.length + 1}`,
       ctx, canvas, roster
     );

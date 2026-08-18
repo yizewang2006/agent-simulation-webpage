@@ -4,7 +4,7 @@ import { ArrowLeft, Circle, CircleX, Download, FileUp, Flag, MousePointer2, Plus
 import Header from '../components/shared/Header.jsx';
 import Footer from '../components/shared/Footer.jsx';
 import AlertBox from '../components/simulation/AlertBox.jsx';
-import { configureHighDpiCanvas, getCanvasPointFromEvent, parseNumberOrDefault, isPointInsidePolygon, isPointNearPolygonEdge } from '../utils/utilities.js';
+import { configureHighDpiCanvas, createEntityID, getCanvasPointFromEvent, parseNumberOrDefault, isPointInsidePolygon, isPointNearPolygonEdge } from '../utils/utilities.js';
 import { loadScenarioFile } from '../utils/scenarioLoader.js';
 import { ENTITY_LABELS, ENTITY_TYPES, OBSTACLE_SHAPE_LABELS, OBSTACLE_SHAPE_TYPES } from '../utils/constants.js';
 import '../styles/simulation.css';
@@ -71,7 +71,8 @@ function createAgent(count, config = {}) {
   return {
     _scenarioBuilderKey: createScenarioEntityKey('agent'),
     kind: 'agent',
-    id: createId('Agent', count),
+    id: createEntityID(ENTITY_TYPES.AGENT),
+    name: createId('Agent', count),
     x: config.x ?? 250,
     y: config.y ?? 250,
     radius: DEFAULT_AGENT_RADIUS,
@@ -89,7 +90,8 @@ function createCircleObstacle(count, config = {}) {
     _scenarioBuilderKey: createScenarioEntityKey('obstacle'),
     kind: 'obstacle',
     shapeType: 'circle',
-    id: config.id || createId('Circle_Obstacle', count),
+    id: createEntityID(ENTITY_TYPES.OBSTACLE),
+    name: config.name || createId('Circle_Obstacle', count),
     color: config.color ?? '#ACAD9D',
     center: config.center ?? { x: 250, y: 250 },
     radius: config.radius ?? 50,
@@ -101,7 +103,8 @@ function createPolygonObstacle(count, config = {}) {
     _scenarioBuilderKey: createScenarioEntityKey('obstacle'),
     kind: 'obstacle',
     shapeType: 'polygon',
-    id: config.id || createId('Polygon_Obstacle', count),
+    id: createEntityID(ENTITY_TYPES.OBSTACLE),
+    name: config.name || createId('Polygon_Obstacle', count),
     color: config.color ?? '#ACAD9D',
     vertices: config.vertices ?? DEFAULT_POLYGON_VERTICES.map((vertex) => ({
       x: Number(vertex.x),
@@ -496,7 +499,7 @@ export default function ScenarioBuilder() {
         return {
           type: 'obstacle',
           obstacle: createCircleObstacle(0, {
-            id: 'Circle_Preview',
+            name: 'Circle_Preview',
             color: circleDraft.color,
             center,
             radius,
@@ -508,7 +511,7 @@ export default function ScenarioBuilder() {
         return {
           type: 'obstacle',
           obstacle: createPolygonObstacle(0, {
-            id: 'Polygon_Preview',
+            name: 'Polygon_Preview',
             color: polygonDraft.color,
             vertices: parsePolygonDraft(),
           }),
@@ -931,12 +934,11 @@ export default function ScenarioBuilder() {
     }
   }
 
-  // Name edits can change the public id, so selected must be updated too.
+  // Name edits do not change the stable public id used by selection.
   // Undo/redo still works because it uses _scenarioBuilderKey.
-  function renameSelected(nextId) {
+  function renameSelected(nextName) {
     if (!selected) return;
-    updateSelected({ id: nextId });
-    setSelected({ ...selected, id: nextId });
+    updateSelected({ name: nextName });
   }
 
   // Delete workflow:
@@ -1159,7 +1161,7 @@ export default function ScenarioBuilder() {
     try {
       const { center, radius } = parseCircleDraft();
       addObstacleEntity(createCircleObstacle(obstaclesRef.current.length, {
-        id: circleDraft.name.trim() || undefined,
+        name: circleDraft.name.trim() || undefined,
         color: circleDraft.color,
         center,
         radius,
@@ -1174,7 +1176,7 @@ export default function ScenarioBuilder() {
   function createConfiguredPolygonObstacle() {
     try {
       addObstacleEntity(createPolygonObstacle(obstaclesRef.current.length, {
-        id: polygonDraft.name.trim() || undefined,
+        name: polygonDraft.name.trim() || undefined,
         color: polygonDraft.color,
         vertices: parsePolygonDraft(),
       }));
@@ -1702,7 +1704,7 @@ export default function ScenarioBuilder() {
               <>
                 <div className="input-group">
                   <label>Name</label>
-                  <input value={selectedEntity.id} onChange={(event) => renameSelected(event.target.value)} />
+                  <input value={selectedEntity.name} onChange={(event) => renameSelected(event.target.value)} />
                 </div>
                 <div className="input-row">
                   <div className="input-group">
@@ -1735,7 +1737,7 @@ export default function ScenarioBuilder() {
               <>
                 <div className="input-group">
                   <label>Name</label>
-                  <input value={selectedEntity.id} onChange={(event) => renameSelected(event.target.value)} />
+                  <input value={selectedEntity.name} onChange={(event) => renameSelected(event.target.value)} />
                 </div>
                 <div className="input-group">
                   <label>Color</label>

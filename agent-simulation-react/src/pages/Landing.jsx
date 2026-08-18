@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowDown, Blocks, CircleDot, MousePointer2, Network, Play, Route, SkipForward, UserRound, Users, MonitorPlay } from 'lucide-react';
+import { Activity, ArrowDown, BrainCircuit, CircleDot, MousePointer2, Play, Route, Shapes, SkipForward, UserRound, MonitorPlay } from 'lucide-react';
 import Header from '../components/simulation-3rd-gen/Header3rdGen.jsx';
 import Footer from '../components/shared/Footer.jsx';
 import '../styles/simulation.css';
@@ -12,19 +12,19 @@ import { updatedDate } from '../utils/utilities.js';
 
 const featureCards = [
   {
-    icon: Users,
-    title: 'Create Agents',
-    text: 'Place individual agents, tune their properties, and watch local rules shape collective movement.',
+    icon: Shapes,
+    title: 'Create Entities',
+    text: 'Add agents and obstacles, configure their properties, and arrange the environment where the simulation takes place.',
   },
   {
-    icon: Blocks,
-    title: 'Build Worlds',
-    text: 'Add circular and polygonal obstacles to test how spatial conditions change emergent behavior.',
-  },
-  {
-    icon: Network,
+    icon: BrainCircuit,
     title: 'Define Behaviors',
-    text: 'Combine self- and neighbor-based references, offsets, and filters into reusable behavior rules.',
+    text: 'Create reusable rules that determine how agents respond to themselves, nearby entities, and changing conditions.',
+  },
+  {
+    icon: Activity,
+    title: 'Configure Activations',
+    text: 'Control when and how strongly each behavior affects an agent using activation functions, weights, and filters.',
   },
 ];
 

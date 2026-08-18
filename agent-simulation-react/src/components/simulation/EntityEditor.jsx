@@ -57,7 +57,7 @@ export default function EntityEditor({
     setError('');
 
     if (selectedAgent) {
-      setAgentName(selectedAgent.id);
+      setAgentName(selectedAgent.name);
       setAgentColor(getAgentColor(selectedAgent));
       setShowFOV(Boolean(selectedAgent.showFOV));
       setFovAngle(String(Math.round((selectedAgent.fovAngle ?? 0) * 180 / Math.PI)));
@@ -66,7 +66,7 @@ export default function EntityEditor({
     }
 
     if (selectedObstacle) {
-      setObstacleName(selectedObstacle.ID);
+      setObstacleName(selectedObstacle.name);
       setObstacleColor(selectedObstacle.color ?? '#ACAD9D');
       if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
         setCircleCenterX(String(selectedObstacle.center?.x ?? 250));
@@ -139,7 +139,7 @@ export default function EntityEditor({
   function applyObstacle() {
     try {
       const updates = {
-        name: obstacleName.trim() || selectedObstacle.ID,
+        name: obstacleName.trim() || selectedObstacle.name,
         color: obstacleColor,
       };
 
@@ -273,7 +273,7 @@ export default function EntityEditor({
           {selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON && (
             <div className="obstacle-vertices-editor">
               {vertices.map((vertex, index) => (
-                <div className="obstacle-vertex-row" key={`${selectedObstacle.ID}-vertex-${index}`}>
+                <div className="obstacle-vertex-row" key={`${selectedObstacle.id}-vertex-${index}`}>
                   <span className="obstacle-vertex-label">Vertex {index + 1}</span>
                   <div className="input-group">
                     <label>X</label>

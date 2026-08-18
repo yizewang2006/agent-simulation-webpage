@@ -136,7 +136,7 @@ export default function Inspector({
 
         return (
           <FormComponent
-            key={selectedObstacle.ID ?? selectedObstacle.id}
+            key={selectedObstacle.id}
             mode={FORM_MODES.EDIT}
             initialValues={obstacleEditValues}
             onSubmit={onApplyObstacleEdits}

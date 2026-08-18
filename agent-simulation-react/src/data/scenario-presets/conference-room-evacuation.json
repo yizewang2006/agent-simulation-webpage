@@ -7,7 +7,7 @@
   "agents": [
     {
       "kind": "agent",
-      "id": "Person_01",
+      "id": "AGT-FB12FA43-12B8-47B2-84F8-7E8984DCB1D8",
       "x": 75,
       "y": 90,
       "radius": 5,
@@ -16,11 +16,12 @@
       "colorHex": "#2563EB",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_01"
     },
     {
       "kind": "agent",
-      "id": "Person_02",
+      "id": "AGT-3C2FB557-F71F-4342-A19A-277EAD1ADCFD",
       "x": 150,
       "y": 100,
       "radius": 5,
@@ -29,11 +30,12 @@
       "colorHex": "#2563EB",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_02"
     },
     {
       "kind": "agent",
-      "id": "Person_03",
+      "id": "AGT-6995561C-70DC-4D64-BDC2-AC0540F43FA3",
       "x": 250,
       "y": 105,
       "radius": 5,
@@ -42,11 +44,12 @@
       "colorHex": "#2563EB",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_03"
     },
     {
       "kind": "agent",
-      "id": "Person_04",
+      "id": "AGT-53299389-AE66-46CA-ADE4-ACED8FA4E317",
       "x": 350,
       "y": 100,
       "radius": 5,
@@ -55,11 +58,12 @@
       "colorHex": "#2563EB",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_04"
     },
     {
       "kind": "agent",
-      "id": "Person_05",
+      "id": "AGT-2EDCD695-77D0-4F68-9348-1AD9A7615887",
       "x": 425,
       "y": 90,
       "radius": 5,
@@ -68,11 +72,12 @@
       "colorHex": "#2563EB",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_05"
     },
     {
       "kind": "agent",
-      "id": "Person_06",
+      "id": "AGT-AD4CBC48-1FF7-4A97-AC51-D1F958B42C51",
       "x": 75,
       "y": 400,
       "radius": 5,
@@ -81,11 +86,12 @@
       "colorHex": "#EA580C",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_06"
     },
     {
       "kind": "agent",
-      "id": "Person_07",
+      "id": "AGT-ACC223C3-9415-4064-84A1-2DFEBD9CB1B8",
       "x": 150,
       "y": 390,
       "radius": 5,
@@ -94,11 +100,12 @@
       "colorHex": "#EA580C",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_07"
     },
     {
       "kind": "agent",
-      "id": "Person_08",
+      "id": "AGT-6BDE491E-FF8D-46E9-94CC-E18163CDAC30",
       "x": 250,
       "y": 405,
       "radius": 5,
@@ -107,11 +114,12 @@
       "colorHex": "#EA580C",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_08"
     },
     {
       "kind": "agent",
-      "id": "Person_09",
+      "id": "AGT-0C32788F-F367-46FF-B9BB-2510274B08A6",
       "x": 350,
       "y": 390,
       "radius": 5,
@@ -120,11 +128,12 @@
       "colorHex": "#EA580C",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_09"
     },
     {
       "kind": "agent",
-      "id": "Person_10",
+      "id": "AGT-90E6A1EF-C587-4EF0-A9D2-01FFAFBBB4A7",
       "x": 425,
       "y": 400,
       "radius": 5,
@@ -133,177 +142,360 @@
       "colorHex": "#EA580C",
       "fovRadius": 100,
       "fovAngle": 150,
-      "showFOV": false
+      "showFOV": false,
+      "name": "Person_10"
     }
   ],
   "obstacles": [
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "North_Wall",
+      "id": "OBS-A6AF1C2E-84A2-4AF4-8523-7DC0D90C2F6E",
       "color": "#64748B",
       "vertices": [
-        { "x": 0, "y": 0 },
-        { "x": 500, "y": 0 },
-        { "x": 500, "y": 15 },
-        { "x": 0, "y": 15 }
-      ]
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 500,
+          "y": 0
+        },
+        {
+          "x": 500,
+          "y": 15
+        },
+        {
+          "x": 0,
+          "y": 15
+        }
+      ],
+      "name": "North_Wall"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "West_Wall",
+      "id": "OBS-F2CDBA37-65DC-44D9-9643-7A356F9032F1",
       "color": "#64748B",
       "vertices": [
-        { "x": 0, "y": 0 },
-        { "x": 15, "y": 0 },
-        { "x": 15, "y": 500 },
-        { "x": 0, "y": 500 }
-      ]
+        {
+          "x": 0,
+          "y": 0
+        },
+        {
+          "x": 15,
+          "y": 0
+        },
+        {
+          "x": 15,
+          "y": 500
+        },
+        {
+          "x": 0,
+          "y": 500
+        }
+      ],
+      "name": "West_Wall"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "East_Wall",
+      "id": "OBS-4012C52E-3656-4D1C-836D-D9775BBA4CDD",
       "color": "#64748B",
       "vertices": [
-        { "x": 485, "y": 0 },
-        { "x": 500, "y": 0 },
-        { "x": 500, "y": 500 },
-        { "x": 485, "y": 500 }
-      ]
+        {
+          "x": 485,
+          "y": 0
+        },
+        {
+          "x": 500,
+          "y": 0
+        },
+        {
+          "x": 500,
+          "y": 500
+        },
+        {
+          "x": 485,
+          "y": 500
+        }
+      ],
+      "name": "East_Wall"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "South_Wall_Left",
+      "id": "OBS-402466D4-35F2-4343-BE08-879CBA081CCF",
       "color": "#64748B",
       "vertices": [
-        { "x": 0, "y": 485 },
-        { "x": 220, "y": 485 },
-        { "x": 220, "y": 500 },
-        { "x": 0, "y": 500 }
-      ]
+        {
+          "x": 0,
+          "y": 485
+        },
+        {
+          "x": 220,
+          "y": 485
+        },
+        {
+          "x": 220,
+          "y": 500
+        },
+        {
+          "x": 0,
+          "y": 500
+        }
+      ],
+      "name": "South_Wall_Left"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "South_Wall_Right",
+      "id": "OBS-C1F7483E-204D-4258-9F12-72A75F48227C",
       "color": "#64748B",
       "vertices": [
-        { "x": 280, "y": 485 },
-        { "x": 500, "y": 485 },
-        { "x": 500, "y": 500 },
-        { "x": 280, "y": 500 }
-      ]
+        {
+          "x": 280,
+          "y": 485
+        },
+        {
+          "x": 500,
+          "y": 485
+        },
+        {
+          "x": 500,
+          "y": 500
+        },
+        {
+          "x": 280,
+          "y": 500
+        }
+      ],
+      "name": "South_Wall_Right"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Conference_Table",
+      "id": "OBS-E7ABF2FD-3C66-433D-BE42-1BAE6FAFC3DE",
       "color": "#94A3B8",
       "vertices": [
-        { "x": 145, "y": 205 },
-        { "x": 355, "y": 205 },
-        { "x": 355, "y": 295 },
-        { "x": 145, "y": 295 }
-      ]
+        {
+          "x": 145,
+          "y": 205
+        },
+        {
+          "x": 355,
+          "y": 205
+        },
+        {
+          "x": 355,
+          "y": 295
+        },
+        {
+          "x": 145,
+          "y": 295
+        }
+      ],
+      "name": "Conference_Table"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_Northwest",
+      "id": "OBS-B45B076E-30FF-4C70-B6EB-9F258D852A14",
       "color": "#334155",
       "vertices": [
-        { "x": 165, "y": 170 },
-        { "x": 195, "y": 170 },
-        { "x": 195, "y": 195 },
-        { "x": 165, "y": 195 }
-      ]
+        {
+          "x": 165,
+          "y": 170
+        },
+        {
+          "x": 195,
+          "y": 170
+        },
+        {
+          "x": 195,
+          "y": 195
+        },
+        {
+          "x": 165,
+          "y": 195
+        }
+      ],
+      "name": "Chair_Northwest"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_North",
+      "id": "OBS-9C2B9BC0-FE08-4C0D-AD46-6AD2959FD344",
       "color": "#334155",
       "vertices": [
-        { "x": 235, "y": 170 },
-        { "x": 265, "y": 170 },
-        { "x": 265, "y": 195 },
-        { "x": 235, "y": 195 }
-      ]
+        {
+          "x": 235,
+          "y": 170
+        },
+        {
+          "x": 265,
+          "y": 170
+        },
+        {
+          "x": 265,
+          "y": 195
+        },
+        {
+          "x": 235,
+          "y": 195
+        }
+      ],
+      "name": "Chair_North"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_Northeast",
+      "id": "OBS-DD3C836E-2CDB-4938-94AC-5FF471114C05",
       "color": "#334155",
       "vertices": [
-        { "x": 305, "y": 170 },
-        { "x": 335, "y": 170 },
-        { "x": 335, "y": 195 },
-        { "x": 305, "y": 195 }
-      ]
+        {
+          "x": 305,
+          "y": 170
+        },
+        {
+          "x": 335,
+          "y": 170
+        },
+        {
+          "x": 335,
+          "y": 195
+        },
+        {
+          "x": 305,
+          "y": 195
+        }
+      ],
+      "name": "Chair_Northeast"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_Southwest",
+      "id": "OBS-9770B83D-BF98-4984-BD89-4BAE0F27A1DA",
       "color": "#334155",
       "vertices": [
-        { "x": 165, "y": 305 },
-        { "x": 195, "y": 305 },
-        { "x": 195, "y": 330 },
-        { "x": 165, "y": 330 }
-      ]
+        {
+          "x": 165,
+          "y": 305
+        },
+        {
+          "x": 195,
+          "y": 305
+        },
+        {
+          "x": 195,
+          "y": 330
+        },
+        {
+          "x": 165,
+          "y": 330
+        }
+      ],
+      "name": "Chair_Southwest"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_South",
+      "id": "OBS-B7ADEE16-4FD5-40E7-A753-6EA207549DDF",
       "color": "#334155",
       "vertices": [
-        { "x": 235, "y": 305 },
-        { "x": 265, "y": 305 },
-        { "x": 265, "y": 330 },
-        { "x": 235, "y": 330 }
-      ]
+        {
+          "x": 235,
+          "y": 305
+        },
+        {
+          "x": 265,
+          "y": 305
+        },
+        {
+          "x": 265,
+          "y": 330
+        },
+        {
+          "x": 235,
+          "y": 330
+        }
+      ],
+      "name": "Chair_South"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_Southeast",
+      "id": "OBS-DB5A0155-C362-4453-AB86-4DAFB20F042C",
       "color": "#334155",
       "vertices": [
-        { "x": 305, "y": 305 },
-        { "x": 335, "y": 305 },
-        { "x": 335, "y": 330 },
-        { "x": 305, "y": 330 }
-      ]
+        {
+          "x": 305,
+          "y": 305
+        },
+        {
+          "x": 335,
+          "y": 305
+        },
+        {
+          "x": 335,
+          "y": 330
+        },
+        {
+          "x": 305,
+          "y": 330
+        }
+      ],
+      "name": "Chair_Southeast"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_West",
+      "id": "OBS-71D57139-1767-4C0A-939E-4A7E55CF809A",
       "color": "#334155",
       "vertices": [
-        { "x": 105, "y": 235 },
-        { "x": 135, "y": 235 },
-        { "x": 135, "y": 265 },
-        { "x": 105, "y": 265 }
-      ]
+        {
+          "x": 105,
+          "y": 235
+        },
+        {
+          "x": 135,
+          "y": 235
+        },
+        {
+          "x": 135,
+          "y": 265
+        },
+        {
+          "x": 105,
+          "y": 265
+        }
+      ],
+      "name": "Chair_West"
     },
     {
       "kind": "obstacle",
       "shapeType": "polygon",
-      "id": "Chair_East",
+      "id": "OBS-BA249CB1-54D4-4D16-921E-FBBD94E0BF5E",
       "color": "#334155",
       "vertices": [
-        { "x": 365, "y": 235 },
-        { "x": 395, "y": 235 },
-        { "x": 395, "y": 265 },
-        { "x": 365, "y": 265 }
-      ]
+        {
+          "x": 365,
+          "y": 235
+        },
+        {
+          "x": 395,
+          "y": 235
+        },
+        {
+          "x": 395,
+          "y": 265
+        },
+        {
+          "x": 365,
+          "y": 265
+        }
+      ],
+      "name": "Chair_East"
     }
   ]
 }

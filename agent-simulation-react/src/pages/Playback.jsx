@@ -122,7 +122,7 @@ function drawCircleObstacleSnapshot(ctx, obstacle) {
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 2;
   ctx.stroke();
-  drawSnapshotLabel(ctx, obstacle.id, obstacle.center.x, obstacle.center.y);
+  drawSnapshotLabel(ctx, obstacle.name, obstacle.center.x, obstacle.center.y);
 }
 
 function drawPolygonObstacleSnapshot(ctx, obstacle) {
@@ -146,7 +146,7 @@ function drawPolygonObstacleSnapshot(ctx, obstacle) {
   );
   drawSnapshotLabel(
     ctx,
-    obstacle.id,
+    obstacle.name,
     centroid.x / obstacle.vertices.length,
     centroid.y / obstacle.vertices.length
   );

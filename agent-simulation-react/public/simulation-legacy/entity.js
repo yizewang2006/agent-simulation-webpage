@@ -1,6 +1,6 @@
 export class Entity { // where it all started
-    constructor(ID) {
-        this.ID = ID;
+    constructor(id) {
+        this.id = id;
         this.warp = false;
         this.modify = false;
         this.sense = false;

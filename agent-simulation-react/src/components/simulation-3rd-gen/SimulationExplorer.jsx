@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
   BrainCircuit,
@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Circle,
   Download,
+  FileDown,
   FileUp,
   History,
   PencilRuler,
@@ -18,18 +19,33 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import WorkspaceExplorer from '../workspace/WorkspaceExplorer.jsx';
+import ExplorerEntry from '../workspace/ExplorerEntry.jsx';
+import InlineNameEdit from '../workspace/InlineNameEdit.jsx';
 import AlertBox from '../simulation/AlertBox.jsx';
 import {
   BEHAVIOR_GROUP_DEFINITIONS,
   getBehaviorGroupKey,
 } from '../../utils/behaviorGroups.js';
-import { EXPLORER_TABS } from '../../utils/constants.js';
+import {
+  ENTITY_LABELS,
+  ENTITY_TYPES,
+  EXPLORER_TABS,
+  MEASUREMENT_LABELS,
+  METHOD_LABELS_BY_PROPERTY,
+  OBSTACLE_SHAPE_LABELS,
+  OBSTACLE_SHAPE_TYPES,
+  PROPERTY_LABELS,
+  REFERENCE_LABELS,
+} from '../../utils/constants.js';
+import { ACTIVATION_TYPES } from '../../models/activation.js';
+import { formatID } from '../../utils/utilities.js';
 import styles from '../../styles/3rd-gen/simulation.module.css';
 
 export default function SimulationExplorer({
   activeTab,
   onTabChange,
   scenarioName,
+  onRenameScenario,
   agents,
   obstacles,
   behaviors,
@@ -40,16 +56,20 @@ export default function SimulationExplorer({
   onExportBehaviors,
   onOpenScenarioBuilder,
   onEditAgent,
+  onRenameAgent,
   onDeleteAgent,
   onDeleteAllAgents,
   onEditObstacle,
+  onRenameObstacle,
   onDeleteObstacle,
   onDeleteAllObstacles,
   onEditBehavior,
+  onRenameBehavior,
   onSetBehaviorEnabled,
   onDeleteBehavior,
   onDeleteAllBehaviors,
   onPlayRecording,
+  onRenameRecording,
   onDownloadRecording,
   onDeleteRecording,
   onRestoreSnapshot,
@@ -66,6 +86,7 @@ export default function SimulationExplorer({
     Agent: false,
     Obstacle: false,
   });
+  const [expandedBehaviorIds, setExpandedBehaviorIds] = useState(new Set());
   const listRef = useRef(null);
 
   const entries = useMemo(() => {
@@ -76,8 +97,7 @@ export default function SimulationExplorer({
         type: 'Behavior',
         Icon: BrainCircuit,
         target: behavior,
-        subtitle: behavior.enabled === false ? 'Disabled' : 'Enabled',
-        trimmedId: behavior.id ? `#${behavior.id.slice(0, 6)}` : '',
+        subtitle: behavior.id ? `#${behavior.id.slice(0, 6)}` : 'Behavior',
       }));
     }
 
@@ -104,21 +124,23 @@ export default function SimulationExplorer({
     }
 
     return [
-      ...agents.map((agent, index) => ({
-        id: agent.id ?? `agent-${index}`,
-        name: agent.id || agent.name || `Agent ${index + 1}`,
+      ...agents.map((agent) => ({
+        id: agent.id,
+        name: agent.name,
         type: 'Agent',
         Icon: Bot,
         target: agent,
         subtitle: 'Agent',
+        trimmedId: `#${formatID(agent.id)}`,
       })),
-      ...obstacles.map((obstacle, index) => ({
-        id: obstacle.ID ?? obstacle.id ?? `obstacle-${index}`,
-        name: obstacle.ID || obstacle.id || `Obstacle ${index + 1}`,
+      ...obstacles.map((obstacle) => ({
+        id: obstacle.id,
+        name: obstacle.name,
         type: 'Obstacle',
         Icon: Shapes,
         target: obstacle,
         subtitle: 'Obstacle',
+        trimmedId: `#${formatID(obstacle.id)}`,
       })),
     ];
   }, [activeTab, agents, behaviors, obstacles, recordings, snapshots]);
@@ -159,25 +181,159 @@ export default function SimulationExplorer({
     }));
   }
 
-  function requestSnapshotRename(snapshot) {
-    // Renaming changes only the History label, not the saved Entity data.
-    const nextName = window.prompt('Rename snapshot:', snapshot.name)?.trim();
-    if (nextName) onRenameSnapshot(snapshot.id, nextName);
+  function toggleBehaviorDetails(behaviorId) {
+    setExpandedBehaviorIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      if (nextIds.has(behaviorId)) nextIds.delete(behaviorId);
+      else nextIds.add(behaviorId);
+      return nextIds;
+    });
+  }
+
+  function formatFilterTargets(targets) {
+    const selectedTargets = Object.values(ENTITY_TYPES)
+      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
+      .filter((entityType) => targets[entityType] === true)
+      .map((entityType) => ENTITY_LABELS[entityType]);
+    const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE];
+
+    if (obstacleTargets.enabled) {
+      const selectedShapes = Object.values(OBSTACLE_SHAPE_TYPES)
+        .filter((shapeType) => obstacleTargets[shapeType] === true);
+
+      if (selectedShapes.length === Object.keys(OBSTACLE_SHAPE_LABELS).length) {
+        selectedTargets.push(ENTITY_LABELS[ENTITY_TYPES.OBSTACLE]);
+      } else {
+        selectedTargets.push(...selectedShapes.map(
+          (shapeType) => `${OBSTACLE_SHAPE_LABELS[shapeType]} Obstacle`
+        ));
+      }
+    }
+
+    if (selectedTargets.length === Object.keys(ENTITY_LABELS).length) return 'All Entities';
+    if (selectedTargets.length === 1) return `${selectedTargets[0]} Only`;
+    return selectedTargets.join(', ');
+  }
+
+  function renderBehaviorDetails(behavior) {
+    const activation = behavior.activation;
+    const activationTypeLabels = {
+      [ACTIVATION_TYPES.ALWAYS_ACTIVE]: 'Always Active',
+      [ACTIVATION_TYPES.BINARY]: 'Binary',
+      [ACTIVATION_TYPES.LINEAR]: 'Linear',
+    };
+
+    return (
+      <div className={styles.behaviorDetails}>
+        <dl>
+          <h4>Action Specifications</h4>
+          <div><dt>Property</dt><dd>{PROPERTY_LABELS[behavior.targetProperty]}</dd></div>
+          <div><dt>Reference</dt><dd>{REFERENCE_LABELS[behavior.action]}</dd></div>
+          <div><dt>Offset</dt><dd>{behavior.offset || 0}</dd></div>
+        </dl>
+
+        {behavior.filters.length > 0 && <h4>Action Filters</h4>}
+        {behavior.filters.map((filter, index) => (
+          <dl key={filter.id}>
+            <h5>Filter {index + 1}</h5>
+            <div><dt>Targets</dt><dd>{formatFilterTargets(filter.targets)}</dd></div>
+            <div><dt>Property</dt><dd>{MEASUREMENT_LABELS[filter.propertyType]}</dd></div>
+            {filter.filterType === 'ranged' ? (
+              <div><dt>Range</dt><dd>{filter.low}–{filter.high}</dd></div>
+            ) : (
+              <div><dt>Method</dt><dd>{METHOD_LABELS_BY_PROPERTY[filter.propertyType]?.[filter.methodType]}</dd></div>
+            )}
+          </dl>
+        ))}
+
+        <dl>
+          <h4>Activation Specification</h4>
+          <div><dt>Activation Function</dt><dd>{activationTypeLabels[activation.type]}</dd></div>
+          {activation.type === ACTIVATION_TYPES.ALWAYS_ACTIVE ? (
+            <div><dt>Weight</dt><dd>{activation.weight}</dd></div>
+          ) : (
+            <>
+              <div><dt>Value Source</dt><dd>{activation.checkSource === 'self' ? 'Self Reference' : 'Neighbor Reference'}</dd></div>
+              <div><dt>Value to Check</dt><dd>{MEASUREMENT_LABELS[activation.valueToCheck]}</dd></div>
+              <div><dt>Range</dt><dd>{activation.lowerRange}–{activation.upperRange}</dd></div>
+              {activation.type === ACTIVATION_TYPES.BINARY ? (
+                <>
+                  <div><dt>Weight</dt><dd>{activation.weight}</dd></div>
+                  <div><dt>Active Range</dt><dd>{activation.inside ? 'Inside' : 'Outside'}</dd></div>
+                </>
+              ) : (
+                <>
+                  <div><dt>Slope</dt><dd>{activation.slope}</dd></div>
+                  <div><dt>Direction</dt><dd>{activation.increase ? 'Increasing' : 'Decreasing'}</dd></div>
+                </>
+              )}
+            </>
+          )}
+        </dl>
+
+        {(activation.filters ?? []).length > 0 && <h4>Activation Filters</h4>}
+        {(activation.filters ?? []).map((filter, index) => (
+          <dl key={filter.id}>
+            <h5>Filter {index + 1}</h5>
+            <div><dt>Targets</dt><dd>{formatFilterTargets(filter.targets)}</dd></div>
+            <div><dt>Property</dt><dd>{MEASUREMENT_LABELS[filter.propertyType]}</dd></div>
+            {filter.filterType === 'ranged' ? (
+              <div><dt>Range</dt><dd>{filter.low}–{filter.high}</dd></div>
+            ) : (
+              <div><dt>Method</dt><dd>{METHOD_LABELS_BY_PROPERTY[filter.propertyType]?.[filter.methodType]}</dd></div>
+            )}
+          </dl>
+        ))}
+
+        <div className={styles.behaviorDetailsActions}>
+          <button
+            className={`${styles.secondaryAction} ${styles.behaviorDetailsAction}`}
+            type="button"
+            onClick={() => onEditBehavior(behavior)}
+          >
+            <PenLine size={15} aria-hidden="true" />
+            Edit Behavior
+          </button>
+
+          <button
+            className={`${styles.secondaryAction} ${styles.behaviorDetailsAction}`}
+            type="button"
+            onClick={() => toggleBehaviorDetails(behavior.id)}
+          >
+            <ChevronDown className={styles.behaviorDetailsCollapseIcon} size={15} aria-hidden="true" />
+            Collapse
+          </button>
+        </div>
+      </div>
+    );
   }
 
   function renderEntry({ id, name, type, Icon, target, subtitle, trimmedId }) {
+    // Renaming changes only the History label, not the saved Entity data.
+    const renameHandlers = {
+      Agent: onRenameAgent,
+      Obstacle: onRenameObstacle,
+      Behavior: onRenameBehavior,
+      Recording: onRenameRecording,
+      Snapshot: onRenameSnapshot,
+    };
+    const renameHandler = renameHandlers[type];
+    const onRename = renameHandler
+      ? (nextName) => renameHandler(target.id, nextName)
+      : undefined;
+    const isBehaviorExpanded = type === 'Behavior' && expandedBehaviorIds.has(target.id);
+
     return (
-      <div className={styles.explorerEntry} key={id}>
-        <div className={styles.explorerEntryInfo}>
-          {createElement(Icon, { size: 17, 'aria-hidden': true })}
-          <span>
-            <span className={styles.explorerEntryTitleRow}>
-              <strong>{name}</strong>
-              {trimmedId && <small>{trimmedId}</small>}
-            </span>
-            <small>{subtitle || type}</small>
-          </span>
-        </div>
+      <ExplorerEntry
+        key={id}
+        name={name}
+        type={type}
+        Icon={Icon}
+        subtitle={subtitle}
+        trimmedId={trimmedId}
+        onRename={onRename}
+        details={isBehaviorExpanded ? renderBehaviorDetails(target) : undefined}
+      >
 
         {/* If more entry types are added, come back here to assign their available actions. */}
         {(type === 'Agent' || type === 'Obstacle') && (
@@ -215,6 +371,7 @@ export default function SimulationExplorer({
             >
               <Trash2 size={16} aria-hidden="true" />
             </button>
+
           </div>
         )}
 
@@ -254,6 +411,23 @@ export default function SimulationExplorer({
               onClick={() => onDeleteBehavior(target)}
             >
               <Trash2 size={16} aria-hidden="true" />
+            </button>
+
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`${isBehaviorExpanded ? 'Collapse' : 'Expand'} ${name}`}
+              aria-expanded={isBehaviorExpanded}
+              title={`${isBehaviorExpanded ? 'Collapse' : 'Expand'} Behavior`}
+              onClick={() => toggleBehaviorDetails(target.id)}
+            >
+              <ChevronDown
+                className={`${styles.behaviorDetailsChevron} ${
+                  isBehaviorExpanded ? styles.isExpanded : ''
+                }`}
+                size={16}
+                aria-hidden="true"
+              />
             </button>
           </div>
         )}
@@ -305,16 +479,6 @@ export default function SimulationExplorer({
             </button>
 
             <button
-              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
-              type="button"
-              aria-label={`Rename ${name}`}
-              title="Rename Snapshot"
-              onClick={() => requestSnapshotRename(target)}
-            >
-              <PenLine size={15} aria-hidden="true" />
-            </button>
-
-            <button
               className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
               type="button"
               aria-label={`Delete ${name}`}
@@ -325,7 +489,7 @@ export default function SimulationExplorer({
             </button>
           </div>
         )}
-      </div>
+      </ExplorerEntry>
     );
   }
 
@@ -422,7 +586,12 @@ export default function SimulationExplorer({
           <p className={styles.scenarioEyebrow} id="current-scenario-title">
             Current Scenario
           </p>
-          <h3 className={styles.scenarioName}>{scenarioName}</h3>
+          <InlineNameEdit
+            value={scenarioName}
+            onCommit={onRenameScenario}
+            fallback="Untitled Scenario"
+            ariaLabel="Scenario name"
+          />
 
           <div className={styles.scenarioActions}>
             <button
@@ -431,18 +600,28 @@ export default function SimulationExplorer({
               onClick={onLoadJSON}
             >
               <FileUp size={16} aria-hidden="true" />
-              Load JSON
+              Import JSON
             </button>
 
+            {/* Will export scenario created here (not including behavior/activation...). */}
             <button
-              className={styles.scenarioBuilderButton}
+              className={styles.scenarioLoadButton}
+              type="button"
+              disabled
+            >
+              <FileDown size={16} aria-hidden="true" />
+              Export JSON
+            </button>
+          </div>
+
+            <button
+              className={`${styles.scenarioBuilderButton} ${styles.scenarioLaunchButton}`}
               type="button"
               onClick={onOpenScenarioBuilder}
             >
               <PencilRuler size={16} aria-hidden="true" />
               Scenario Builder
             </button>
-          </div>
         </section>
 
         <div className={styles.explorerTabs} role="tablist" aria-label="Simulation contents">

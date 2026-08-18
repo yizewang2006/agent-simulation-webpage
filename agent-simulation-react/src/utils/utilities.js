@@ -1,3 +1,5 @@
+import { ENTITY_ID_PREFIXES } from './constants.js';
+
 const buildDate = new Date(import.meta.env.VITE_BUILD_DATE);
 
 export const updatedDate = Number.isNaN(buildDate.getTime())
@@ -20,6 +22,25 @@ export function parseNumberOrDefault(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+// ENTITIES
+
+// Creates a unique ID for each entity
+export function createEntityID(entityType) {
+  const prefix = ENTITY_ID_PREFIXES[entityType];
+
+  if (!prefix) {
+    throw new Error(`Unsupported entity type: ${entityType}`);
+  }
+
+  return `${prefix}-${crypto.randomUUID().toUpperCase()}`;
+}
+
+// For display: show a partial ID
+export function formatID(id) {
+  return id.split('-').slice(0, 2).join('-');
+}
+
+// GRAPHICS
 export function getCanvasLogicalWidth(canvas, fallback = 0) {
   return canvas?.logicalWidth ?? canvas?.width ?? fallback;
 }

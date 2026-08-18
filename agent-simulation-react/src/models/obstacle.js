@@ -26,8 +26,8 @@ When selected "entity type", disable the "method type"
 // Obstacle collision implementation written by Elaine Ding.
 // Supports polygon obstacles, drawing, current collision checks, and linear collision prediction.
 export class PolygonObstacle extends Entity {
-  constructor(id, vertices, color = "#FF4444", ctx) {
-    super(id, ENTITY_TYPES.OBSTACLE);
+  constructor(id, name, vertices, color = "#FF4444", ctx) {
+    super(id, name, ENTITY_TYPES.OBSTACLE);
     this.shapeType = OBSTACLE_SHAPE_TYPES.POLYGON;
     this.vertices = vertices;
     this.color = color;
@@ -76,7 +76,7 @@ export class PolygonObstacle extends Entity {
     ctx.strokeStyle = "#222";
     ctx.lineWidth = 2;
     ctx.stroke();
-    drawObstacleLabel(ctx, this.ID, this.centroid.x, this.centroid.y);
+    drawObstacleLabel(ctx, this.name, this.centroid.x, this.centroid.y);
   }
 
   // --- Prediction Math ---
@@ -223,8 +223,8 @@ export class PolygonObstacle extends Entity {
 }
 
 export class CircleObstacle extends Entity {
-  constructor(id, center, radius, color = "#FF4444", ctx) {
-    super(id, ENTITY_TYPES.OBSTACLE);
+  constructor(id, name, center, radius, color = "#FF4444", ctx) {
+    super(id, name, ENTITY_TYPES.OBSTACLE);
     this.shapeType = OBSTACLE_SHAPE_TYPES.CIRCLE;
     this.position = center;
     this.center = this.position;
@@ -243,7 +243,7 @@ export class CircleObstacle extends Entity {
     ctx.strokeStyle = "#222";
     ctx.lineWidth = 2;
     ctx.stroke();
-    drawObstacleLabel(ctx, this.ID, this.center.x, this.center.y);
+    drawObstacleLabel(ctx, this.name, this.center.x, this.center.y);
   }
 
   getLinearCollision(agent, angle) {

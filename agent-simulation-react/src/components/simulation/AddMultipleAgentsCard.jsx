@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { Agent } from '../../models/agent.js';
 import { CircleX, CopyPlus } from 'lucide-react';
 import AlertBox from './AlertBox.jsx';
+import { ENTITY_TYPES } from '../../utils/constants.js';
+import { createEntityID } from '../../utils/utilities.js';
 
 export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRef, canvasWidth, canvasHeight, maxAgents, onAgentsAdded, onClose }) {
   const [count, setCount] = useState('1');
@@ -54,6 +56,7 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
         100,
         150 * Math.PI / 180,
         0,
+        createEntityID(ENTITY_TYPES.AGENT),
         `Agent_${roster.length + 1}`,
         ctx, canvas, roster
       );

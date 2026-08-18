@@ -23,7 +23,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
 import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
-import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, isPointInsidePolygon, isPointNearPolygonEdge, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
+import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, isPointInsidePolygon, isPointNearPolygonEdge, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import { loadScenarioFile } from "../utils/scenarioLoader.js";
 import {
   createDefaultActivation,
@@ -228,6 +228,7 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     timestamp: performance.now() - recordingStartTime,
     agents: agentsArray.map((agent) => ({
       id: agent.id,
+      name: agent.name,
       x: agent.position.x,
       y: agent.position.y,
       radius: agent.radius,
@@ -241,7 +242,8 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
       showFOV: agent.isSpecial && agent.showFOV !== false,
     })),
     obstacles: obstaclesArray.map((obstacle) => ({
-      id: obstacle.ID,
+      id: obstacle.id,
+      name: obstacle.name,
       shapeType: obstacle.shapeType,
       color: obstacle.color,
       center: obstacle.center
@@ -567,6 +569,7 @@ function Simulation3rdGen() {
           draft.fovRadius,
           draft.fovAngle,
           draft.angle,
+          createEntityID(ENTITY_TYPES.AGENT),
           `Agent_${roster.length + 1}`,
           ctx,
           canvas,
@@ -728,6 +731,12 @@ function Simulation3rdGen() {
     );
   }
 
+  function handleRenameRecording(recordingId, name) {
+    setRecordings((currentRecordings) => currentRecordings.map((recording) => (
+      recording.id === recordingId ? { ...recording, name } : recording
+    )));
+  }
+
   async function handleLoadScenario(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -760,6 +769,7 @@ function Simulation3rdGen() {
           agent.fovAngle * Math.PI / 180,
           heading,
           agent.id,
+          agent.name,
           ctx,
           canvas,
           runtimeAgents
@@ -769,8 +779,8 @@ function Simulation3rdGen() {
 
       const runtimeObstacles = scenario.obstacles.map((obstacle) => (
         obstacle.shapeType === 'circle'
-          ? new CircleObstacle(obstacle.id, obstacle.center, obstacle.radius, obstacle.color, ctx)
-          : new PolygonObstacle(obstacle.id, obstacle.vertices, obstacle.color, ctx)
+          ? new CircleObstacle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color, ctx)
+          : new PolygonObstacle(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color, ctx)
       ));
       obstaclesArrayRef.current.length = 0;
       obstaclesArrayRef.current.push(...runtimeObstacles);
@@ -1027,6 +1037,10 @@ function Simulation3rdGen() {
     setBehaviorList((currentList) => currentList.map((behavior) => (
       behavior.id === behaviorId ? { ...behavior, ...updates } : behavior
     )));
+  }
+
+  function handleRenameBehavior(behaviorId, name) {
+    handleUpdateBehavior(behaviorId, { name });
   }
 
   function handleDeleteBehavior(behaviorId) {
@@ -1689,13 +1703,27 @@ function Simulation3rdGen() {
     setSelectedAgent(null);
     setInspectorMode({
       mode: INSPECTOR_MODES.EDIT_OBSTACLE,
-      obstacleId: obstacle.ID ?? obstacle.id,
+      obstacleId: obstacle.id,
     });
   }
 
   function clearSelectedEntity() {
     setSelectedAgent(null);
     setSelectedObstacle(null);
+  }
+
+  function handleRenameAgent(agentId, name) {
+    const agent = agentsArrayRef.current.find((item) => item.id === agentId);
+    if (!agent) return;
+    agent.name = name;
+    setAgents([...agentsArrayRef.current]);
+  }
+
+  function handleRenameObstacle(obstacleId, name) {
+    const obstacle = obstaclesArrayRef.current.find((item) => item.id === obstacleId);
+    if (!obstacle) return;
+    obstacle.name = name;
+    setObstacles([...obstaclesArrayRef.current]);
   }
 
   function getAgentEditValues(agent) {
@@ -1707,7 +1735,7 @@ function Simulation3rdGen() {
     const roundForForm = (value) => String(Math.round(value * 100) / 100);
 
     return {
-      name: agent.id,
+      name: agent.name,
       // Round display values only; the live Agent keeps its full precision.
       x: roundForForm(agent.position.x),
       y: roundForForm(agent.position.y),
@@ -1729,7 +1757,7 @@ function Simulation3rdGen() {
         obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
           ? 'circle'
           : 'polygon',
-      name: obstacle.ID ?? obstacle.id ?? '',
+      name: obstacle.name,
       color: getObstacleColor(obstacle),
       centerX: roundForForm(obstacle.center?.x ?? 250),
       centerY: roundForForm(obstacle.center?.y ?? 250),
@@ -1759,13 +1787,6 @@ function Simulation3rdGen() {
     if (!name) {
       return { ok: false, error: 'Agent name cannot be empty.' };
     }
-    if (
-      agentsArrayRef.current.some(
-        (agent) => agent !== selectedAgent && agent.id === name
-      )
-    ) {
-      return { ok: false, error: `An agent named “${name}” already exists.` };
-    }
     if (!Number.isFinite(x) || x < 0 || x > CANVAS_WIDTH) {
       return { ok: false, error: `X Position must be between 0 and ${CANVAS_WIDTH}.` };
     }
@@ -1790,7 +1811,7 @@ function Simulation3rdGen() {
     const angle = -angleDegrees * Math.PI / 180;
 
     // Step 3: Commit all edits together so Cancel never partially changes an Agent.
-    selectedAgent.id = name;
+    selectedAgent.name = name;
     selectedAgent.position.x = x;
     selectedAgent.position.y = y;
     selectedAgent.dx = Math.cos(angle) * speed;
@@ -1844,23 +1865,16 @@ function Simulation3rdGen() {
           nextNumber += 1;
         } while (
           obstaclesArrayRef.current.some(
-            (obstacle) => (obstacle.ID ?? obstacle.id) === obstacleName
+            (obstacle) => obstacle.name === obstacleName
           )
         );
-      }
-
-      if (
-        obstaclesArrayRef.current.some(
-          (obstacle) => (obstacle.ID ?? obstacle.id) === obstacleName
-        )
-      ) {
-        throw new Error(`An obstacle named “${obstacleName}” already exists.`);
       }
 
       // Step 3: Create the matching existing model.
       const obstacle =
         config.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
           ? new CircleObstacle(
+              createEntityID(ENTITY_TYPES.OBSTACLE),
               obstacleName,
               config.center,
               config.radius,
@@ -1868,6 +1882,7 @@ function Simulation3rdGen() {
               ctx
             )
           : new PolygonObstacle(
+              createEntityID(ENTITY_TYPES.OBSTACLE),
               obstacleName,
               config.vertices,
               config.color,
@@ -1912,7 +1927,7 @@ function Simulation3rdGen() {
   function requestDeleteAgent(agent) {
     if (!agent) return;
 
-    setPendingDeletion({ type: 'agent', target: agent, name: agent.id });
+    setPendingDeletion({ type: 'agent', target: agent, name: agent.name });
   }
 
   function requestDeleteAllAgents() {
@@ -1952,19 +1967,8 @@ function Simulation3rdGen() {
       if (config.shapeType !== currentShapeType) {
         throw new Error('An existing obstacle cannot change its shape.');
       }
-      if (
-        obstaclesArrayRef.current.some(
-          (obstacle) =>
-            obstacle !== selectedObstacle &&
-            (obstacle.ID ?? obstacle.id) === config.name
-        )
-      ) {
-        throw new Error(`An obstacle named “${config.name}” already exists.`);
-      }
-
       // Step 2: Commit only after every field is valid.
-      selectedObstacle.ID = config.name;
-      selectedObstacle.id = config.name;
+      selectedObstacle.name = config.name;
       selectedObstacle.color = config.color;
 
       if (currentShapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
@@ -2010,7 +2014,7 @@ function Simulation3rdGen() {
     setPendingDeletion({
       type: 'obstacle',
       target: obstacle,
-      name: obstacle.ID ?? obstacle.id,
+      name: obstacle.name,
     });
   }
 
@@ -2199,6 +2203,7 @@ function Simulation3rdGen() {
           activeTab={explorerTab}
           onTabChange={setExplorerTab}
           scenarioName={scenarioName}
+          onRenameScenario={setScenarioName}
           agents={agents}
           obstacles={obstacles}
           behaviors={behaviorList}
@@ -2215,16 +2220,20 @@ function Simulation3rdGen() {
             },
           })}
           onEditAgent={selectAgentForEditing}
+          onRenameAgent={handleRenameAgent}
           onDeleteAgent={requestDeleteAgent}
           onDeleteAllAgents={requestDeleteAllAgents}
           onEditObstacle={selectObstacleForEditing}
+          onRenameObstacle={handleRenameObstacle}
           onDeleteObstacle={requestDeleteObstacle}
           onDeleteAllObstacles={requestDeleteAllObstacles}
           onEditBehavior={selectBehaviorForEditing}
+          onRenameBehavior={handleRenameBehavior}
           onSetBehaviorEnabled={handleSetBehaviorEnabled}
           onDeleteBehavior={requestDeleteBehavior}
           onDeleteAllBehaviors={requestDeleteAllBehaviors}
           onPlayRecording={handleOpenPlayback}
+          onRenameRecording={handleRenameRecording}
           onDownloadRecording={handleDownloadPlayback}
           onDeleteRecording={requestDeleteRecording}
           onRestoreSnapshot={handleRestoreSnapshot}

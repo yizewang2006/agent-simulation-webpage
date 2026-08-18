@@ -35,6 +35,7 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     timestamp: performance.now() - recordingStartTime,
     agents: agentsArray.map((agent) => ({
       id: agent.id,
+      name: agent.name,
       x: agent.position.x,
       y: agent.position.y,
       radius: agent.radius,
@@ -48,7 +49,8 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
       showFOV: agent.isSpecial && agent.showFOV !== false,
     })),
     obstacles: obstaclesArray.map((obstacle) => ({
-      id: obstacle.ID,
+      id: obstacle.id,
+      name: obstacle.name,
       shapeType: obstacle.shapeType,
       color: obstacle.color,
       center: obstacle.center
@@ -393,6 +395,7 @@ function Simulation2ndGen() {
           agent.fovAngle * Math.PI / 180,
           heading,
           agent.id,
+          agent.name,
           ctx,
           canvas,
           runtimeAgents
@@ -402,8 +405,8 @@ function Simulation2ndGen() {
 
       const runtimeObstacles = scenario.obstacles.map((obstacle) => (
         obstacle.shapeType === 'circle'
-          ? new CircleObstacle(obstacle.id, obstacle.center, obstacle.radius, obstacle.color, ctx)
-          : new PolygonObstacle(obstacle.id, obstacle.vertices, obstacle.color, ctx)
+          ? new CircleObstacle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color, ctx)
+          : new PolygonObstacle(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color, ctx)
       ));
       obstaclesArrayRef.current.length = 0;
       obstaclesArrayRef.current.push(...runtimeObstacles);
@@ -826,7 +829,7 @@ function Simulation2ndGen() {
   function handleApplyAgentEdits({ name, color, showFOV, fovAngle }) {
     if (!selectedAgent) return;
 
-    selectedAgent.id = name;
+    selectedAgent.name = name;
     selectedAgent.originalColor = color;
     selectedAgent.colorHex = color;
     selectedAgent.showFOV = showFOV;
@@ -843,7 +846,7 @@ function Simulation2ndGen() {
   function requestDeleteSelectedAgent() {
     if (!selectedAgent) return;
 
-    setPendingDeletion({ type: 'agent', target: selectedAgent, name: selectedAgent.id });
+    setPendingDeletion({ type: 'agent', target: selectedAgent, name: selectedAgent.name });
   }
 
   function handleDeleteSelectedAgent(agentToDelete) {
@@ -862,8 +865,7 @@ function Simulation2ndGen() {
   function handleApplyObstacleEdits(updates) {
     if (!selectedObstacle) return;
 
-    selectedObstacle.ID = updates.name;
-    selectedObstacle.id = updates.name;
+    selectedObstacle.name = updates.name;
     selectedObstacle.color = updates.color;
 
     if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
@@ -887,7 +889,7 @@ function Simulation2ndGen() {
     setPendingDeletion({
       type: 'obstacle',
       target: selectedObstacle,
-      name: selectedObstacle.ID ?? selectedObstacle.id,
+      name: selectedObstacle.name,
     });
   }
 
@@ -1117,7 +1119,7 @@ function Simulation2ndGen() {
                     {agents.map((agent, index) => (
                       <li key={index} className="agent-item">
                         <span className="agent-color" style={{ backgroundColor: getAgentColor(agent) }}></span>
-                        <span className="agent-item-label">{agent.id}</span>
+                        <span className="agent-item-label">{agent.name}</span>
                         <button className="btn-primary agent-list-edit-button" onClick={() => selectAgentForEditing(agent)}>
                           Edit
                         </button>
@@ -1229,10 +1231,10 @@ function Simulation2ndGen() {
                 {obstaclesListExpanded && (
                   <ul className="agents-list">
                     {obstacles.map((obstacle, index) => (
-                      <li key={`${obstacle.ID}-${index}`} className="agent-item">
+                      <li key={`${obstacle.id}-${index}`} className="agent-item">
                         <span className="agent-color" style={{ backgroundColor: getObstacleColor(obstacle) }}></span>
                         <span className="agent-item-label">
-                          {obstacle.ID} ({obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE ? 'Circle' : 'Polygon'})
+                          {obstacle.name} ({obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE ? 'Circle' : 'Polygon'})
                         </span>
                         <button className="btn-primary agent-list-edit-button" onClick={() => selectObstacleForEditing(obstacle)}>
                           Edit

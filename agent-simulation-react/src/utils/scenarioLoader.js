@@ -1,4 +1,4 @@
-import { OBSTACLE_SHAPE_TYPES } from './constants.js';
+import { ENTITY_ID_PREFIXES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from './constants.js';
 
 // Checks if the scenario data is an Object, and throws an error if not. Returns the value if it is an Object.
 function requireObject(value, label) {
@@ -13,6 +13,21 @@ function requireFiniteNumber(value, label) {
   const number = Number(value);
   if (!Number.isFinite(number)) throw new Error(`${label} must be a valid number.`);
   return number;
+}
+
+function requireNonEmptyString(value, label) {
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(`${label} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+
+function requireEntityId(value, label, prefix) {
+  const id = requireNonEmptyString(value, label);
+  if (!id.startsWith(`${prefix}-`)) {
+    throw new Error(`${label} must start with ${prefix}-.`);
+  }
+  return id;
 }
 
 // Check if the {x, y} point is within the canvas bounds
@@ -37,7 +52,12 @@ function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
 
   return {
     kind: 'agent',
-    id: String(agent.id || `Agent_${index + 1}`),
+    id: requireEntityId(
+      agent.id,
+      `Agent ${index + 1} ID`,
+      ENTITY_ID_PREFIXES[ENTITY_TYPES.AGENT]
+    ),
+    name: requireNonEmptyString(agent.name, `Agent ${index + 1} name`),
     x,
     y,
     radius: Math.max(1, requireFiniteNumber(agent.radius ?? 5, `Agent ${index + 1} radius`)),
@@ -60,7 +80,12 @@ function normalizeObstacle(obstacle, index, canvasWidth, canvasHeight) {
   // Base properties for both circle and polygon obstacles
   const base = {
     kind: 'obstacle',
-    id: String(obstacle.id || obstacle.ID || `Obstacle_${index + 1}`),
+    id: requireEntityId(
+      obstacle.id,
+      `Obstacle ${index + 1} ID`,
+      ENTITY_ID_PREFIXES[ENTITY_TYPES.OBSTACLE]
+    ),
+    name: requireNonEmptyString(obstacle.name, `Obstacle ${index + 1} name`),
     color: typeof obstacle.color === 'string' ? obstacle.color : '#ACAD9D',
   };
 
@@ -97,11 +122,18 @@ export function parseScenarioData(data, { canvasWidth = 500, canvasHeight = 500,
     throw new Error(`Scenario contains ${scenario.agents.length} agents; the limit is ${maxAgents}.`);
   }
 
+  const agents = scenario.agents.map((agent, index) => normalizeAgent(agent, index, canvasWidth, canvasHeight));
+  const obstacles = scenario.obstacles.map((obstacle, index) => normalizeObstacle(obstacle, index, canvasWidth, canvasHeight));
+  const entityIds = [...agents, ...obstacles].map((entity) => entity.id);
+  if (new Set(entityIds).size !== entityIds.length) {
+    throw new Error('Scenario entity IDs must be unique.');
+  }
+
   return {
     version: scenario.version ?? 1,
     canvas: { width: canvasWidth, height: canvasHeight },
-    agents: scenario.agents.map((agent, index) => normalizeAgent(agent, index, canvasWidth, canvasHeight)),
-    obstacles: scenario.obstacles.map((obstacle, index) => normalizeObstacle(obstacle, index, canvasWidth, canvasHeight)),
+    agents,
+    obstacles,
   };
 }
 

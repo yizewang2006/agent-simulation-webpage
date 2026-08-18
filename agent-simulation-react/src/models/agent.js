@@ -19,9 +19,9 @@ class fovOffset {
 }
 
 export class Agent extends Entity{
-    constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, ctx, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
-        console.log("A new agent called " + id + " has been created");
-        super(id, ENTITY_TYPES.AGENT);
+    constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, name, ctx, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
+        console.log("A new agent called " + name + " has been created");
+        super(id, name, ENTITY_TYPES.AGENT);
         // Instead of separate x and y, we now use a Position() class
         this.isSpecial = isSpecial;
         this.position = new Position(x, y);
@@ -39,7 +39,6 @@ export class Agent extends Entity{
         this.fovAngle = fovAngle;
         // Initialize an empty array to hold detected ENTITIES (6/28/2026)
         this.detectedEntities = [];
-        this.id = id;
         // 26.1.28 Context and Canvas reference for scalability (now accepts passed-in context and canvas)
         this.ctx = ctx;
         this.canvas = canvas;

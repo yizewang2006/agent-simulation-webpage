@@ -28,6 +28,13 @@ export const ENTITY_TYPES = {
   EXIT: 3,
 };
 
+export const ENTITY_ID_PREFIXES = Object.freeze({
+  [ENTITY_TYPES.AGENT]: 'AGT',
+  [ENTITY_TYPES.OBSTACLE]: 'OBS',
+  [ENTITY_TYPES.LEADER]: 'LDR',
+  [ENTITY_TYPES.EXIT]: 'EXT',
+});
+
 export const OBSTACLE_SHAPE_TYPES = {
   CIRCLE: 0,
   POLYGON: 1,
