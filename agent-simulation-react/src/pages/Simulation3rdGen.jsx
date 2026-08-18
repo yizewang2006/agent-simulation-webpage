@@ -412,6 +412,7 @@ function Simulation3rdGen() {
 
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
+  const [selectedAgentWeights, setSelectedAgentWeights] = useState([]);
   const [selectedObstacle, setSelectedObstacle] = useState(null); // the live Obstacle object
   const [selectedBehavior, setSelectedBehavior] = useState(null); // the saved Behavior draft source
 
@@ -439,6 +440,23 @@ function Simulation3rdGen() {
 
   const isRuntimeSettingsOpen =
     inspectorMode.mode === INSPECTOR_MODES.RUNTIME_SETTINGS;
+
+  useEffect(() => {
+    if (!selectedAgent) {
+      setSelectedAgentWeights([]);
+      return undefined;
+    }
+
+    // The Agent calculates every frame; React only copies the latest numbers
+    // 10 times per second so this small monitor stays lightweight.
+    const updateWeights = () => {
+      setSelectedAgentWeights([...(selectedAgent.runtimeBehaviorWeights ?? [])]);
+    };
+
+    updateWeights();
+    const timer = window.setInterval(updateWeights, 100);
+    return () => window.clearInterval(timer);
+  }, [selectedAgent]);
 
   function toggleRuntimeSettings() {
     if (isRuntimeSettingsOpen) {
@@ -2280,6 +2298,23 @@ function Simulation3rdGen() {
                 onPointerCancel={handleCanvasPointerUp}
                 onDoubleClick={handleCanvasDoubleClick}
               />
+
+              {selectedAgent && (
+                <aside className={styles.weightMonitor} aria-live="polite">
+                  <strong>{selectedAgent.name}</strong>
+
+                  {selectedAgentWeights.length > 0 ? (
+                    selectedAgentWeights.map((behavior) => (
+                      <div className={styles.weightMonitorRow} key={behavior.id}>
+                        <span>{behavior.name}</span>
+                        <output>{behavior.weight.toFixed(3)}</output>
+                      </div>
+                    ))
+                  ) : (
+                    <span className={styles.weightMonitorEmpty}>Play to calculate weights.</span>
+                  )}
+                </aside>
+              )}
             </div>
 
             {isRecording && (
