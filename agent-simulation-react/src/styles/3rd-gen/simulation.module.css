@@ -734,6 +734,15 @@
   gap: 16px;
 }
 
+.buildToolActions {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.buildToolActions .runtimeOptionButton {
+  width: 100%;
+}
+
 .recordOption {
   color: #555555;
 }
@@ -1671,11 +1680,19 @@
   cursor: not-allowed;
 }
 
+.behaviorGeneralSection,
 .specificationSection {
   /* Expanded fields keep their full height; the parent form handles scrolling. */
   min-width: 0;
   min-height: 0;
+  padding-left: 12px;
   flex: 0 0 auto;
+  border-bottom: 1px solid #e3e6eb;
+  border-left: 4px solid #012169;
+}
+
+.actionSpecificationSection {
+  border-left-color: #d28e00;
 }
 
 .specificationSummary {

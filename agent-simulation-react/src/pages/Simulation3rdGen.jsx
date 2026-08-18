@@ -100,15 +100,34 @@ function normalizeAgentCreationConfig(values) {
 }
 
 // Pure randomization step shared by Regenerate Preview and Create Agents.
-function generateRandomizedAgentDrafts(config) {
+function generateRandomizedAgentDrafts(config, obstacles) {
   return Array.from({ length: config.count }, () => {
     const angleDegrees = randomBetween(config.angleMin, config.angleMax);
     const angle = -angleDegrees * Math.PI / 180;
     const speed = randomBetween(config.speedMin, config.speedMax);
+    let position = null;
+
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const candidate = {
+        x: randomBetween(config.xMin, config.xMax),
+        y: randomBetween(config.yMin, config.yMax),
+      };
+
+      // Keep a legal position immediately; only blocked positions are rerolled.
+      if (!findObstacleAt(candidate, obstacles)) {
+        position = candidate;
+        break;
+      }
+    }
+
+    // Stop instead of freezing when the selected area is fully blocked.
+    if (!position) {
+      throw new Error('Unable to place all Agents outside Obstacles.');
+    }
 
     return {
-      x: randomBetween(config.xMin, config.xMax),
-      y: randomBetween(config.yMin, config.yMax),
+      x: position.x,
+      y: position.y,
       radius: 5,
       dx: Math.cos(angle) * speed,
       dy: Math.sin(angle) * speed,
@@ -474,7 +493,10 @@ function Simulation3rdGen() {
         throw new Error(`Only ${remainingCapacity} more agents can be added.`);
       }
 
-      agentPreviewRef.current = generateRandomizedAgentDrafts(config);
+      agentPreviewRef.current = generateRandomizedAgentDrafts(
+        config,
+        obstaclesArrayRef.current
+      );
       agentPreviewConfigKeyRef.current = getAgentCreationConfigKey(config);
       return { ok: true };
     } catch (error) {
@@ -528,7 +550,10 @@ function Simulation3rdGen() {
         agentPreviewConfigKeyRef.current === configKey &&
         agentPreviewRef.current.length === config.count
           ? agentPreviewRef.current
-          : generateRandomizedAgentDrafts(config);
+          : generateRandomizedAgentDrafts(
+              config,
+              obstaclesArrayRef.current
+            );
 
       drafts.forEach((draft) => {
         const agent = new Agent(

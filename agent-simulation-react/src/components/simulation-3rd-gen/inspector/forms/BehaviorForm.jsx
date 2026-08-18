@@ -106,7 +106,7 @@ export default function BehaviorForm({
         </div>
 
         <div
-          className={styles.formSection}
+          className={`${styles.formSection} ${styles.behaviorGeneralSection}`}
           role="group"
           aria-labelledby="behavior-general-title"
         >
@@ -135,7 +135,7 @@ export default function BehaviorForm({
         </div>
 
         <div
-          className={`${styles.formSection} ${styles.specificationSection}`}
+          className={`${styles.formSection} ${styles.specificationSection} ${styles.actionSpecificationSection}`}
           role="group"
           aria-labelledby="action-specifications-title"
         >

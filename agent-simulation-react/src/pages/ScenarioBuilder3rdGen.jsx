@@ -1,4 +1,4 @@
-import { Layers3, Redo2, Trash2, Undo2, Wrench } from 'lucide-react';
+import { Redo2, Trash2, Undo2, Wrench } from 'lucide-react';
 import Header from '../components/simulation-3rd-gen/Header3rdGen.jsx';
 import Footer from '../components/shared/Footer.jsx';
 import WorkspaceExplorer from '../components/workspace/WorkspaceExplorer.jsx';
@@ -43,8 +43,7 @@ export default function ScenarioBuilder3rdGen() {
             Build Tools
           </h2>
 
-          <div className={styles.runtimeOptions}>
-            <span className={styles.runtimeLabel}>History</span>
+          <div className={`${styles.runtimeOptions} ${styles.buildToolActions}`}>
             <button
               className={`${styles.secondaryAction} ${styles.runtimeOptionButton}`}
               type="button"
@@ -60,18 +59,6 @@ export default function ScenarioBuilder3rdGen() {
             >
               <Redo2 size={14} aria-hidden="true" />
               Redo
-            </button>
-          </div>
-
-          <div className={styles.runtimeOptions}>
-            <span className={styles.runtimeLabel}>Scenario</span>
-            <button
-              className={`${styles.secondaryAction} ${styles.runtimeOptionButton}`}
-              type="button"
-              disabled
-            >
-              <Layers3 size={14} aria-hidden="true" />
-              Layers
             </button>
             <button
               className={`${styles.dangerAction} ${styles.runtimeOptionButton}`}
