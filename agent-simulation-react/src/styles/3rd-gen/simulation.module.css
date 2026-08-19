@@ -729,7 +729,7 @@
   top: 12px;
   right: 12px;
   min-width: 150px;
-  max-width: 220px;
+  max-width: 280px;
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -742,13 +742,21 @@
   pointer-events: none;
 }
 
+.weightMonitorHeader,
 .weightMonitorRow {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(70px, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.weightMonitorHeader {
+  color: #777c85;
+  font-size: 0.65rem;
 }
 
 .weightMonitorRow output {
+  text-align: right;
   color: #012169;
   font-variant-numeric: tabular-nums;
   font-weight: 700;

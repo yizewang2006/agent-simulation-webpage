@@ -39,9 +39,8 @@ export class Agent extends Entity{
         this.fovAngle = fovAngle;
         // Initialize an empty array to hold detected ENTITIES (6/28/2026)
         this.detectedEntities = [];
-        // Latest per-Behavior weights for the canvas monitor. This is current data,
-        // not a history, so it stays small even during a long simulation.
-        this.runtimeBehaviorWeights = [];
+        // The canvas monitor reads the latest calculated Behavior data directly.
+        this.activeBehaviorGroups = {};
         // 26.1.28 Context and Canvas reference for scalability (now accepts passed-in context and canvas)
         this.ctx = ctx;
         this.canvas = canvas;
@@ -164,8 +163,6 @@ export class Agent extends Entity{
     // Phase 2: detect and apply behaviors using consistent post-move positions
     behave(allEntities, behaviorGroups, maxSpeed = null, maxAngle = null, smoothingFactor = 0.15) {
         this.detectEntities(allEntities);
-        // Replace the previous frame instead of collecting an ever-growing list.
-        this.runtimeBehaviorWeights = [];
         let weightedDirectionY = 0, weightedDirectionX = 0;
         const speedCap = parseNumberCap(maxSpeed);
         const angleCap = parseNumberCap(maxAngle) * Math.PI / 180;
@@ -202,16 +199,6 @@ export class Agent extends Entity{
                         activationValue
                     );
 
-                // Keep the exact Activation output so the selected Agent can
-                // show its current weight beside the simulation.
-                this.runtimeBehaviorWeights.push({
-                    id: behavior.id,
-                    name: behavior.name,
-                    weight: Number.isFinite(rawActivationWeight)
-                        ? Math.max(0, rawActivationWeight)
-                        : 0
-                });
-
                 if (!Number.isFinite(rawActivationWeight) || rawActivationWeight <= 0) continue;
                 
                 // Calculation actionValue once, not again below.
@@ -246,6 +233,9 @@ export class Agent extends Entity{
                 );
             }
         }
+
+        // Expose this frame's actual calculation objects to the canvas monitor.
+        this.activeBehaviorGroups = activeBehaviorGroups;
 
         // ---- HEADING DIRECTION GROUP ----
         // Heading Direction uses a weighted circular mean because angles wrap at 360 degrees.

@@ -450,7 +450,9 @@ function Simulation3rdGen() {
     // The Agent calculates every frame; React only copies the latest numbers
     // 10 times per second so this small monitor stays lightweight.
     const updateWeights = () => {
-      setSelectedAgentWeights([...(selectedAgent.runtimeBehaviorWeights ?? [])]);
+      setSelectedAgentWeights(
+        Object.values(selectedAgent.activeBehaviorGroups ?? {}).flat()
+      );
     };
 
     updateWeights();
@@ -2304,12 +2306,21 @@ function Simulation3rdGen() {
                   <strong>{selectedAgent.name}</strong>
 
                   {selectedAgentWeights.length > 0 ? (
-                    selectedAgentWeights.map((behavior) => (
-                      <div className={styles.weightMonitorRow} key={behavior.id}>
-                        <span>{behavior.name}</span>
-                        <output>{behavior.weight.toFixed(3)}</output>
+                    <>
+                      <div className={styles.weightMonitorHeader} aria-hidden="true">
+                        <span />
+                        <span>Raw</span>
+                        <span>Normalized</span>
                       </div>
-                    ))
+
+                      {selectedAgentWeights.map((behavior) => (
+                        <div className={styles.weightMonitorRow} key={behavior.behavior.id}>
+                          <span>{behavior.behavior.name}</span>
+                          <output>{behavior.rawActivationWeight.toFixed(3)}</output>
+                          <output>{behavior.normalizedActivationWeight.toFixed(3)}</output>
+                        </div>
+                      ))}
+                    </>
                   ) : (
                     <span className={styles.weightMonitorEmpty}>Play to calculate weights.</span>
                   )}
