@@ -1207,7 +1207,8 @@ function Simulation3rdGen() {
       enabled: behavior.enabled !== false,
       name: getUniqueBehaviorName(existingBehaviors, getPresetName(behavior.name)),
       targetProperty: getValidValue(behavior.targetProperty, TARGET_PROPERTIES, TARGET_PROPERTIES.POSITION),
-      action: getValidValue(behavior.option, REFERENCE_TYPES, REFERENCE_TYPES.NEIGHBOR_REFERENCE),
+      action: getValidValue(behavior.action, REFERENCE_TYPES, REFERENCE_TYPES.NEIGHBOR_REFERENCE),
+      activation: behavior.activation,
       offset: behavior.offset ?? '',
       filters: Array.isArray(behavior.filters)
         ? behavior.filters.map((filter) => createFilterFromPreset(filter))

@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "behaviors": [
+    {
+      "id": "7935cedb-d4fe-4333-8304-f47e1e5a9a7c",
+      "enabled": true,
+      "name": "Following",
+      "targetProperty": 0,
+      "action": 0,
+      "offset": 0,
+      "filters": [
+        {
+          "id": "aee0260c-bd48-43a5-97ff-5f6c1a43e39b",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "method",
+          "propertyType": 0,
+          "methodType": 0,
+          "low": "0",
+          "high": "150"
+        }
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
+    },
+    {
+      "id": "dbdd9eba-4f0c-4bc6-ab54-f6270f9f7d50",
+      "enabled": true,
+      "name": "Avoid head on collision",
+      "targetProperty": 2,
+      "action": 0,
+      "offset": 90,
+      "filters": [
+        {
+          "id": "927be50f-eac4-48e4-9606-153d1aac984c",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "ranged",
+          "propertyType": 3,
+          "methodType": 0,
+          "low": 160,
+          "high": 180
+        },
+        {
+          "id": "bfeff06e-fb1a-43bd-8b70-b9b0efa862f4",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "method",
+          "propertyType": 0,
+          "methodType": 0,
+          "low": "",
+          "high": ""
+        }
+      ],
+      "activation": {
+        "type": "linear",
+        "valueToCheck": 0,
+        "checkSource": "neighbor",
+        "lowerRange": 0,
+        "upperRange": 60,
+        "nullActivation": false,
+        "filters": [
+          {
+            "id": "1e1a0c5b-e4b8-44c2-990d-b83f9d30fc2a",
+            "targets": {
+              "0": true,
+              "1": {
+                "0": false,
+                "1": false,
+                "enabled": false
+              },
+              "2": false,
+              "3": false
+            },
+            "filterType": "method",
+            "propertyType": 0,
+            "methodType": 0,
+            "low": "",
+            "high": ""
+          }
+        ],
+        "slope": 10,
+        "increase": false
+      }
+    },
+    {
+      "id": "a19d108f-1131-4c3b-b9df-102810b8f128",
+      "enabled": true,
+      "name": "Slowdown",
+      "targetProperty": 1,
+      "action": 0,
+      "offset": -0.2,
+      "filters": [
+        {
+          "id": "1df7963a-4057-4799-b68b-48db6b94f15e",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "ranged",
+          "propertyType": 0,
+          "methodType": 0,
+          "low": 0,
+          "high": 50
+        }
+      ],
+      "activation": {
+        "type": "linear",
+        "valueToCheck": 0,
+        "checkSource": "neighbor",
+        "lowerRange": 0,
+        "upperRange": 50,
+        "nullActivation": false,
+        "filters": [],
+        "slope": 10,
+        "increase": false
+      }
+    },
+    {
+      "id": "7acd65a0-b784-4d90-84bd-3538229dee2e",
+      "enabled": true,
+      "name": "Speed up",
+      "targetProperty": 1,
+      "action": 1,
+      "offset": 0.05,
+      "filters": [
+        {
+          "id": "a6785506-bc07-4e60-bf24-03f92471e20c",
+          "targets": {
+            "0": true,
+            "1": {
+              "0": false,
+              "1": false,
+              "enabled": false
+            },
+            "2": false,
+            "3": false
+          },
+          "filterType": "ranged",
+          "propertyType": 1,
+          "methodType": 0,
+          "low": 0,
+          "high": 2
+        }
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
+    }
+  ]
+}

@@ -122,7 +122,7 @@ function drawCircleObstacleSnapshot(ctx, obstacle) {
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 2;
   ctx.stroke();
-  drawSnapshotLabel(ctx, obstacle.name, obstacle.center.x, obstacle.center.y);
+  // drawSnapshotLabel(ctx, obstacle.name, obstacle.center.x, obstacle.center.y);
 }
 
 function drawPolygonObstacleSnapshot(ctx, obstacle) {
@@ -140,16 +140,16 @@ function drawPolygonObstacleSnapshot(ctx, obstacle) {
   ctx.lineWidth = 2;
   ctx.stroke();
 
-  const centroid = obstacle.vertices.reduce(
-    (sum, vertex) => ({ x: sum.x + vertex.x, y: sum.y + vertex.y }),
-    { x: 0, y: 0 }
-  );
-  drawSnapshotLabel(
-    ctx,
-    obstacle.name,
-    centroid.x / obstacle.vertices.length,
-    centroid.y / obstacle.vertices.length
-  );
+  // const centroid = obstacle.vertices.reduce(
+  //   (sum, vertex) => ({ x: sum.x + vertex.x, y: sum.y + vertex.y }),
+  //   { x: 0, y: 0 }
+  // );
+  // drawSnapshotLabel(
+  //   ctx,
+  //   obstacle.name,
+  //   centroid.x / obstacle.vertices.length,
+  //   centroid.y / obstacle.vertices.length
+  // );
 }
 
 function drawFrame(canvas, frame) {

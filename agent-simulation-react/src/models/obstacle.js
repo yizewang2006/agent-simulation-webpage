@@ -13,16 +13,6 @@ function drawObstacleLabel(ctx, label, x, y) {
   ctx.textBaseline = "alphabetic";
 }
 
-/* Have properties: 
-Speed, Heading, Position
-Only Self-Reference
-Change Size
-Able to drag around
-
-When selected "entity type", disable the "method type"
-
-*/
-
 // Obstacle collision implementation written by Elaine Ding.
 // Supports polygon obstacles, drawing, current collision checks, and linear collision prediction.
 export class PolygonObstacle extends Entity {
@@ -76,7 +66,7 @@ export class PolygonObstacle extends Entity {
     ctx.strokeStyle = "#222";
     ctx.lineWidth = 2;
     ctx.stroke();
-    drawObstacleLabel(ctx, this.name, this.centroid.x, this.centroid.y);
+    // drawObstacleLabel(ctx, this.name, this.centroid.x, this.centroid.y);
   }
 
   // --- Prediction Math ---
@@ -243,7 +233,7 @@ export class CircleObstacle extends Entity {
     ctx.strokeStyle = "#222";
     ctx.lineWidth = 2;
     ctx.stroke();
-    drawObstacleLabel(ctx, this.name, this.center.x, this.center.y);
+    // drawObstacleLabel(ctx, this.name, this.center.x, this.center.y);
   }
 
   getLinearCollision(agent, angle) {
