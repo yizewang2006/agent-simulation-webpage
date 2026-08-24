@@ -37,13 +37,19 @@ const ENTITY_MENU_DETAILS = Object.freeze({
     },
 });
 
-export default function AddToSimulationMenu( {onSelectMode} ) {
+export default function AddToSimulationMenu({
+    onSelectMode,
+    entityTypes = Object.values(ENTITY_TYPES),
+    showBehaviors = true,
+    triggerLabel = 'Simulation Components',
+}) {
     const [isExpanded, setIsExpanded] = useState(false);
     const menuId = useId();
-    const availableEntityTypes = Object.values(ENTITY_TYPES).filter(
+    const availableEntityTypes = entityTypes.filter(
         (entityType) => hasFormComponent(ENTITY_CREATE_MODES[entityType])
     );
-    const hasBehaviorForm = hasFormComponent(INSPECTOR_MODES.CREATE_BEHAVIOR);
+    const hasBehaviorForm = showBehaviors
+        && hasFormComponent(INSPECTOR_MODES.CREATE_BEHAVIOR);
     // Activation is configured inside BehaviorForm, not added as a separate component.
     // const hasActivationForm = hasFormComponent(INSPECTOR_MODES.CREATE_ACTIVATION);
 
@@ -70,7 +76,7 @@ export default function AddToSimulationMenu( {onSelectMode} ) {
             >
                 <span className={styles.addMenuTriggerContent}>
                     <CirclePlus size={18} aria-hidden="true" />
-                    Simulation Components
+                    {triggerLabel}
                 </span>
                 <ChevronDown
                 className={`${styles.addMenuChevron} ${

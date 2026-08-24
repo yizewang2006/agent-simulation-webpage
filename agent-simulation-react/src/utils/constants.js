@@ -26,6 +26,7 @@ export const ENTITY_TYPES = {
   OBSTACLE: 1,
   LEADER: 2,
   EXIT: 3,
+  SPACE: 4,
 };
 
 export const ENTITY_ID_PREFIXES = Object.freeze({
@@ -33,6 +34,7 @@ export const ENTITY_ID_PREFIXES = Object.freeze({
   [ENTITY_TYPES.OBSTACLE]: 'OBS',
   [ENTITY_TYPES.LEADER]: 'LDR',
   [ENTITY_TYPES.EXIT]: 'EXT',
+  [ENTITY_TYPES.SPACE]: "SPC"
 });
 
 export const OBSTACLE_SHAPE_TYPES = {
@@ -82,6 +84,7 @@ export const ENTITY_LABELS = {
   [ENTITY_TYPES.OBSTACLE]: 'Obstacle',
   [ENTITY_TYPES.LEADER]: 'Leader',
   [ENTITY_TYPES.EXIT]: 'Exit/Escape Point',
+  [ENTITY_TYPES.SPACE]: "Space"
 };
 
 // Tabs shown in the third-generation Simulation Explorer.
@@ -91,6 +94,11 @@ export const EXPLORER_TABS = Object.freeze({
   RECORDINGS: 'recordings',
   HISTORY: 'history',
 });
+
+// Tabs shown in the third-generation Scenario Builder Explorer
+export const BUILDER_TABS = Object.freeze({
+  ENTITIES: 'entities',
+})
 
 export const OBSTACLE_SHAPE_LABELS = {
   [OBSTACLE_SHAPE_TYPES.CIRCLE]: 'Circle',

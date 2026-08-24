@@ -1,8 +1,10 @@
 {
+  "version": 1,
   "behaviors": [
     {
+      "enabled": true,
       "name": "Avoid Closest Obstacle",
-      "option": 0,
+      "action": 0,
       "targetProperty": 0,
       "offset": 90,
       "filters": [
@@ -15,10 +17,12 @@
               "1": true
             },
             "2": false,
-            "3": false
+            "3": false,
+            "4": false
           },
           "filterType": "ranged",
           "propertyType": 0,
+          "methodType": 0,
           "low": 0,
           "high": 120
         },
@@ -31,13 +35,20 @@
               "1": true
             },
             "2": false,
-            "3": false
+            "3": false,
+            "4": false
           },
           "filterType": "method",
           "propertyType": 0,
-          "methodType": 0
+          "methodType": 0,
+          "low": "",
+          "high": ""
         }
-      ]
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
     }
   ]
 }

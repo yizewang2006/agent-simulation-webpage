@@ -1,61 +1,128 @@
 {
+  "version": 1,
   "behaviors": [
     {
+      "enabled": true,
       "name": "Keep the Snake Moving",
-      "option": 1,
+      "action": 1,
       "targetProperty": 1,
       "offset": 0.21,
-      "filters": []
+      "filters": [],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
     },
     {
+      "enabled": true,
       "name": "Keep Snake Spacing",
-      "option": 0,
+      "action": 0,
       "targetProperty": 1,
       "offset": -0.21,
       "filters": [
         {
+          "targets": {
+            "0": true,
+            "1": {
+              "enabled": false,
+              "0": false,
+              "1": false
+            },
+            "2": false,
+            "3": false,
+            "4": false
+          },
           "filterType": "ranged",
-          "filteredProperty": 0,
+          "propertyType": 0,
+          "methodType": 0,
           "low": 0,
           "high": 15
         },
         {
+          "targets": {
+            "0": true,
+            "1": {
+              "enabled": false,
+              "0": false,
+              "1": false
+            },
+            "2": false,
+            "3": false,
+            "4": false
+          },
           "filterType": "method",
-          "filteredProperty": 0,
-          "methodType": 0
+          "propertyType": 0,
+          "methodType": 0,
+          "low": "",
+          "high": ""
         }
-      ]
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
     },
     {
+      "enabled": true,
       "name": "Follow the Snake Ahead",
-      "option": 0,
+      "action": 0,
       "targetProperty": 0,
       "offset": 0,
       "filters": [
         {
+          "targets": {
+            "0": true,
+            "1": {
+              "enabled": false,
+              "0": false,
+              "1": false
+            },
+            "2": false,
+            "3": false,
+            "4": false
+          },
           "filterType": "method",
-          "filteredProperty": 0,
-          "methodType": 0
+          "propertyType": 0,
+          "methodType": 0,
+          "low": "",
+          "high": ""
         }
-      ]
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
     },
     {
+      "enabled": true,
       "name": "Align With the Snake",
-      "option": 0,
+      "action": 0,
       "targetProperty": 2,
       "offset": 0,
       "filters": [
         {
+          "targets": {
+            "0": true,
+            "1": {
+              "enabled": false,
+              "0": false,
+              "1": false
+            },
+            "2": false,
+            "3": false,
+            "4": false
+          },
           "filterType": "method",
-          "filteredProperty": 0,
-          "methodType": 0
+          "propertyType": 0,
+          "methodType": 0,
+          "low": "",
+          "high": ""
         }
-      ]
+      ],
+      "activation": {
+        "type": "always-active",
+        "weight": 1
+      }
     }
-  ],
-  "globalSettings": {
-    "maximumSpeed": 3,
-    "maximumAngle": 45,
-    "fps": 30
-  }
+  ]
 }

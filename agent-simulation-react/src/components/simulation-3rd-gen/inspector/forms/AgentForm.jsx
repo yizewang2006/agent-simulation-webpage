@@ -17,6 +17,7 @@ const AGENT_CREATION_DEFAULTS = {
     speedMax: '2.5',
     angleMin: '0',
     angleMax: '360',
+    fovAngle: '150',
     color: '#000000',
     showFOV: true,
 }
@@ -63,8 +64,8 @@ export default function AgentForm({
     /*
      * Only randomization fields belong in this dependency list. Changing one
      * creates a new arrangement after a short debounce. Appearance-only fields
-     * such as color and showFOV are handled separately so agents do not jump to
-     * new positions when the user is only changing how they look.
+     * such as color, fovAngle, and showFOV are handled separately so agents
+     * do not jump to new positions when the user is only changing how they look.
      */
     useEffect(() => {
       if (mode !== FORM_MODES.CREATE) return undefined;
@@ -112,7 +113,7 @@ export default function AgentForm({
          * appearance controls are added later (for example, radius), include
          * them here rather than in the randomization effect above.
          */
-        if (name === "color" || name === "showFOV") {
+        if (name === "color" || name === "fovAngle" || name === "showFOV") {
           const result = updatePreviewAppearanceRef.current?.(nextValues);
 
           if (result && !result.ok) {
@@ -338,6 +339,36 @@ export default function AgentForm({
                   />
                   <span className={styles.inputUnit}>degrees</span>
                 </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset className={styles.formSection}>
+            <legend className={styles.formSectionTitle}>
+              Field of View
+            </legend>
+
+            <div className={styles.inputGroup}>
+              <label
+                className={styles.formLabel}
+                htmlFor="agent-global-fov-angle"
+              >
+                Global FOV Angle
+              </label>
+
+              <div className={styles.inputWithUnit}>
+                <input
+                  id="agent-global-fov-angle"
+                  className={styles.formInput}
+                  type="number"
+                  name="fovAngle"
+                  value={values.fovAngle}
+                  min="0"
+                  max="360"
+                  step="1"
+                  onChange={updateField}
+                />
+                <span className={styles.inputUnit}>degrees</span>
               </div>
             </div>
           </fieldset>

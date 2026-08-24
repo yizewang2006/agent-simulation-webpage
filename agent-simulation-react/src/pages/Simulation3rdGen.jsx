@@ -26,6 +26,7 @@ import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, EN
 import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, isPointInsidePolygon, isPointNearPolygonEdge, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import { loadScenarioFile } from "../utils/scenarioLoader.js";
 import {
+  ACTIVATION_TYPES,
   createDefaultActivation,
   normalizeActivationDraft,
 } from "../models/activation.js";
@@ -61,6 +62,7 @@ function normalizeAgentCreationConfig(values) {
     speedMax: Number(values.speedMax),
     angleMin: Number(values.angleMin),
     angleMax: Number(values.angleMax),
+    fovAngle: Number(values.fovAngle),
     color: values.color,
     showFOV: Boolean(values.showFOV),
   };
@@ -75,6 +77,7 @@ function normalizeAgentCreationConfig(values) {
     config.speedMax,
     config.angleMin,
     config.angleMax,
+    config.fovAngle,
   ];
 
   if (!numericValues.every(Number.isFinite)) {
@@ -94,6 +97,9 @@ function normalizeAgentCreationConfig(values) {
   }
   if (config.angleMin > config.angleMax) {
     throw new Error('Initial Angle Min cannot be greater than Max.');
+  }
+  if (values.fovAngle === '' || config.fovAngle < 0 || config.fovAngle > 360) {
+    throw new Error('FOV Angle must be between 0 and 360 degrees.');
   }
 
   return config;
@@ -135,7 +141,7 @@ function generateRandomizedAgentDrafts(config, obstacles) {
       angle,
       color: config.color,
       fovRadius: 100,
-      fovAngle: 150 * Math.PI / 180,
+      fovAngle: config.fovAngle * Math.PI / 180,
       showFOV: config.showFOV,
     };
   });
@@ -536,6 +542,7 @@ function Simulation3rdGen() {
       agentPreviewRef.current = agentPreviewRef.current.map((draft) => ({
         ...draft,
         color: config.color,
+        fovAngle: config.fovAngle * Math.PI / 180,
         showFOV: config.showFOV,
       }));
 
@@ -846,11 +853,6 @@ function Simulation3rdGen() {
   }
 
   // ---- Behavior Handlers ----
-  function handleAddBehavior() {
-    // Add a new behavior to the behavior list.
-    setBehaviorList((currentList) => [...currentList, createBehavior(currentList)]);
-  }
-
   function normalizeBehaviorDraft(values, behaviorToIgnore = null) {
     const name = values.name.trim();
     const offset = values.offset === '' ? '' : Number(values.offset);
@@ -875,11 +877,10 @@ function Simulation3rdGen() {
 
     const filters = values.filters.map((filter, index) => {
         const obstacleTargets = filter.targets[ENTITY_TYPES.OBSTACLE];
-        const hasTarget =
-          Boolean(filter.targets[ENTITY_TYPES.AGENT]) ||
-          Boolean(filter.targets[ENTITY_TYPES.LEADER]) ||
-          Boolean(filter.targets[ENTITY_TYPES.EXIT]) ||
-          Boolean(obstacleTargets?.enabled);
+        const hasTarget = Object.values(ENTITY_TYPES)
+          .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
+          .some((entityType) => filter.targets[entityType] === true)
+          || obstacleTargets?.enabled === true;
 
         if (!hasTarget) {
           throw new Error(`Filter ${index + 1} needs at least one Target Entity Type.`);
@@ -1199,91 +1200,102 @@ function Simulation3rdGen() {
     });
   }
 
-  function createBehavior(existingBehaviors) {
-    return {
-      id: createStableId(),
-      enabled: true,
-      name: getUniqueBehaviorName(existingBehaviors, 'Behavior'),
-      targetProperty: TARGET_PROPERTIES.POSITION,
-      action: REFERENCE_TYPES.NEIGHBOR_REFERENCE,
-      offset: '',
-      filters: [],
-    };
-  }
-
   function createBehaviorFromPreset(behavior, existingBehaviors) {
-    return {
-      id: createStableId(),
-      enabled: behavior.enabled !== false,
-      name: getUniqueBehaviorName(existingBehaviors, getPresetName(behavior.name)),
-      targetProperty: getValidValue(behavior.targetProperty, TARGET_PROPERTIES, TARGET_PROPERTIES.POSITION),
-      action: getValidValue(behavior.action, REFERENCE_TYPES, REFERENCE_TYPES.NEIGHBOR_REFERENCE),
-      activation: behavior.activation,
-      offset: behavior.offset ?? '',
-      filters: Array.isArray(behavior.filters)
-        ? behavior.filters.map((filter) => createFilterFromPreset(filter))
-        : [],
+    if (!behavior || typeof behavior !== 'object' || Array.isArray(behavior)) {
+      throw new Error('Each preset behavior must be an object.');
+    }
+    if (typeof behavior.enabled !== 'boolean') {
+      throw new Error('Each preset behavior must include enabled as a boolean.');
+    }
+    if (typeof behavior.name !== 'string' || !behavior.name.trim()) {
+      throw new Error('Each preset behavior must include a non-empty name.');
+    }
+    if (!Array.isArray(behavior.filters)) {
+      throw new Error(`Behavior “${behavior.name}” must include a filters array.`);
+    }
+    if (!behavior.activation || typeof behavior.activation !== 'object' || Array.isArray(behavior.activation)) {
+      throw new Error(`Behavior “${behavior.name}” must include an activation object.`);
+    }
+
+    const activation = {
+      ...behavior.activation,
+      ...(behavior.activation.type === ACTIVATION_TYPES.ALWAYS_ACTIVE
+        ? {}
+        : {
+            filters: parsePresetFilters(
+              behavior.activation.filters,
+              `Behavior “${behavior.name}” activation`
+            ),
+          }),
     };
-  }
-
-  function createFilter() {
-    return {
-      id: createStableId(),
-      targets: createDefaultFilterTargets(),
-      filterType: 'method',
-      propertyType: MEASUREMENT_TYPES.DISTANCE,
-      methodType: METHOD_TYPES.CLOSEST,
-      low: '',
-      high: '',
-    };
-  }
-
-  function createFilterFromPreset(filter) {
-    return {
-      id: createStableId(),
-      targets: normalizeFilterTargets(filter.targets),
-      filterType: filter.filterType === 'ranged' ? 'ranged' : 'method',
-      propertyType: getValidValue(filter.propertyType ?? filter.filteredProperty, MEASUREMENT_TYPES, MEASUREMENT_TYPES.DISTANCE),
-      methodType: getValidValue(filter.methodType, METHOD_TYPES, METHOD_TYPES.CLOSEST),
-      low: filter.low ?? '',
-      high: filter.high ?? '',
-    };
-  }
-
-  function createDefaultFilterTargets() { // Default: select agent, deselect everyone else
-    const targets = {};
-
-    Object.values(ENTITY_TYPES).forEach((entityType) => {
-      targets[entityType] = false;
+    const config = normalizeBehaviorDraft({
+      enabled: behavior.enabled,
+      name: getUniqueBehaviorName(existingBehaviors, behavior.name.trim()),
+      targetProperty: behavior.targetProperty,
+      referenceSource: behavior.action,
+      offset: behavior.offset,
+      filters: parsePresetFilters(behavior.filters, `Behavior “${behavior.name}”`),
+      activation,
     });
 
-    targets[ENTITY_TYPES.AGENT] = true;
-    targets[ENTITY_TYPES.OBSTACLE] = {
-      enabled: false,
-      [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
-      [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
+    return {
+      id: createStableId(),
+      ...config,
     };
-
-    return targets;
   }
 
-  function normalizeFilterTargets(targets) {
-    const defaults = createDefaultFilterTargets(); // create a filter
-    if (!targets || typeof targets !== 'object') return defaults;
+  function parsePresetFilters(filters, ownerLabel) {
+    if (!Array.isArray(filters)) {
+      throw new Error(`${ownerLabel} must include a filters array.`);
+    }
 
-    // Resolving compatibility issues with older presets
+    return filters.map((filter, index) => createFilterFromPreset(
+      filter,
+      `${ownerLabel}, filter ${index + 1}`
+    ));
+  }
+
+  function createFilterFromPreset(filter, label) {
+    if (!filter || typeof filter !== 'object' || Array.isArray(filter)) {
+      throw new Error(`${label} must be an object.`);
+    }
+    if (!filter.targets || typeof filter.targets !== 'object' || Array.isArray(filter.targets)) {
+      throw new Error(`${label} must include a targets object.`);
+    }
+
+    const obstacleTargets = filter.targets[ENTITY_TYPES.OBSTACLE];
+    if (!obstacleTargets || typeof obstacleTargets !== 'object' || Array.isArray(obstacleTargets)) {
+      throw new Error(`${label} must include obstacle target settings.`);
+    }
+
+    Object.values(ENTITY_TYPES)
+      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
+      .forEach((entityType) => {
+        if (typeof filter.targets[entityType] !== 'boolean') {
+          throw new Error(`${label} must include every entity target as a boolean.`);
+        }
+      });
+
+    if (
+      typeof obstacleTargets.enabled !== 'boolean'
+      || Object.values(OBSTACLE_SHAPE_TYPES).some(
+        (shapeType) => typeof obstacleTargets[shapeType] !== 'boolean'
+      )
+    ) {
+      throw new Error(`${label} must include every obstacle target as a boolean.`);
+    }
+
     return {
-      [ENTITY_TYPES.AGENT]: targets[ENTITY_TYPES.AGENT] ?? defaults[ENTITY_TYPES.AGENT], // If n
-      [ENTITY_TYPES.OBSTACLE]: {
-        enabled: targets[ENTITY_TYPES.OBSTACLE]?.enabled ?? defaults[ENTITY_TYPES.OBSTACLE].enabled,
-        [OBSTACLE_SHAPE_TYPES.CIRCLE]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.CIRCLE] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.CIRCLE],
-        [OBSTACLE_SHAPE_TYPES.POLYGON]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.POLYGON] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.POLYGON],
+      id: createStableId(),
+      targets: {
+        ...filter.targets,
+        [ENTITY_TYPES.OBSTACLE]: { ...obstacleTargets },
       },
-      ...Object.fromEntries(
-        Object.values(ENTITY_TYPES)
-          .filter((entityType) => entityType !== ENTITY_TYPES.AGENT && entityType !== ENTITY_TYPES.OBSTACLE)
-          .map((entityType) => [entityType, targets[entityType] ?? defaults[entityType]])
-      ),
+      filterType: filter.filterType,
+      propertyType: filter.propertyType,
+      methodType: filter.methodType,
+      low: filter.low,
+      high: filter.high,
     };
   }
 
@@ -1295,19 +1307,16 @@ function Simulation3rdGen() {
   }
 
   function getPresetBehaviorArray(presetData) {
-    if (Array.isArray(presetData)) return presetData;
-    if (Array.isArray(presetData?.behaviors)) return presetData.behaviors;
-    throw new Error('Preset must be an array or an object with a behaviors array.');
-  }
-
-  function getPresetName(name) {
-    if (typeof name === 'string' && name.trim() !== '') return name.trim();
-    return 'Behavior';
-  }
-
-  function getValidValue(value, valueSet, fallback) {
-    const numericValue = Number(value);
-    return Object.values(valueSet).includes(numericValue) ? numericValue : fallback;
+    if (!presetData || typeof presetData !== 'object' || Array.isArray(presetData)) {
+      throw new Error('Behavior preset must be an object.');
+    }
+    if (presetData.version !== 1) {
+      throw new Error('Behavior preset version must be 1.');
+    }
+    if (!Array.isArray(presetData.behaviors)) {
+      throw new Error('Behavior preset must include a behaviors array.');
+    }
+    return presetData.behaviors;
   }
 
   // Give each behavior a unique default name when it is created.
@@ -1325,39 +1334,6 @@ function Simulation3rdGen() {
     }
 
     return candidate;
-  }
-
-  // ---- Filter Handlers ----
-  function handleAddFilter(behaviorId) {
-    // Add a new filter to the behavior with the matching behaviorId.
-    setBehaviorList((currentList) => currentList.map((behavior) => (
-      behavior.id === behaviorId
-        ? { ...behavior, filters: [...behavior.filters, createFilter()] }
-        : behavior
-    )));
-  }
-
-  function handleUpdateFilter(behaviorId, filterId, updates) {
-    // Update the filter with the matching filterId inside the matching behavior.
-    setBehaviorList((currentList) => currentList.map((behavior) => (
-      behavior.id === behaviorId
-        ? {
-            ...behavior,
-            filters: behavior.filters.map((filter) => (
-              filter.id === filterId ? { ...filter, ...updates } : filter
-            )),
-          }
-        : behavior
-    )));
-  }
-
-  function handleDeleteFilter(behaviorId, filterId) {
-    // Delete the filter with the matching filterId from the matching behavior.
-    setBehaviorList((currentList) => currentList.map((behavior) => (
-      behavior.id === behaviorId
-        ? { ...behavior, filters: behavior.filters.filter((filter) => filter.id !== filterId) }
-        : behavior
-    )));
   }
 
   // ---- Simulation FPS ----

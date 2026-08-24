@@ -19,7 +19,8 @@
               "enabled": false
             },
             "2": false,
-            "3": false
+            "3": false,
+            "4": false
           },
           "filterType": "method",
           "propertyType": 0,
@@ -51,7 +52,8 @@
               "enabled": false
             },
             "2": false,
-            "3": false
+            "3": false,
+            "4": false
           },
           "filterType": "ranged",
           "propertyType": 3,
@@ -69,7 +71,8 @@
               "enabled": false
             },
             "2": false,
-            "3": false
+            "3": false,
+            "4": false
           },
           "filterType": "method",
           "propertyType": 0,
@@ -96,7 +99,8 @@
                 "enabled": false
               },
               "2": false,
-              "3": false
+              "3": false,
+              "4": false
             },
             "filterType": "method",
             "propertyType": 0,
@@ -127,7 +131,8 @@
               "enabled": false
             },
             "2": false,
-            "3": false
+            "3": false,
+            "4": false
           },
           "filterType": "ranged",
           "propertyType": 0,
@@ -166,7 +171,8 @@
               "enabled": false
             },
             "2": false,
-            "3": false
+            "3": false,
+            "4": false
           },
           "filterType": "ranged",
           "propertyType": 1,
