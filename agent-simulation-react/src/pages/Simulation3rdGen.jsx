@@ -361,6 +361,7 @@ function Simulation3rdGen() {
   const navigate = useNavigate();
   const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
   const [showNoAgentsAlert, setShowNoAgentsAlert] = useState(false);
+  const [pendingEntityCreation, setPendingEntityCreation] = useState(null);
   const [pendingDeletion, setPendingDeletion] = useState(null);
   const [scenarioLoadAlert, setScenarioLoadAlert] = useState(null);
   const [scenarioName, setScenarioName] = useState('Untitled Scenario');
@@ -550,7 +551,7 @@ function Simulation3rdGen() {
     }
   }
 
-  function handleCreateAgents(values) {
+  function handleCreateAgents(values, snapshotDeletionConfirmed = false) {
     try {
       const canvas = canvasRef.current;
       const ctx = ctxRef.current;
@@ -576,6 +577,15 @@ function Simulation3rdGen() {
               config,
               obstaclesArrayRef.current
             );
+
+      // Ask for confirmation
+      if (snapshots.length > 0 && !snapshotDeletionConfirmed) {
+        setPendingEntityCreation({
+          type: 'agents',
+          values,
+        });
+        return;
+      }
 
       drafts.forEach((draft) => {
         const agent = new Agent(
@@ -1867,7 +1877,7 @@ function Simulation3rdGen() {
     }
   }
 
-  function handleCreateObstacle(values) {
+  function handleCreateObstacle(values, snapshotDeletionConfirmed = false) {
     try {
       // Step 1: Validate the exact fields currently shown in the preview.
       const config = normalizeObstacleFormValues(values);
@@ -1889,6 +1899,15 @@ function Simulation3rdGen() {
             (obstacle) => obstacle.name === obstacleName
           )
         );
+      }
+
+      // Ask for confirmation
+      if (snapshots.length > 0 && !snapshotDeletionConfirmed) {
+        setPendingEntityCreation({
+          type: 'obstacle',
+          values,
+        });
+        return;
       }
 
       // Step 3: Create the matching existing model.
@@ -2058,6 +2077,18 @@ function Simulation3rdGen() {
   function handleConfirmDeletion() {
     if (!pendingDeletion) return;
 
+    const deletesEntities = [
+      'agent',
+      'all-agents',
+      'obstacle',
+      'all-obstacles',
+    ].includes(pendingDeletion.type);
+
+    if (deletesEntities && snapshots.length > 0) {
+      setSnapshots([]);
+      hasInitialSnapshotRef.current = false;
+    }
+
     // Perform the destructive mutation only after the critical alert is confirmed.
     if (pendingDeletion.type === 'agent') {
       handleDeleteSelectedAgent(pendingDeletion.target);
@@ -2082,6 +2113,22 @@ function Simulation3rdGen() {
     setPendingDeletion(null);
   }
 
+  function handleConfirmEntityCreation() {
+    if (!pendingEntityCreation) return;
+
+    const { type, values } = pendingEntityCreation;
+
+    setSnapshots([]);
+    hasInitialSnapshotRef.current = false;
+    setPendingEntityCreation(null);
+
+    if (type === 'agents') {
+      handleCreateAgents(values, true);
+    } else if (type === 'obstacle') {
+      handleCreateObstacle(values, true);
+    }
+  }
+
   function getDeletionAlertContent() {
     if (!pendingDeletion) return null;
 
@@ -2089,28 +2136,36 @@ function Simulation3rdGen() {
       return {
         title: 'Delete This Agent?',
         primary: `Are you sure you want to delete “${pendingDeletion.name}”?`,
-        secondary: 'This action cannot be undone.',
+        secondary: snapshots.length > 0
+          ? `This will also delete all ${snapshots.length} snapshot${snapshots.length === 1 ? '' : 's'}. This action cannot be undone.`
+          : 'This action cannot be undone.',
       };
     }
     if (pendingDeletion.type === 'all-agents') {
       return {
         title: 'Delete All Agents?',
         primary: `Are you sure you want to delete all ${pendingDeletion.count} agents?`,
-        secondary: 'This action cannot be undone.',
+        secondary: snapshots.length > 0
+          ? `This will also delete all ${snapshots.length} snapshot${snapshots.length === 1 ? '' : 's'}. This action cannot be undone.`
+          : 'This action cannot be undone.',
       };
     }
     if (pendingDeletion.type === 'obstacle') {
       return {
         title: 'Delete This Obstacle?',
         primary: `Are you sure you want to delete “${pendingDeletion.name}”?`,
-        secondary: 'This action cannot be undone.',
+        secondary: snapshots.length > 0
+          ? `This will also delete all ${snapshots.length} snapshot${snapshots.length === 1 ? '' : 's'}. This action cannot be undone.`
+          : 'This action cannot be undone.',
       };
     }
     if (pendingDeletion.type === 'all-obstacles') {
       return {
         title: 'Delete All Obstacles?',
         primary: `Are you sure you want to delete all ${pendingDeletion.count} obstacles?`,
-        secondary: 'This action cannot be undone.',
+        secondary: snapshots.length > 0
+          ? `This will also delete all ${snapshots.length} snapshot${snapshots.length === 1 ? '' : 's'}. This action cannot be undone.`
+          : 'This action cannot be undone.',
       };
     }
     if (pendingDeletion.type === 'behavior') {
@@ -2188,6 +2243,19 @@ function Simulation3rdGen() {
           cancelLabel="Cancel"
           onConfirm={handleConfirmDeletion}
           onCancel={() => setPendingDeletion(null)}
+        />
+      )}
+
+      {pendingEntityCreation && (
+        <AlertBox
+          title="Delete Existing Snapshots?"
+          primMessage="Adding entities will change the current scenario."
+          secMessage={`Continue and delete all ${snapshots.length} snapshot${snapshots.length === 1 ? '' : 's'}?`}
+          type="danger"
+          confirmLabel="Continue"
+          cancelLabel="Cancel"
+          onConfirm={handleConfirmEntityCreation}
+          onCancel={() => setPendingEntityCreation(null)}
         />
       )}
 
