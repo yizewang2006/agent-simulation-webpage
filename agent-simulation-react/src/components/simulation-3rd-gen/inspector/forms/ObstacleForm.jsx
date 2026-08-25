@@ -70,6 +70,7 @@ export default function ObstacleForm({
 
     updatePreviewFunctionRef.current?.({
       shape,
+      name,
       color,
       centerX,
       centerY,
