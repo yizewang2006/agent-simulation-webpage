@@ -13,6 +13,7 @@ import {
   PenLine,
   Search,
   Shapes,
+  SlidersHorizontal,
   Trash2,
   UserRoundPen,
   Play,
@@ -22,6 +23,7 @@ import WorkspaceExplorer from '../workspace/WorkspaceExplorer.jsx';
 import ExplorerEntry from '../workspace/ExplorerEntry.jsx';
 import InlineNameEdit from '../workspace/InlineNameEdit.jsx';
 import AlertBox from '../simulation/AlertBox.jsx';
+import EntityExplorerFilter from '../workspace/EntityExplorerFilter.jsx';
 import {
   BEHAVIOR_GROUP_DEFINITIONS,
   getBehaviorGroupKey,
@@ -80,6 +82,14 @@ export default function SimulationExplorer({
   snapshotLimit,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showEntityFilters, setShowEntityFilters] = useState(false);
+  const [entityFilters, setEntityFilters] = useState({
+    agent: true,
+    obstacle: {
+      circle: true,
+      polygon: true,
+    },
+  });
   const [snapshotToRestore, setSnapshotToRestore] = useState(null);
   const [snapshotToDelete, setSnapshotToDelete] = useState(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
@@ -146,9 +156,24 @@ export default function SimulationExplorer({
     ];
   }, [activeTab, agents, behaviors, obstacles, recordings, snapshots]);
 
-  const visibleEntries = entries.filter((entry) =>
-    entry.name.toLowerCase().includes(searchTerm.trim().toLowerCase())
-  );
+  const visibleEntries = entries.filter((entry) => {
+    const matchesSearch = entry.name
+      .toLowerCase()
+      .includes(searchTerm.trim().toLowerCase());
+    if (!matchesSearch || activeTab !== EXPLORER_TABS.ENTITIES) {
+      return matchesSearch;
+    }
+    if (entry.type === 'Agent') return entityFilters.agent;
+
+    const shapeFilter = entry.target.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+      ? 'circle'
+      : 'polygon';
+    return entityFilters.obstacle[shapeFilter];
+  });
+
+  const hasActiveEntityFilters = !entityFilters.agent
+    || !entityFilters.obstacle.circle
+    || !entityFilters.obstacle.polygon;
 
   const activeTabLabel = activeTab;
 
@@ -636,6 +661,7 @@ export default function SimulationExplorer({
               onClick={() => {
                 onTabChange(tab);
                 setSearchTerm('');
+                setShowEntityFilters(false);
               }}
             >
               {tab[0].toUpperCase() + tab.slice(1)}
@@ -643,16 +669,41 @@ export default function SimulationExplorer({
           ))}
         </div>
 
-        <label className={styles.explorerSearch}>
-          <Search size={15} aria-hidden="true" />
-          <span className={styles.visuallyHidden}>Search {activeTabLabel}</span>
-          <input
-            type="search"
-            value={searchTerm}
-            placeholder={`Search ${activeTabLabel}...`}
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-        </label>
+        <div className={styles.explorerSearchRow}>
+          <label className={styles.explorerSearch}>
+            <Search size={15} aria-hidden="true" />
+            <span className={styles.visuallyHidden}>Search {activeTabLabel}</span>
+            <input
+              type="search"
+              value={searchTerm}
+              placeholder={`Search ${activeTabLabel}...`}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </label>
+          {activeTab === EXPLORER_TABS.ENTITIES && (
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerFilterButton}`}
+              type="button"
+              aria-label="Filter entities"
+              title="Filter Entities"
+              aria-controls="simulation-entity-filters"
+              aria-expanded={showEntityFilters}
+              data-active={hasActiveEntityFilters || undefined}
+              onClick={() => setShowEntityFilters((currentValue) => !currentValue)}
+            >
+              <SlidersHorizontal size={16} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+
+        {activeTab === EXPLORER_TABS.ENTITIES && showEntityFilters && (
+          <div id="simulation-entity-filters">
+            <EntityExplorerFilter
+              value={entityFilters}
+              onChange={setEntityFilters}
+            />
+          </div>
+        )}
 
         {activeTab === EXPLORER_TABS.BEHAVIORS && (
           <div className={styles.explorerPresetAction}>
@@ -734,8 +785,12 @@ export default function SimulationExplorer({
               )
             ) : (
               <p className={styles.explorerEmpty}>
-                {searchTerm
-                  ? `No matching ${activeTabLabel}.`
+                {/* Keep this empty-state copy aligned with the Scenario Builder Explorer. */}
+                {activeTab === EXPLORER_TABS.ENTITIES
+                  && (searchTerm || hasActiveEntityFilters)
+                  ? `Don't see ${activeTabLabel} you're looking for? Try adjusting the filters.`
+                  : searchTerm
+                    ? `No matching ${activeTabLabel}.`
                   : `No ${activeTabLabel} yet.`}
               </p>
             )}

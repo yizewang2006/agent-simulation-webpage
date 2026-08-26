@@ -354,6 +354,41 @@
   box-shadow: 0 0 0 2px rgba(210, 142, 0, 0.28);
 }
 
+.explorerSearchRow {
+  margin: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.explorerSearchRow .explorerSearch {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+}
+
+.explorerFilterButton {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+}
+
+.explorerFilterButton[aria-expanded="true"],
+.explorerFilterButton[data-active="true"] {
+  border-color: #012169;
+  background-color: #eef3fb;
+  color: #012169;
+}
+
+.explorerFilterPanel {
+  margin: 0 12px 10px;
+}
+
 .explorerPresetAction {
   margin: 0 12px 10px;
   display: grid;

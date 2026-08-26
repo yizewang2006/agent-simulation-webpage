@@ -1,4 +1,4 @@
-import { Bot, FileDown, FileUp, MonitorPlay, Redo2, Shapes, Trash2, Undo2, Wrench } from 'lucide-react';
+import { Bot, ChevronDown, FileDown, FileUp, MonitorPlay, PenLine, Redo2, Search, Shapes, SlidersHorizontal, Trash2, Undo2, UserRoundPen, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/simulation-3rd-gen/Header3rdGen.jsx';
@@ -10,6 +10,7 @@ import {
 import AddToSimulationMenu from '../components/simulation-3rd-gen/inspector/sub-components/AddToSimulationMenu.jsx';
 import AlertBox from '../components/simulation/AlertBox.jsx';
 import ScenarioBuilderCanvas from '../components/scenario-builder-3rd-gen/ScenarioBuilderCanvas.jsx';
+import EntityExplorerFilter from '../components/workspace/EntityExplorerFilter.jsx';
 import Footer from '../components/shared/Footer.jsx';
 import ExplorerEntry from '../components/workspace/ExplorerEntry.jsx';
 import WorkspaceExplorer from '../components/workspace/WorkspaceExplorer.jsx';
@@ -55,6 +56,19 @@ export default function ScenarioBuilder3rdGen() {
   const redoActionRef = useRef(null);
   const [scenarioName, setScenarioName] = useState('Untitled Scenario');
   const [builderTab, setBuilderTab] = useState(BUILDER_TABS.ENTITIES);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showEntityFilters, setShowEntityFilters] = useState(false);
+  const [entityFilters, setEntityFilters] = useState({
+    agent: true,
+    obstacle: {
+      circle: true,
+      polygon: true,
+    },
+  });
+  const [collapsedGroups, setCollapsedGroups] = useState({
+    Agent: false,
+    Obstacle: false,
+  });
   const [agents, setAgents] = useState([]);
   const [obstacles, setObstacles] = useState([]);
   const [previewAgents, setPreviewAgents] = useState([]);
@@ -68,6 +82,8 @@ export default function ScenarioBuilder3rdGen() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [lookAtAgentId, setLookAtAgentId] = useState(null);
+  const isCreatingEntity = inspectorMode === INSPECTOR_MODES.ADD_AGENT
+    || inspectorMode === INSPECTOR_MODES.ADD_OBSTACLE;
 
   // This function stores a destination until the user confirms they want to leave.
   function requestScenarioExit(destination) {
@@ -78,6 +94,14 @@ export default function ScenarioBuilder3rdGen() {
   function continueScenarioExit() {
     if (!pendingNavigation) return;
     navigate('/loading', { state: pendingNavigation });
+  }
+
+  // This function expands or collapses one Entity section.
+  function toggleGroup(entityType) {
+    setCollapsedGroups((currentGroups) => ({
+      ...currentGroups,
+      [entityType]: !currentGroups[entityType],
+    }));
   }
 
   useEffect(() => {
@@ -380,13 +404,13 @@ export default function ScenarioBuilder3rdGen() {
     }
   }
 
-  // This function deletes the selected Entity as one undoable action.
-  function deleteSelectedEntity() {
-    const entityType = selection?.entityType;
+  // This function deletes one Entity as an undoable action.
+  function deleteEntity(entitySelection) {
+    const entityType = entitySelection.entityType;
     const entities = entityType === ENTITY_TYPES.AGENT
       ? agentsRef.current
       : obstaclesRef.current;
-    const entity = entities.find((item) => item.id === selection?.id);
+    const entity = entities.find((item) => item.id === entitySelection.id);
     if (!entity) return;
 
     recordHistoryAction({
@@ -515,6 +539,7 @@ export default function ScenarioBuilder3rdGen() {
 
   // This function restores the most recent Builder action.
   function undoLastAction() {
+    if (isCreatingEntity) return;
     cancelLookAtAgent();
     const historyItem = undoStackRef.current.pop();
     if (!historyItem) return;
@@ -602,6 +627,7 @@ export default function ScenarioBuilder3rdGen() {
 
   // This function reapplies the most recently undone Builder action.
   function redoLastAction() {
+    if (isCreatingEntity) return;
     cancelLookAtAgent();
     const historyItem = redoStackRef.current.pop();
     if (!historyItem) return;
@@ -808,6 +834,20 @@ export default function ScenarioBuilder3rdGen() {
   }
 
   function renderScenarioExplorer() {
+    const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+    const visibleAgents = agents.filter((agent) =>
+      entityFilters.agent
+      && agent.name.toLowerCase().includes(normalizedSearchTerm)
+    );
+    const visibleObstacles = obstacles.filter((obstacle) =>
+      entityFilters.obstacle[obstacle.shapeType]
+      && obstacle.name.toLowerCase().includes(normalizedSearchTerm)
+    );
+    const hasVisibleEntities = visibleAgents.length > 0 || visibleObstacles.length > 0;
+    const hasActiveEntityFilters = !entityFilters.agent
+      || !entityFilters.obstacle.circle
+      || !entityFilters.obstacle.polygon;
+
     return (
       <WorkspaceExplorer title="Scenario Explorer">
         <div className={styles.explorerContent}>
@@ -870,12 +910,49 @@ export default function ScenarioBuilder3rdGen() {
                 role="tab"
                 aria-controls={`builder-tabpanel-${tab}`}
                 aria-selected={builderTab === tab}
-                onClick={() => setBuilderTab(tab)}
+                onClick={() => {
+                  setBuilderTab(tab);
+                  setSearchTerm('');
+                }}
               >
                 {tab[0].toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
+
+          <div className={styles.explorerSearchRow}>
+            <label className={styles.explorerSearch}>
+              <Search size={15} aria-hidden="true" />
+              <span className={styles.visuallyHidden}>Search {builderTab}</span>
+              <input
+                type="search"
+                value={searchTerm}
+                placeholder={`Search ${builderTab}...`}
+                onChange={(event) => setSearchTerm(event.target.value)}
+              />
+            </label>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerFilterButton}`}
+              type="button"
+              aria-label="Filter entities"
+              title="Filter Entities"
+              aria-controls="builder-entity-filters"
+              aria-expanded={showEntityFilters}
+              data-active={hasActiveEntityFilters || undefined}
+              onClick={() => setShowEntityFilters((currentValue) => !currentValue)}
+            >
+              <SlidersHorizontal size={16} aria-hidden="true" />
+            </button>
+          </div>
+
+          {showEntityFilters && (
+            <div id="builder-entity-filters">
+              <EntityExplorerFilter
+                value={entityFilters}
+                onChange={setEntityFilters}
+              />
+            </div>
+          )}
 
           {builderTab === BUILDER_TABS.ENTITIES && (
             <div
@@ -885,18 +962,40 @@ export default function ScenarioBuilder3rdGen() {
               aria-labelledby={`builder-tab-${BUILDER_TABS.ENTITIES}`}
             >
               <div className={styles.explorerList}>
-                {agents.length === 0 && obstacles.length === 0 ? (
-                  <p className={styles.explorerEmpty}>No entities yet.</p>
+                {!hasVisibleEntities ? (
+                  <p className={styles.explorerEmpty}>
+                    {/* Keep this empty-state copy aligned with the Main Simulation Explorer. */}
+                    {searchTerm || hasActiveEntityFilters
+                      ? `Don't see ${builderTab} you're looking for? Try adjusting the filters.`
+                      : `No ${builderTab} yet.`}
+                  </p>
                 ) : (
                   <>
-                    {agents.length > 0 && (
+                    {visibleAgents.length > 0 && (
                       <section className={styles.explorerGroup}>
-                        <h3 className={styles.builderGroupHeading}>
-                          <span>Agents</span>
-                          <span className={styles.explorerGroupCount}>{agents.length}</span>
+                        <h3 className={styles.explorerGroupHeading}>
+                          <button
+                            className={styles.explorerGroupTrigger}
+                            type="button"
+                            aria-expanded={!collapsedGroups.Agent}
+                            onClick={() => toggleGroup('Agent')}
+                          >
+                            <span className={styles.explorerGroupLabel}>
+                              <ChevronDown
+                                className={`${styles.explorerGroupChevron} ${
+                                  collapsedGroups.Agent ? styles.isCollapsed : ''
+                                }`}
+                                size={15}
+                                aria-hidden="true"
+                              />
+                              Agents
+                            </span>
+                            <span className={styles.explorerGroupCount}>{visibleAgents.length}</span>
+                          </button>
                         </h3>
-                        <div className={styles.explorerGroupEntries}>
-                          {agents.map((agent) => (
+                        {!collapsedGroups.Agent && (
+                          <div className={styles.explorerGroupEntries}>
+                          {visibleAgents.map((agent) => (
                             <ExplorerEntry
                               key={agent.id}
                               name={agent.name}
@@ -908,20 +1007,65 @@ export default function ScenarioBuilder3rdGen() {
                                 entityType: ENTITY_TYPES.AGENT,
                                 id: agent.id,
                               })}
-                            />
+                            >
+                              <div className={styles.explorerEntryActions}>
+                                <button
+                                  className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+                                  type="button"
+                                  aria-label={`Edit ${agent.name}`}
+                                  title="Edit Agent"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    selectEntity({ entityType: ENTITY_TYPES.AGENT, id: agent.id });
+                                  }}
+                                >
+                                  <UserRoundPen size={16} aria-hidden="true" />
+                                </button>
+                                <button
+                                  className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+                                  type="button"
+                                  aria-label={`Delete ${agent.name}`}
+                                  title="Delete Agent"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    deleteEntity({ entityType: ENTITY_TYPES.AGENT, id: agent.id });
+                                  }}
+                                >
+                                  <Trash2 size={16} aria-hidden="true" />
+                                </button>
+                              </div>
+                            </ExplorerEntry>
                           ))}
-                        </div>
+                          </div>
+                        )}
                       </section>
                     )}
 
-                    {obstacles.length > 0 && (
+                    {visibleObstacles.length > 0 && (
                       <section className={styles.explorerGroup}>
-                        <h3 className={styles.builderGroupHeading}>
-                          <span>Obstacles</span>
-                          <span className={styles.explorerGroupCount}>{obstacles.length}</span>
+                        <h3 className={styles.explorerGroupHeading}>
+                          <button
+                            className={styles.explorerGroupTrigger}
+                            type="button"
+                            aria-expanded={!collapsedGroups.Obstacle}
+                            onClick={() => toggleGroup('Obstacle')}
+                          >
+                            <span className={styles.explorerGroupLabel}>
+                              <ChevronDown
+                                className={`${styles.explorerGroupChevron} ${
+                                  collapsedGroups.Obstacle ? styles.isCollapsed : ''
+                                }`}
+                                size={15}
+                                aria-hidden="true"
+                              />
+                              Obstacles
+                            </span>
+                            <span className={styles.explorerGroupCount}>{visibleObstacles.length}</span>
+                          </button>
                         </h3>
-                        <div className={styles.explorerGroupEntries}>
-                          {obstacles.map((obstacle) => (
+                        {!collapsedGroups.Obstacle && (
+                          <div className={styles.explorerGroupEntries}>
+                          {visibleObstacles.map((obstacle) => (
                             <ExplorerEntry
                               key={obstacle.id}
                               name={obstacle.name}
@@ -933,9 +1077,37 @@ export default function ScenarioBuilder3rdGen() {
                                 entityType: ENTITY_TYPES.OBSTACLE,
                                 id: obstacle.id,
                               })}
-                            />
+                            >
+                              <div className={styles.explorerEntryActions}>
+                                <button
+                                  className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+                                  type="button"
+                                  aria-label={`Edit ${obstacle.name}`}
+                                  title="Edit Obstacle"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    selectEntity({ entityType: ENTITY_TYPES.OBSTACLE, id: obstacle.id });
+                                  }}
+                                >
+                                  <PenLine size={16} aria-hidden="true" />
+                                </button>
+                                <button
+                                  className={`${styles.secondaryAction} ${styles.explorerIconButton} ${styles.explorerDeleteButton}`}
+                                  type="button"
+                                  aria-label={`Delete ${obstacle.name}`}
+                                  title="Delete Obstacle"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    deleteEntity({ entityType: ENTITY_TYPES.OBSTACLE, id: obstacle.id });
+                                  }}
+                                >
+                                  <Trash2 size={16} aria-hidden="true" />
+                                </button>
+                              </div>
+                            </ExplorerEntry>
                           ))}
-                        </div>
+                          </div>
+                        )}
                       </section>
                     )}
                   </>
@@ -979,7 +1151,7 @@ export default function ScenarioBuilder3rdGen() {
             <button
               className={`${styles.secondaryAction} ${styles.runtimeOptionButton}`}
               type="button"
-              disabled={!canUndo}
+              disabled={isCreatingEntity || !canUndo}
               onClick={undoLastAction}
             >
               <Undo2 size={14} aria-hidden="true" />
@@ -988,7 +1160,7 @@ export default function ScenarioBuilder3rdGen() {
             <button
               className={`${styles.secondaryAction} ${styles.runtimeOptionButton}`}
               type="button"
-              disabled={!canRedo}
+              disabled={isCreatingEntity || !canRedo}
               onClick={redoLastAction}
             >
               <Redo2 size={14} aria-hidden="true" />
@@ -1016,6 +1188,43 @@ export default function ScenarioBuilder3rdGen() {
     );
   }
 
+  // This function converts an Agent into values people can edit directly.
+  function getAgentEditValues(agent) {
+    if (!agent) return null;
+    const roundForForm = (value) => String(Math.round(value * 100) / 100);
+
+    return {
+      name: agent.name,
+      x: roundForForm(agent.x),
+      y: roundForForm(agent.y),
+      speed: roundForForm(agent.speed),
+      angle: roundForForm(agent.angle),
+      color: agent.colorHex,
+      showFOV: agent.showFOV,
+      fovRadius: roundForForm(agent.fovRadius),
+      fovAngle: roundForForm(agent.fovAngle),
+    };
+  }
+
+  // This function converts an Obstacle into values people can edit directly.
+  function getObstacleEditValues(obstacle) {
+    if (!obstacle) return null;
+    const roundForForm = (value) => String(Math.round(value * 100) / 100);
+
+    return {
+      shape: obstacle.shapeType,
+      name: obstacle.name,
+      color: obstacle.color,
+      centerX: roundForForm(obstacle.center?.x ?? 250),
+      centerY: roundForForm(obstacle.center?.y ?? 250),
+      radius: String(obstacle.radius ?? 50),
+      vertices: obstacle.vertices?.map((vertex) => ({
+        x: roundForForm(vertex.x),
+        y: roundForForm(vertex.y),
+      })) ?? [],
+    };
+  }
+
   function renderScenarioInspector() {
     const FormComponent = getFormComponent(inspectorMode);
     const selectedAgent = selection?.entityType === ENTITY_TYPES.AGENT
@@ -1024,33 +1233,8 @@ export default function ScenarioBuilder3rdGen() {
     const selectedObstacle = selection?.entityType === ENTITY_TYPES.OBSTACLE
       ? obstacles.find((obstacle) => obstacle.id === selection.id)
       : null;
-    const agentEditValues = selectedAgent
-      ? {
-          name: selectedAgent.name,
-          x: String(selectedAgent.x),
-          y: String(selectedAgent.y),
-          speed: String(selectedAgent.speed),
-          angle: String(selectedAgent.angle),
-          color: selectedAgent.colorHex,
-          showFOV: selectedAgent.showFOV,
-          fovRadius: String(selectedAgent.fovRadius),
-          fovAngle: String(selectedAgent.fovAngle),
-        }
-      : null;
-    const obstacleEditValues = selectedObstacle
-      ? {
-          shape: selectedObstacle.shapeType,
-          name: selectedObstacle.name,
-          color: selectedObstacle.color,
-          centerX: String(selectedObstacle.center?.x ?? 250),
-          centerY: String(selectedObstacle.center?.y ?? 250),
-          radius: String(selectedObstacle.radius ?? 50),
-          vertices: selectedObstacle.vertices?.map((vertex) => ({
-            x: String(vertex.x),
-            y: String(vertex.y),
-          })) ?? [],
-        }
-      : null;
+    const agentEditValues = getAgentEditValues(selectedAgent);
+    const obstacleEditValues = getObstacleEditValues(selectedObstacle);
 
     return (
       <WorkspaceInspector>
@@ -1076,7 +1260,7 @@ export default function ScenarioBuilder3rdGen() {
               initialValues={agentEditValues}
               onSubmit={applyAgentEdits}
               onCancel={() => selectEntity(null)}
-              onDelete={deleteSelectedEntity}
+              onDelete={() => deleteEntity(selection)}
             />
           ) : inspectorMode === INSPECTOR_MODES.EDIT_OBSTACLE && selectedObstacle && FormComponent ? (
             <FormComponent
@@ -1085,7 +1269,7 @@ export default function ScenarioBuilder3rdGen() {
               initialValues={obstacleEditValues}
               onSubmit={applyObstacleEdits}
               onCancel={() => selectEntity(null)}
-              onDelete={deleteSelectedEntity}
+              onDelete={() => deleteEntity(selection)}
             />
           ) : (
             <div className={styles.inspectorBuild}>
