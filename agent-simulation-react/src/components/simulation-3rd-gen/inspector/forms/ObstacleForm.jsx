@@ -18,6 +18,7 @@ export default function ObstacleForm({
   onClearPreview,
   onSubmit,
   onCancel,
+  onDelete,
 }) {
   const [shape, setShape] = useState(initialValues?.shape ?? "circle");
   const [name, setName] = useState(initialValues?.name ?? "");
@@ -44,14 +45,20 @@ export default function ObstacleForm({
     clearPreviewFunctionRef.current = onClearPreview;
   }, [onClearPreview]);
 
-  // Keep position controls connected to live Canvas dragging without replacing
-  // unrelated unsaved edits such as the obstacle name, color, or radius.
+  // Keep Circle geometry connected to live Canvas dragging and radius editing.
   useEffect(() => {
     if (mode !== FORM_MODES.EDIT || shape !== "circle") return;
 
     setCenterX((currentCenterX) => initialValues?.centerX ?? currentCenterX);
     setCenterY((currentCenterY) => initialValues?.centerY ?? currentCenterY);
-  }, [mode, shape, initialValues?.centerX, initialValues?.centerY]);
+    setRadius((currentRadius) => initialValues?.radius ?? currentRadius);
+  }, [
+    mode,
+    shape,
+    initialValues?.centerX,
+    initialValues?.centerY,
+    initialValues?.radius,
+  ]);
 
   useEffect(() => {
     if (mode !== FORM_MODES.EDIT || shape !== "polygon" || !liveVerticesKey) return;
@@ -362,6 +369,16 @@ export default function ObstacleForm({
             <X size={16} aria-hidden="true" />
             Cancel
           </button>
+          {isEditing && onDelete && (
+            <button
+              className={`${styles.dangerAction} ${styles.formActionButton}`}
+              type="button"
+              onClick={onDelete}
+            >
+              <Trash2 size={16} aria-hidden="true" />
+              Delete Obstacle
+            </button>
+          )}
         </div>
       </form>
     </div>

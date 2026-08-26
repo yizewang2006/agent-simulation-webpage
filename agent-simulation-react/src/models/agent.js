@@ -1,7 +1,7 @@
 import { Entity } from "./entity.js";
-import { Position,
-    calculateBehaviorValue,
+import { calculateBehaviorValue,
     getActivationInputValue,
+    getEntityCenterPoint,
     getEntityDetectionPoints,
     getShortestOffset,
     smoothTowardAngle,
@@ -22,9 +22,9 @@ export class Agent extends Entity{
     constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, name, ctx, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + name + " has been created");
         super(id, name, ENTITY_TYPES.AGENT);
-        // Instead of separate x and y, we now use a Position() class
         this.isSpecial = isSpecial;
-        this.position = new Position(x, y);
+        this.x = x;
+        this.y = y;
         this.radius = radius;
         this.hasMotion = true;
         this.hasHeading = true;
@@ -80,8 +80,8 @@ export class Agent extends Entity{
     }
 
     drawVirtualCopyAtOffset(offset, drawFOV = false) {
-        const x = this.position.x + offset.x;
-        const y = this.position.y + offset.y;
+        const x = this.x + offset.x;
+        const y = this.y + offset.y;
 
         if (drawFOV) {
             const startAngle = this.angle - this.fovAngle / 2;
@@ -122,15 +122,15 @@ export class Agent extends Entity{
         const canvasWidth = getCanvasLogicalWidth(this.canvas);
         const canvasHeight = getCanvasLogicalHeight(this.canvas);
 
-        if (this.position.x + range > canvasWidth) {
+        if (this.x + range > canvasWidth) {
             horizontalOffset = -canvasWidth;
-        } else if (this.position.x - range < 0) {
+        } else if (this.x - range < 0) {
             horizontalOffset = canvasWidth;
         }
 
-        if (this.position.y + range > canvasHeight) {
+        if (this.y + range > canvasHeight) {
             verticalOffset = -canvasHeight;
-        } else if (this.position.y - range < 0) {
+        } else if (this.y - range < 0) {
             verticalOffset = canvasHeight;
         }
 
@@ -143,7 +143,8 @@ export class Agent extends Entity{
 
     // Phase 1: move, warp, and draw — all agents run this before any behavior is applied
     move(maxSpeed = null) {
-        this.position.add(this.dx, this.dy);
+        this.x += this.dx;
+        this.y += this.dy;
         if (this.dx !== 0 || this.dy !== 0) {
             this.angle = Math.atan2(this.dy, this.dx);
         }
@@ -310,16 +311,16 @@ export class Agent extends Entity{
         const canvasWidth = getCanvasLogicalWidth(this.canvas);
         const canvasHeight = getCanvasLogicalHeight(this.canvas);
 
-        if (this.position.x >= canvasWidth) {
-            this.position.x -= canvasWidth;
-        } else if (this.position.x < 0) {
-            this.position.x += canvasWidth;
+        if (this.x >= canvasWidth) {
+            this.x -= canvasWidth;
+        } else if (this.x < 0) {
+            this.x += canvasWidth;
         }
 
-        if (this.position.y >= canvasHeight) {
-            this.position.y -= canvasHeight;
-        } else if (this.position.y < 0) {
-            this.position.y += canvasHeight;
+        if (this.y >= canvasHeight) {
+            this.y -= canvasHeight;
+        } else if (this.y < 0) {
+            this.y += canvasHeight;
         }
     }
 
@@ -329,8 +330,9 @@ export class Agent extends Entity{
 
         // Loop through all entities to check if they are within FOV
         entities.forEach(entity => {
-            if (entity !== this && entity.position) {
-                const { diffX, diffY } = getShortestOffset(this.position, entity.position, this.canvas);
+            const entityCenter = getEntityCenterPoint(entity);
+            if (entity !== this && entityCenter) {
+                const { diffX, diffY } = getShortestOffset(this, entityCenter, this.canvas);
 
                 const distanceBetweenEntities = Math.sqrt(diffX * diffX + diffY * diffY);
 
@@ -341,7 +343,7 @@ export class Agent extends Entity{
                     // The center/centroid is still used above as a cheap broad-phase distance check.
                     const isVisible = detectionPoints.some((point) => {
                         const { diffX: refDiffX, diffY: refDiffY } =
-                            getShortestOffset(this.position, point, this.canvas);
+                            getShortestOffset(this, point, this.canvas);
 
                         // A polygon's bounding radius is only a broad-phase check.
                         // Its closest real edge must also be inside the FOV radius.
@@ -387,26 +389,4 @@ export class Agent extends Entity{
         this.detectedEntities = currentlyDetected;
     }
 
-    // DEMO ONLY. DISUSED
-    follow(target) {
-        if (!target) return;
-
-        // Calculate the vector from this agent to the target
-        let { diffX, diffY } = getShortestOffset(this.position, target.position, this.canvas);
-
-        // Normalize the vector
-        let dist = Math.sqrt(diffX * diffX + diffY * diffY);
-        if (dist === 0) return;
-
-        diffX /= dist;
-        diffY /= dist;
-
-        // Set a "desired speed"
-        const speed = 1; // tweak this number as needed
-        this.dx = diffX * speed;
-        this.dy = diffY * speed;
-
-        // Update facing angle
-        this.angle = Math.atan2(this.dy, this.dx);
-    }
 }

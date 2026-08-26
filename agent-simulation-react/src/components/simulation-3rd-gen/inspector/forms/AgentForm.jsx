@@ -4,7 +4,7 @@
 import { FORM_MODES } from "../modeConstants";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, CopyPlus, RefreshCw, X } from "lucide-react";
+import { Check, CopyPlus, RefreshCw, Trash2, X } from "lucide-react";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
 const AGENT_CREATION_DEFAULTS = {
@@ -17,6 +17,7 @@ const AGENT_CREATION_DEFAULTS = {
     speedMax: '2.5',
     angleMin: '0',
     angleMax: '360',
+    fovRadius: '100',
     fovAngle: '150',
     color: '#000000',
     showFOV: true,
@@ -28,7 +29,8 @@ export default function AgentForm({
     onRegeneratePreview,
     onUpdatePreviewAppearance,
     onSubmit,
-    onCancel
+    onCancel,
+    onDelete,
 }) {
     const [values, setValues] = useState(() => ({
         ...AGENT_CREATION_DEFAULTS,
@@ -48,9 +50,8 @@ export default function AgentForm({
       updatePreviewAppearanceRef.current = onUpdatePreviewAppearance;
     }, [onUpdatePreviewAppearance]);
 
-    // Canvas dragging changes the live Agent while this form stays mounted.
-    // Pull only the position fields back into the draft so Apply cannot restore
-    // stale coordinates. Other unsaved form edits remain untouched.
+    // Canvas dragging and Look At Cursor change live geometry while this form stays mounted.
+    // Pull those fields back into the draft so Apply cannot restore stale values.
     useEffect(() => {
       if (mode !== FORM_MODES.EDIT) return;
 
@@ -58,13 +59,14 @@ export default function AgentForm({
         ...currentValues,
         x: initialValues?.x ?? currentValues.x,
         y: initialValues?.y ?? currentValues.y,
+        angle: initialValues?.angle ?? currentValues.angle,
       }));
-    }, [mode, initialValues?.x, initialValues?.y]);
+    }, [mode, initialValues?.x, initialValues?.y, initialValues?.angle]);
 
     /*
      * Only randomization fields belong in this dependency list. Changing one
      * creates a new arrangement after a short debounce. Appearance-only fields
-     * such as color, fovAngle, and showFOV are handled separately so agents
+     * such as color, fovRadius, fovAngle, and showFOV are handled separately so agents
      * do not jump to new positions when the user is only changing how they look.
      */
     useEffect(() => {
@@ -113,7 +115,12 @@ export default function AgentForm({
          * appearance controls are added later (for example, radius), include
          * them here rather than in the randomization effect above.
          */
-        if (name === "color" || name === "fovAngle" || name === "showFOV") {
+        if (
+          name === "color"
+          || name === "fovRadius"
+          || name === "fovAngle"
+          || name === "showFOV"
+        ) {
           const result = updatePreviewAppearanceRef.current?.(nextValues);
 
           if (result && !result.ok) {
@@ -347,6 +354,29 @@ export default function AgentForm({
             <legend className={styles.formSectionTitle}>
               Field of View
             </legend>
+
+            <div className={styles.inputGroup}>
+              <label
+                className={styles.formLabel}
+                htmlFor="agent-global-fov-radius"
+              >
+                Global FOV Radius
+              </label>
+
+              <div className={styles.inputWithUnit}>
+                <input
+                  id="agent-global-fov-radius"
+                  className={styles.formInput}
+                  type="number"
+                  name="fovRadius"
+                  value={values.fovRadius}
+                  min="0"
+                  step="1"
+                  onChange={updateField}
+                />
+                <span className={styles.inputUnit}>px</span>
+              </div>
+            </div>
 
             <div className={styles.inputGroup}>
               <label
@@ -585,6 +615,17 @@ export default function AgentForm({
           <X size={16} aria-hidden="true" />
           Cancel
         </button>
+
+        {mode === FORM_MODES.EDIT && onDelete && (
+          <button
+            className={`${styles.dangerAction} ${styles.formActionButton}`}
+            type="button"
+            onClick={onDelete}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            Delete Agent
+          </button>
+        )}
       </div>
     </form>
     </div>

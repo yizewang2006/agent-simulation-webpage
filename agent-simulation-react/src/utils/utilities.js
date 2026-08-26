@@ -1,4 +1,4 @@
-import { ENTITY_ID_PREFIXES } from './constants.js';
+import { ENTITY_ID_PREFIXES, ENTITY_TYPES } from './constants.js';
 
 const buildDate = new Date(import.meta.env.VITE_BUILD_DATE);
 
@@ -122,14 +122,21 @@ export function storeScenarioInformation(refs = {}) {
 
   // Save values that can change while the simulation is playing.
   Object.entries(refs).forEach(([entityType, ref]) => {
-    scenarioData[entityType] = ref.current.map((entity) => ({
-      entity,
-      position: entity.position ? { ...entity.position } : null,
-      dx: entity.dx,
-      dy: entity.dy,
-      angle: entity.angle,
-      steeringAngle: entity.steeringAngle,
-    }));
+    scenarioData[entityType] = ref.current.map((entity) => {
+      const centerPoint = entity.entityType === ENTITY_TYPES.AGENT
+        ? entity
+        : entity.position;
+
+      return {
+        entity,
+        x: centerPoint.x,
+        y: centerPoint.y,
+        dx: entity.dx,
+        dy: entity.dy,
+        angle: entity.angle,
+        steeringAngle: entity.steeringAngle,
+      };
+    });
   });
 
   return scenarioData;
@@ -144,9 +151,12 @@ export function resetScenario(scenarioData = {}) {
     entities.forEach((savedEntity) => {
       const { entity } = savedEntity;
 
-      if (savedEntity.position) {
-        entity.position.x = savedEntity.position.x;
-        entity.position.y = savedEntity.position.y;
+      if (entity.entityType === ENTITY_TYPES.AGENT) {
+        entity.x = savedEntity.x;
+        entity.y = savedEntity.y;
+      } else {
+        entity.position.x = savedEntity.x;
+        entity.position.y = savedEntity.y;
       }
       if (savedEntity.dx !== undefined) entity.dx = savedEntity.dx;
       if (savedEntity.dy !== undefined) entity.dy = savedEntity.dy;

@@ -44,6 +44,9 @@ function requirePoint(value, label, canvasWidth, canvasHeight) {
 // Converts the agent data to a standard format.
 function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
   requireObject(agent, `Agent ${index + 1}`);
+  if (agent.entityType !== ENTITY_TYPES.AGENT) {
+    throw new Error(`Agent ${index + 1} must have the Agent entity type.`);
+  }
   const x = requireFiniteNumber(agent.x, `Agent ${index + 1} X`);
   const y = requireFiniteNumber(agent.y, `Agent ${index + 1} Y`);
   if (x < 0 || x > canvasWidth || y < 0 || y > canvasHeight) {
@@ -51,7 +54,7 @@ function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
   }
 
   return {
-    kind: 'agent',
+    entityType: ENTITY_TYPES.AGENT,
     id: requireEntityId(
       agent.id,
       `Agent ${index + 1} ID`,
@@ -73,13 +76,16 @@ function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
 // Does the same thing for obstacles, but also checks the shape type and validates the properties accordingly.
 function normalizeObstacle(obstacle, index, canvasWidth, canvasHeight) {
   requireObject(obstacle, `Obstacle ${index + 1}`);
+  if (obstacle.entityType !== ENTITY_TYPES.OBSTACLE) {
+    throw new Error(`Obstacle ${index + 1} must have the Obstacle entity type.`);
+  }
   const isCircle = obstacle.shapeType === 'circle' || obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE;
   const isPolygon = obstacle.shapeType === 'polygon' || obstacle.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON;
   if (!isCircle && !isPolygon) throw new Error(`Obstacle ${index + 1} has an unsupported shape type.`);
 
   // Base properties for both circle and polygon obstacles
   const base = {
-    kind: 'obstacle',
+    entityType: ENTITY_TYPES.OBSTACLE,
     id: requireEntityId(
       obstacle.id,
       `Obstacle ${index + 1} ID`,
@@ -112,9 +118,16 @@ function normalizeObstacle(obstacle, index, canvasWidth, canvasHeight) {
   };
 }
 
-// Parse the loaded JSON file.
+// This function validates Scenario JSON and returns the current Scenario schema.
 export function parseScenarioData(data, { canvasWidth = 500, canvasHeight = 500, maxAgents = 500 } = {}) {
   const scenario = requireObject(data, 'Scenario');
+  const name = requireNonEmptyString(scenario.name, 'Scenario name');
+  const canvas = requireObject(scenario.canvas, 'Scenario canvas');
+  const width = requireFiniteNumber(canvas.width, 'Scenario canvas width');
+  const height = requireFiniteNumber(canvas.height, 'Scenario canvas height');
+  if (width !== canvasWidth || height !== canvasHeight) {
+    throw new Error(`Scenario canvas must be ${canvasWidth} × ${canvasHeight}.`);
+  }
   if (!Array.isArray(scenario.agents) || !Array.isArray(scenario.obstacles)) {
     throw new Error('Scenario JSON must contain agents and obstacles arrays.');
   }
@@ -130,13 +143,14 @@ export function parseScenarioData(data, { canvasWidth = 500, canvasHeight = 500,
   }
 
   return {
-    version: scenario.version ?? 1,
-    canvas: { width: canvasWidth, height: canvasHeight },
+    name,
+    canvas: { width, height },
     agents,
     obstacles,
   };
 }
 
+// This function reads and validates a Scenario JSON file.
 export async function loadScenarioFile(file, options) {
   if (!file) throw new Error('Choose a scenario JSON file first.');
   if (!file.name.toLowerCase().endsWith('.json')) throw new Error('Scenario files must use the .json extension.'); // If the file is not JSON file, reject it.
@@ -148,4 +162,29 @@ export async function loadScenarioFile(file, options) {
     throw new Error('The selected file does not contain valid JSON.');
   }
   return parseScenarioData(data, options);
+}
+
+// This function creates one validated Scenario document for export.
+export function createScenarioDocument({ name, canvas, agents, obstacles }) {
+  return parseScenarioData(
+    { name, canvas, agents, obstacles },
+    {
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+    }
+  );
+}
+
+// This function downloads a Scenario document as a JSON file.
+export function downloadScenarioFile(scenario) {
+  const blob = new Blob(
+    [JSON.stringify(scenario, null, 2)],
+    { type: 'application/json' }
+  );
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${scenario.name.replace(/[\\/]/g, '-')}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
 }

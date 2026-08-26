@@ -20,8 +20,9 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
 import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
+import { findEntityAt } from "../utils/canvasInteractionUtilities.js";
 import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent } from "../utils/utilities.js";
-import { loadScenarioFile } from "../utils/scenarioLoader.js";
+import { loadScenarioFile } from "../utils/scenarioUtilities.js";
 
 // This is amenable as of now, don't forget to change the dimensions in the CSS file as well if you change these
 const CANVAS_WIDTH = 500;
@@ -36,8 +37,8 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     agents: agentsArray.map((agent) => ({
       id: agent.id,
       name: agent.name,
-      x: agent.position.x,
-      y: agent.position.y,
+      x: agent.x,
+      y: agent.y,
       radius: agent.radius,
       dx: agent.dx,
       dy: agent.dy,
@@ -143,60 +144,6 @@ function drawAgentPreview(ctx, preview) {
   ctx.stroke();
 
   ctx.restore();
-}
-
-function isPointInsidePolygon(point, vertices) {
-  let isInside = false;
-
-  for (let i = 0, j = vertices.length - 1; i < vertices.length; j = i, i += 1) {
-    const current = vertices[i];
-    const previous = vertices[j];
-    const crossesY = current.y > point.y !== previous.y > point.y;
-
-    if (crossesY) {
-      const crossingX = ((previous.x - current.x) * (point.y - current.y)) / (previous.y - current.y) + current.x;
-      if (point.x < crossingX) {
-        isInside = !isInside;
-      }
-    }
-  }
-
-  return isInside;
-}
-
-function getDistanceToSegment(point, start, end) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared === 0) return Math.hypot(point.x - start.x, point.y - start.y);
-
-  const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
-  return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
-}
-
-function isPointNearPolygonEdge(point, vertices, tolerance = 6) {
-  return vertices.some((vertex, index) => (
-    getDistanceToSegment(point, vertex, vertices[(index + 1) % vertices.length]) <= tolerance
-  ));
-}
-
-function findObstacleAt(point, obstacles) {
-  for (let i = obstacles.length - 1; i >= 0; i -= 1) {
-    const obstacle = obstacles[i];
-
-    if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      if (Math.hypot(point.x - obstacle.center.x, point.y - obstacle.center.y) <= obstacle.radius + 4) {
-        return obstacle;
-      }
-    } else if (
-      isPointInsidePolygon(point, obstacle.vertices) ||
-      isPointNearPolygonEdge(point, obstacle.vertices)
-    ) {
-      return obstacle;
-    }
-  }
-
-  return null;
 }
 
 function Simulation2ndGen() {
@@ -779,17 +726,15 @@ function Simulation2ndGen() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     // Scale click coords to match the logical simulation size.
-    const { x: clickX, y: clickY } = getCanvasPointFromEvent(e, canvas);
+    const point = getCanvasPointFromEvent(e, canvas);
 
-    // Finds the first agent within the click area (agent radius + 4px tolerance) and selects it for editing.
-    // Agents are checked first so they win if they overlap with an obstacle.
-    const clicked = agentsArrayRef.current.find(agent => {
-      const dx = clickX - agent.position.x;
-      const dy = clickY - agent.position.y;
-      return Math.sqrt(dx * dx + dy * dy) <= agent.radius + 4; // +4px tolerance so small agents are easier to click
-    });
+    // Find the topmost Entity in the same order used to draw the canvas.
+    const clicked = findEntityAt(point, [
+      ...obstaclesArrayRef.current,
+      ...agentsArrayRef.current,
+    ]);
 
-    if (clicked) {
+    if (clicked?.entityType === ENTITY_TYPES.AGENT) {
       setSelectedAgent(clicked);
       setSelectedObstacle(null);
       return;
@@ -797,9 +742,8 @@ function Simulation2ndGen() {
 
     // Obstacle clicks use the same selection state as the Obstacle List edit button.
     // This only selects for editing; live simulation intentionally does not support dragging.
-    const clickedObstacle = findObstacleAt({ x: clickX, y: clickY }, obstaclesArrayRef.current);
-    if (clickedObstacle) {
-      selectObstacleForEditing(clickedObstacle);
+    if (clicked?.entityType === ENTITY_TYPES.OBSTACLE) {
+      selectObstacleForEditing(clicked);
     }
   }
 

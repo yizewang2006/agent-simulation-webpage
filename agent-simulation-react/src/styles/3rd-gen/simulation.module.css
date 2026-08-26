@@ -941,6 +941,10 @@
   width: 100%;
 }
 
+.buildToolComingSoon {
+  grid-column: 1 / -1;
+}
+
 .recordOption {
   color: #555555;
 }

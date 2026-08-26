@@ -4,8 +4,18 @@ import { ArrowLeft, Circle, CircleX, Download, FileUp, Flag, MousePointer2, Plus
 import Header from '../components/shared/Header.jsx';
 import Footer from '../components/shared/Footer.jsx';
 import AlertBox from '../components/simulation/AlertBox.jsx';
-import { configureHighDpiCanvas, createEntityID, getCanvasPointFromEvent, parseNumberOrDefault, isPointInsidePolygon, isPointNearPolygonEdge } from '../utils/utilities.js';
-import { loadScenarioFile } from '../utils/scenarioLoader.js';
+import { configureHighDpiCanvas, createEntityID, getCanvasPointFromEvent, parseNumberOrDefault } from '../utils/utilities.js';
+import {
+  findEntityAt,
+  findObstacleEditHandle,
+  getDraggedEntityGeometry,
+  getEditedObstacleGeometry,
+} from '../utils/canvasInteractionUtilities.js';
+import {
+  createScenarioDocument,
+  downloadScenarioFile,
+  loadScenarioFile,
+} from '../utils/scenarioUtilities.js';
 import { ENTITY_LABELS, ENTITY_TYPES, OBSTACLE_SHAPE_LABELS, OBSTACLE_SHAPE_TYPES } from '../utils/constants.js';
 import '../styles/simulation.css';
 
@@ -62,15 +72,13 @@ function areScenarioEntitiesEqual(firstEntity, secondEntity) {
 
 function getSelectedEntityLabel(entity) {
   if (!entity) return '';
-  if (entity.kind === 'agent') return ENTITY_LABELS[ENTITY_TYPES.AGENT];
-  if (entity.kind === 'obstacle') return ENTITY_LABELS[ENTITY_TYPES.OBSTACLE];
-  return entity.kind;
+  return ENTITY_LABELS[entity.entityType];
 }
 
 function createAgent(count, config = {}) {
   return {
     _scenarioBuilderKey: createScenarioEntityKey('agent'),
-    kind: 'agent',
+    entityType: ENTITY_TYPES.AGENT,
     id: createEntityID(ENTITY_TYPES.AGENT),
     name: createId('Agent', count),
     x: config.x ?? 250,
@@ -88,7 +96,7 @@ function createAgent(count, config = {}) {
 function createCircleObstacle(count, config = {}) {
   return {
     _scenarioBuilderKey: createScenarioEntityKey('obstacle'),
-    kind: 'obstacle',
+    entityType: ENTITY_TYPES.OBSTACLE,
     shapeType: 'circle',
     id: createEntityID(ENTITY_TYPES.OBSTACLE),
     name: config.name || createId('Circle_Obstacle', count),
@@ -101,7 +109,7 @@ function createCircleObstacle(count, config = {}) {
 function createPolygonObstacle(count, config = {}) {
   return {
     _scenarioBuilderKey: createScenarioEntityKey('obstacle'),
-    kind: 'obstacle',
+    entityType: ENTITY_TYPES.OBSTACLE,
     shapeType: 'polygon',
     id: createEntityID(ENTITY_TYPES.OBSTACLE),
     name: config.name || createId('Polygon_Obstacle', count),
@@ -309,78 +317,6 @@ function drawScenario(ctx, agents, obstacles, selectedKey, preview = null) {
   } else if (preview?.type === 'obstacle') {
     drawObstacleEntity(ctx, preview.obstacle, { isPreview: true });
   }
-}
-
-// Canvas hit-test workflow:
-// handlePointerDown() calls this after converting mouse coordinates into canvas
-// coordinates. Agents are checked first so they win when overlapping obstacles.
-function findEntityAt(point, agents, obstacles) {
-  for (let i = agents.length - 1; i >= 0; i -= 1) {
-    const agent = agents[i];
-    if (Math.hypot(point.x - agent.x, point.y - agent.y) <= agent.radius + 8) {
-      return { type: 'agent', id: agent.id };
-    }
-  }
-
-  for (let i = obstacles.length - 1; i >= 0; i -= 1) {
-    const obstacle = obstacles[i];
-    if (obstacle.shapeType === 'circle') {
-      if (Math.hypot(point.x - obstacle.center.x, point.y - obstacle.center.y) <= obstacle.radius + 4) {
-        return { type: 'obstacle', id: obstacle.id };
-      }
-    } else if (
-      isPointInsidePolygon(point, obstacle.vertices)
-      || isPointNearPolygonEdge(point, obstacle.vertices)
-    ) {
-      return { type: 'obstacle', id: obstacle.id };
-    }
-  }
-
-  return null;
-}
-
-// Does exactly the same thing as findEntityAt(), but we look for vertices right now
-function findObstacleVertexAt(point, obstacles, selected) {
-  if (selected?.type !== 'obstacle') return null;
-
-  // Find the selected one in obstacles array.
-  const selectedObstacle = obstacles.find((obstacle) => obstacle.id === selected.id);
-  if (!selectedObstacle) return null;
-
-  // Circle obstacles expose four resize handles. Dragging any handle updates
-  // the radius based on the handle's distance from the circle center.
-  if (selectedObstacle.shapeType === 'circle') {
-    const { x, y } = selectedObstacle.center;
-    const radius = selectedObstacle.radius;
-
-    const handles = [
-      { handle: 'top', x, y: y - radius },
-      { handle: 'right', x: x + radius, y },
-      { handle: 'bottom', x, y: y + radius },
-      { handle: 'left', x: x - radius, y },
-    ];
-
-    const found = handles.find((handle) => (
-      Math.hypot(point.x - handle.x, point.y - handle.y) <= 8
-    ));
-
-    return found
-      ? { mode: 'circle-resize', obstacleId: selectedObstacle.id, handle: found.handle }
-      : null;
-  }
-
-  // Polygon obstacles expose their real vertices as draggable handles.
-  const vertexIndex = selectedObstacle.vertices.findIndex((vertex) => (
-    Math.hypot(point.x - vertex.x, point.y - vertex.y) <= 8
-  ));
-
-  if (vertexIndex === -1) return null;
-
-  return {
-    mode: 'polygon-vertex',
-    obstacleId: selectedObstacle.id,
-    vertexIndex,
-  };
 }
 
 export default function ScenarioBuilder() {
@@ -796,19 +732,29 @@ export default function ScenarioBuilder() {
     if (!canvas) return;
     const point = getCanvasPointFromEvent(event, canvas);
 
-    // Obstacle Vertex Hit
-    const vertexHit = findObstacleVertexAt(point, obstacles, selected);
+    const selectedObstacle = selected?.type === 'obstacle'
+      ? obstacles.find((obstacle) => obstacle.id === selected.id)
+      : null;
+    const vertexHit = selectedObstacle
+      ? findObstacleEditHandle(point, selectedObstacle)
+      : null;
 
     if (vertexHit) {
-      const obstacleBeforeDrag = obstacles.find((obstacle) => obstacle.id === vertexHit.obstacleId);
       dragRef.current = {
         ...vertexHit,
-        before: obstacleBeforeDrag ? cloneScenarioEntity(obstacleBeforeDrag) : null,
+        obstacleId: selectedObstacle.id,
+        before: cloneScenarioEntity(selectedObstacle),
       };
       return;
     }
 
-    const hit = findEntityAt(point, agents, obstacles);
+    const hitEntity = findEntityAt(point, [...obstacles, ...agents]);
+    let hit = null;
+    if (hitEntity?.entityType === ENTITY_TYPES.AGENT) {
+      hit = { type: 'agent', id: hitEntity.id };
+    } else if (hitEntity?.entityType === ENTITY_TYPES.OBSTACLE) {
+      hit = { type: 'obstacle', id: hitEntity.id };
+    }
     setSelected(hit);
     const entityBeforeDrag = hit?.type === 'agent'
       ? agents.find((agent) => agent.id === hit.id)
@@ -831,44 +777,22 @@ export default function ScenarioBuilder() {
     if (!drag || !canvas) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
-    const clampedPoint = clampCanvasPoint(point);
 
-    if (drag.mode === 'polygon-vertex') {
+    if (drag.mode) {
       setObstacles((currentObstacles) => currentObstacles.map((obstacle) => (
         obstacle.id === drag.obstacleId
           ? {
               ...obstacle,
-              vertices: obstacle.vertices.map((vertex, index) => (
-                index === drag.vertexIndex ? clampedPoint : vertex
-              )),
+              ...getEditedObstacleGeometry(
+                obstacle,
+                drag,
+                point,
+                CANVAS_WIDTH,
+                CANVAS_HEIGHT
+              ),
             }
           : obstacle
       )));
-      return;
-    }
-
-    if (drag.mode === 'circle-resize') {
-      setObstacles((currentObstacles) => currentObstacles.map((obstacle) => {
-        if (obstacle.id !== drag.obstacleId || obstacle.shapeType !== 'circle') {
-          return obstacle;
-        }
-
-        const rawRadius = Math.hypot(
-          clampedPoint.x - obstacle.center.x,
-          clampedPoint.y - obstacle.center.y
-        );
-        const maxRadius = Math.max(1, Math.min(
-          obstacle.center.x,
-          CANVAS_WIDTH - obstacle.center.x,
-          obstacle.center.y,
-          CANVAS_HEIGHT - obstacle.center.y
-        ));
-
-        return {
-          ...obstacle,
-          radius: Math.min(Math.max(1, rawRadius), maxRadius),
-        };
-      }));
       return;
     }
 
@@ -881,29 +805,28 @@ export default function ScenarioBuilder() {
         agent.id === drag.id
           ? {
               ...agent,
-              x: Math.min(CANVAS_WIDTH, Math.max(0, agent.x + dx)),
-              y: Math.min(CANVAS_HEIGHT, Math.max(0, agent.y + dy)),
+              ...getDraggedEntityGeometry(
+                agent,
+                dx,
+                dy,
+                CANVAS_WIDTH,
+                CANVAS_HEIGHT
+              ),
             }
           : agent
       )));
     } else {
       setObstacles((currentObstacles) => currentObstacles.map((obstacle) => {
         if (obstacle.id !== drag.id) return obstacle;
-        if (obstacle.shapeType === 'circle') {
-          return {
-            ...obstacle,
-            center: {
-              x: Math.min(CANVAS_WIDTH, Math.max(0, obstacle.center.x + dx)),
-              y: Math.min(CANVAS_HEIGHT, Math.max(0, obstacle.center.y + dy)),
-            },
-          };
-        }
         return {
           ...obstacle,
-          vertices: obstacle.vertices.map((vertex) => ({
-            x: Math.min(CANVAS_WIDTH, Math.max(0, vertex.x + dx)),
-            y: Math.min(CANVAS_HEIGHT, Math.max(0, vertex.y + dy)),
-          })),
+          ...getDraggedEntityGeometry(
+            obstacle,
+            dx,
+            dy,
+            CANVAS_WIDTH,
+            CANVAS_HEIGHT
+          ),
         };
       }));
     }
@@ -963,21 +886,15 @@ export default function ScenarioBuilder() {
     setSelected(null);
   }
 
-  // Export strips internal builder keys so downloaded JSON stays clean.
+  // This function exports the current Scenario without editor-only keys.
   function handleExport() {
-    const scenario = {
-      version: 1,
+    const scenario = createScenarioDocument({
+      name: 'Untitled Scenario',
       canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
       agents: agents.map(removeScenarioBuilderKey),
       obstacles: obstacles.map(removeScenarioBuilderKey),
-    };
-    const blob = new Blob([JSON.stringify(scenario, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'agent-scenario.json';
-    link.click();
-    URL.revokeObjectURL(url);
+    });
+    downloadScenarioFile(scenario);
   }
 
   async function handleImportScenario(event) {
@@ -1700,7 +1617,7 @@ export default function ScenarioBuilder() {
             </h2>
             {!selectedEntity && <p className="scenario-empty-state">Select or drag an item on the canvas.</p>}
 
-            {selectedEntity?.kind === 'agent' && (
+            {selectedEntity?.entityType === ENTITY_TYPES.AGENT && (
               <>
                 <div className="input-group">
                   <label>Name</label>
@@ -1733,7 +1650,7 @@ export default function ScenarioBuilder() {
               </>
             )}
 
-            {selectedEntity?.kind === 'obstacle' && (
+            {selectedEntity?.entityType === ENTITY_TYPES.OBSTACLE && (
               <>
                 <div className="input-group">
                   <label>Name</label>

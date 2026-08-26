@@ -37,6 +37,8 @@ export default function Inspector({
   agentEditValues,
   onApplyAgentEdits,
   onCancelAgentEdit,
+  onDeleteSelectedAgent,
+  onDeleteSelectedObstacle,
 }) {
   const contentRef = useRef(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
@@ -110,6 +112,7 @@ export default function Inspector({
             initialValues={agentEditValues}
             onSubmit={onApplyAgentEdits}
             onCancel={onCancelAgentEdit}
+            onDelete={onDeleteSelectedAgent}
           />
         );
 
@@ -141,6 +144,7 @@ export default function Inspector({
             initialValues={obstacleEditValues}
             onSubmit={onApplyObstacleEdits}
             onCancel={onCancelObstacleEdit}
+            onDelete={onDeleteSelectedObstacle}
           />
         );
 

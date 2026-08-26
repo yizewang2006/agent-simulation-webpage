@@ -74,7 +74,7 @@ export class PolygonObstacle extends Entity {
     // Turn an angle into a direction vector.
     const vx = Math.cos(angle);
     const vy = Math.sin(angle);
-    const { x: cx, y: cy } = agent.position;
+    const { x: cx, y: cy } = agent;
     const r = agent.radius;
     let minT = Infinity;
 
@@ -147,7 +147,7 @@ export class PolygonObstacle extends Entity {
 
   // If that distance is less than the agent's radius, they are touching.
   isCollidingWith(agent) {
-    const { x, y } = agent.position;
+    const { x, y } = agent;
     for (const e of this.edges) {
       if (this._pointToSegmentDist(x, y, e.p1, e.p2) < agent.radius) return true;
     }
@@ -239,8 +239,8 @@ export class CircleObstacle extends Entity {
   getLinearCollision(agent, angle) {
     const vx = Math.cos(angle);
     const vy = Math.sin(angle);
-    const fx = agent.position.x - this.center.x;
-    const fy = agent.position.y - this.center.y;
+    const fx = agent.x - this.center.x;
+    const fy = agent.y - this.center.y;
     const combinedRadius = agent.radius + this.radius;
     const a = vx * vx + vy * vy;
     const b = 2 * (fx * vx + fy * vy);
@@ -255,15 +255,15 @@ export class CircleObstacle extends Entity {
     const t = t1 > 0 ? t1 : t2 > 0 ? t2 : null;
 
     return t === null ? null : {
-      x: agent.position.x + vx * t,
-      y: agent.position.y + vy * t,
+      x: agent.x + vx * t,
+      y: agent.y + vy * t,
       t,
     };
   }
 
   isCollidingWith(agent) {
-    const dx = agent.position.x - this.center.x;
-    const dy = agent.position.y - this.center.y;
+    const dx = agent.x - this.center.x;
+    const dy = agent.y - this.center.y;
     return Math.hypot(dx, dy) < agent.radius + this.radius;
   }
 

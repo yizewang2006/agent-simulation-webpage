@@ -2,6 +2,7 @@ import {
   ENTITY_TYPES,
   MEASUREMENT_TYPES,
   METHOD_TYPES,
+  OBSTACLE_SHAPE_TYPES,
   TARGET_PROPERTIES,
 } from "../utils/constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth } from "../utils/utilities.js";
@@ -21,99 +22,6 @@ export {
   REFERENCE_TYPES,
   TARGET_PROPERTIES,
 } from "../utils/constants.js";
-
-// ─── Property (base) ──────────────────────────────────────────────────────────
-
-class Property {
-  // Returns the relevant value from an agent
-  get(_agent) {}
-
-  // Compares self's property with a target agent's property
-  compare(_self, _target) {}
-}
-
-// ─── Speed (currently unused) ────────────────────────────────────────────────
-// export class Speed extends Property {
-//   get(_agent) {}
-//   compare(_self, _target) {}
-// }
-
-// ─── Position ─────────────────────────────────────────────────────────────────
-
-export class Position extends Property {
-  constructor(x, y) {
-    super();
-    this.x = x;
-    this.y = y;
-  }
-
-  add(dx, dy) {
-    this.x += dx;
-    this.y += dy;
-  }
-
-  get(_agent) {
-    return _agent.position;
-  }
-
-  findAverage(self, targets) {
-    let avgX = 0, avgY = 0;
-    for (const target of targets) {
-      avgX += target.position.x;
-      avgY += target.position.y;
-    }
-    avgX /= targets.length;
-    avgY /= targets.length;
-    return new Position(avgX, avgY);
-  }
-
-  findNthClosest(_self, targets, n) {
-    if (!targets || targets.length === 0) {
-      console.log("There are no agents available for detection");
-      return null;
-    }
-    if (n < 1 || n > targets.length) {
-      console.log("Invalid n");
-      return null;
-    }
-    return this.quickSelect([...targets], n - 1, self);
-  }
-
-  quickSelect(targets, n, self) {
-    if (targets.length === 1) return targets[0];
-    const pivot = targets[Math.floor(Math.random() * targets.length)];
-    const pivotDist = self.position.distanceTo(pivot.position);
-    const left = [], equal = [], right = [];
-    for (const agent of targets) {
-      const d = self.position.distanceTo(agent.position);
-      if (d < pivotDist)      left.push(agent);
-      else if (d > pivotDist) right.push(agent);
-      else                    equal.push(agent);
-    }
-    if (n < left.length)
-      return this.quickSelect(left, n, self);
-    else if (n < left.length + equal.length)
-      return pivot;
-    else
-      return this.quickSelect(right, n - left.length - equal.length, self);
-  }
-
-  distanceTo(position) {
-    let diffX = Math.abs(this.x - position.x);
-    let diffY = Math.abs(this.y - position.y);
-    return Math.sqrt(diffX * diffX + diffY * diffY);
-  }
-
-  compare(self, target) {
-    return this.distanceTo(target.position);
-  }
-}
-
-// ─── Angle (currently unused) ────────────────────────────────────────────────
-// export class Angle extends Property {
-//   get(_agent) {}
-//   compare(_self, _target) {}
-// }
 
 // ─── Behavior class (currently unused; runtime uses plain objects) ───────────
 // export class Behavior {
@@ -241,19 +149,29 @@ export function getHeadingDifferenceDeg(self, neighbor) {
   return (neighborHeading - selfHeading + 360) % 360;
 }
 
+export function getEntityCenterPoint(entity) {
+  if (!entity) return null;
+  if (entity.entityType === ENTITY_TYPES.AGENT) return entity;
+  if (entity.entityType !== ENTITY_TYPES.OBSTACLE) return null;
+  if (entity.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) return entity.center;
+  if (entity.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON) return entity.centroid;
+  return null;
+}
+
 export function getEntityReferencePosition(self, entity) {
-  if (!entity?.position) return null; // if position is null or undefined, or not available for this entity type, return null
+  const centerPoint = getEntityCenterPoint(entity);
+  if (!centerPoint) return null;
 
   if (typeof entity.getClosestPointTo === 'function') {
     // Obstacles use the closest boundary point, not the center/centroid, for detection and steering.
     return entity.getClosestPointTo(getObstacleQueryPosition(self, entity));
   }
 
-  return entity.position; // otherwise, return the entity's position directly
+  return centerPoint;
 }
 
 export function getEntityDetectionPoints(self, entity) {
-  if (!entity?.position) return [];
+  if (!getEntityCenterPoint(entity)) return [];
 
   if (typeof entity.getDetectionPointsTo === 'function') { // FOR POLYGON OBSTACLES, THEY HAVE A FUNCTION called getDetectionPointsTo that returns detection points
     // Obstacles use the closest boundary point for detection and steering.
@@ -265,12 +183,12 @@ export function getEntityDetectionPoints(self, entity) {
 }
 
 function getObstacleQueryPosition(self, entity) {
-  if (!self?.position || !entity?.position) return self?.position;
+  const obstacleCenter = getEntityCenterPoint(entity);
 
-  const { diffX, diffY } = getShortestOffset(entity.position, self.position, self.canvas);
+  const { diffX, diffY } = getShortestOffset(obstacleCenter, self, self.canvas);
   return {
-    x: entity.position.x + diffX,
-    y: entity.position.y + diffY,
+    x: obstacleCenter.x + diffX,
+    y: obstacleCenter.y + diffY,
   };
 }
 
@@ -281,9 +199,9 @@ function getEntityMeasurementValue(measurementType, self, entity) {
   switch (measurementType) {
     case MEASUREMENT_TYPES.DISTANCE: {
       const referencePosition = getEntityReferencePosition(self, entity);
-      if (!self?.position || !referencePosition) return null;
+      if (!referencePosition) return null;
       // Distance-based filters should measure to the visible obstacle boundary, not obstacle center.
-      const { diffX, diffY } = getShortestOffset(self.position, referencePosition, self.canvas);
+      const { diffX, diffY } = getShortestOffset(self, referencePosition, self.canvas);
       return Math.sqrt(diffX ** 2 + diffY ** 2);
     }
     case MEASUREMENT_TYPES.HEADING_DIFFERENCE: {
@@ -292,9 +210,9 @@ function getEntityMeasurementValue(measurementType, self, entity) {
     }
     case MEASUREMENT_TYPES.RELATIVE_BEARING: {
       const referencePosition = getEntityReferencePosition(self, entity);
-      if (!self?.position || !referencePosition) return null;
+      if (!referencePosition) return null;
       // Bearing-based filters should aim at the closest obstacle boundary point.
-      const { diffX, diffY } = getShortestOffset(self.position, referencePosition, self.canvas);
+      const { diffX, diffY } = getShortestOffset(self, referencePosition, self.canvas);
       const bearing = Math.atan2(diffY, diffX) * 180 / Math.PI;
       const selfHeading = (getEntityHeading(self) * 180 / Math.PI + 360) % 360;
       return (bearing - selfHeading + 360) % 360;
@@ -323,7 +241,7 @@ function supportsActionProperty(entity, targetProperty) {
 
   switch (targetProperty) {
     case TARGET_PROPERTIES.POSITION:
-      return Boolean(entity.position);
+      return getEntityCenterPoint(entity) !== null;
     case TARGET_PROPERTIES.SPEED:
       return entity.hasMotion === true;
     case TARGET_PROPERTIES.ANGLE:
@@ -340,9 +258,9 @@ function getEntityActionValue(targetProperty, self, entity) {
   switch (targetProperty) {
     case TARGET_PROPERTIES.POSITION: {
       const referencePosition = getEntityReferencePosition(self, entity);
-      if (!self?.position || !referencePosition) return null;
+      if (!referencePosition) return null;
       // Position targets should steer relative to obstacle edges, not their centers.
-      const { diffX, diffY } = getShortestOffset(self.position, referencePosition, self.canvas);
+      const { diffX, diffY } = getShortestOffset(self, referencePosition, self.canvas);
       return Math.atan2(diffY, diffX);
     }
 

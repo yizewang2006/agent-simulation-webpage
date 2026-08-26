@@ -52,6 +52,7 @@ export default function SimulationExplorer({
   recordings,
   snapshots,
   onLoadJSON,
+  onExportScenario,
   onLoadBehaviorPreset,
   onExportBehaviors,
   onOpenScenarioBuilder,
@@ -607,7 +608,7 @@ export default function SimulationExplorer({
             <button
               className={styles.scenarioLoadButton}
               type="button"
-              disabled
+              onClick={onExportScenario}
             >
               <FileDown size={16} aria-hidden="true" />
               Export JSON

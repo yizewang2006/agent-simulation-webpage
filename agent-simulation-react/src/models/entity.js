@@ -7,7 +7,6 @@ export class Entity {
         this.entityType = entityType; // A number, defined in behavior.js
 
         // Perception
-        this.position = null;
         this.radius = 0;
         // For example, exit does not have motion
         this.hasMotion = false;

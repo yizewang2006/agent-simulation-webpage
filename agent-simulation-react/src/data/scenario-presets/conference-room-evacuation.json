@@ -1,12 +1,12 @@
 {
-  "version": 1,
+  "name": "Conference Room Evacuation",
   "canvas": {
     "width": 500,
     "height": 500
   },
   "agents": [
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-FB12FA43-12B8-47B2-84F8-7E8984DCB1D8",
       "x": 75,
       "y": 90,
@@ -20,7 +20,7 @@
       "name": "Person_01"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-3C2FB557-F71F-4342-A19A-277EAD1ADCFD",
       "x": 150,
       "y": 100,
@@ -34,7 +34,7 @@
       "name": "Person_02"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-6995561C-70DC-4D64-BDC2-AC0540F43FA3",
       "x": 250,
       "y": 105,
@@ -48,7 +48,7 @@
       "name": "Person_03"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-53299389-AE66-46CA-ADE4-ACED8FA4E317",
       "x": 350,
       "y": 100,
@@ -62,7 +62,7 @@
       "name": "Person_04"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-2EDCD695-77D0-4F68-9348-1AD9A7615887",
       "x": 425,
       "y": 90,
@@ -76,7 +76,7 @@
       "name": "Person_05"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-AD4CBC48-1FF7-4A97-AC51-D1F958B42C51",
       "x": 75,
       "y": 400,
@@ -90,7 +90,7 @@
       "name": "Person_06"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-ACC223C3-9415-4064-84A1-2DFEBD9CB1B8",
       "x": 150,
       "y": 390,
@@ -104,7 +104,7 @@
       "name": "Person_07"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-6BDE491E-FF8D-46E9-94CC-E18163CDAC30",
       "x": 250,
       "y": 405,
@@ -118,7 +118,7 @@
       "name": "Person_08"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-0C32788F-F367-46FF-B9BB-2510274B08A6",
       "x": 350,
       "y": 390,
@@ -132,7 +132,7 @@
       "name": "Person_09"
     },
     {
-      "kind": "agent",
+      "entityType": 0,
       "id": "AGT-90E6A1EF-C587-4EF0-A9D2-01FFAFBBB4A7",
       "x": 425,
       "y": 400,
@@ -148,7 +148,7 @@
   ],
   "obstacles": [
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-A6AF1C2E-84A2-4AF4-8523-7DC0D90C2F6E",
       "color": "#64748B",
@@ -173,7 +173,7 @@
       "name": "North_Wall"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-F2CDBA37-65DC-44D9-9643-7A356F9032F1",
       "color": "#64748B",
@@ -198,7 +198,7 @@
       "name": "West_Wall"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-4012C52E-3656-4D1C-836D-D9775BBA4CDD",
       "color": "#64748B",
@@ -223,7 +223,7 @@
       "name": "East_Wall"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-402466D4-35F2-4343-BE08-879CBA081CCF",
       "color": "#64748B",
@@ -248,7 +248,7 @@
       "name": "South_Wall_Left"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-C1F7483E-204D-4258-9F12-72A75F48227C",
       "color": "#64748B",
@@ -273,7 +273,7 @@
       "name": "South_Wall_Right"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-E7ABF2FD-3C66-433D-BE42-1BAE6FAFC3DE",
       "color": "#94A3B8",
@@ -298,7 +298,7 @@
       "name": "Conference_Table"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-B45B076E-30FF-4C70-B6EB-9F258D852A14",
       "color": "#334155",
@@ -323,7 +323,7 @@
       "name": "Chair_Northwest"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-9C2B9BC0-FE08-4C0D-AD46-6AD2959FD344",
       "color": "#334155",
@@ -348,7 +348,7 @@
       "name": "Chair_North"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-DD3C836E-2CDB-4938-94AC-5FF471114C05",
       "color": "#334155",
@@ -373,7 +373,7 @@
       "name": "Chair_Northeast"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-9770B83D-BF98-4984-BD89-4BAE0F27A1DA",
       "color": "#334155",
@@ -398,7 +398,7 @@
       "name": "Chair_Southwest"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-B7ADEE16-4FD5-40E7-A753-6EA207549DDF",
       "color": "#334155",
@@ -423,7 +423,7 @@
       "name": "Chair_South"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-DB5A0155-C362-4453-AB86-4DAFB20F042C",
       "color": "#334155",
@@ -448,7 +448,7 @@
       "name": "Chair_Southeast"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-71D57139-1767-4C0A-939E-4A7E55CF809A",
       "color": "#334155",
@@ -473,7 +473,7 @@
       "name": "Chair_West"
     },
     {
-      "kind": "obstacle",
+      "entityType": 1,
       "shapeType": "polygon",
       "id": "OBS-BA249CB1-54D4-4D16-921E-FBBD94E0BF5E",
       "color": "#334155",

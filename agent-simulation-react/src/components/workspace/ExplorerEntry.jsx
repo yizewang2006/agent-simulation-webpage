@@ -11,9 +11,21 @@ export default function ExplorerEntry({
   subtitle,
   trimmedId,
   onRename,
+  onSelect,
 }) {
   return (
-    <div className={styles.explorerEntry}>
+    <div
+      className={styles.explorerEntry}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={onSelect}
+      onKeyDown={onSelect ? (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect();
+        }
+      } : undefined}
+    >
       <div className={styles.explorerEntryMain}>
         <div className={styles.explorerEntryInfo}>
           {createElement(Icon, { size: 17, 'aria-hidden': true })}

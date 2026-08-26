@@ -23,8 +23,17 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
 import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
-import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, isPointInsidePolygon, isPointNearPolygonEdge, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
-import { loadScenarioFile } from "../utils/scenarioLoader.js";
+import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
+import {
+  findEntityAt,
+  getDraggedEntityGeometry,
+  getLookAtCursorAngle,
+} from "../utils/canvasInteractionUtilities.js";
+import {
+  createScenarioDocument,
+  downloadScenarioFile,
+  loadScenarioFile,
+} from "../utils/scenarioUtilities.js";
 import {
   ACTIVATION_TYPES,
   createDefaultActivation,
@@ -62,6 +71,7 @@ function normalizeAgentCreationConfig(values) {
     speedMax: Number(values.speedMax),
     angleMin: Number(values.angleMin),
     angleMax: Number(values.angleMax),
+    fovRadius: Number(values.fovRadius),
     fovAngle: Number(values.fovAngle),
     color: values.color,
     showFOV: Boolean(values.showFOV),
@@ -77,6 +87,7 @@ function normalizeAgentCreationConfig(values) {
     config.speedMax,
     config.angleMin,
     config.angleMax,
+    config.fovRadius,
     config.fovAngle,
   ];
 
@@ -97,6 +108,9 @@ function normalizeAgentCreationConfig(values) {
   }
   if (config.angleMin > config.angleMax) {
     throw new Error('Initial Angle Min cannot be greater than Max.');
+  }
+  if (values.fovRadius === '' || config.fovRadius < 0) {
+    throw new Error('FOV Radius must be non-negative.');
   }
   if (values.fovAngle === '' || config.fovAngle < 0 || config.fovAngle > 360) {
     throw new Error('FOV Angle must be between 0 and 360 degrees.');
@@ -120,7 +134,7 @@ function generateRandomizedAgentDrafts(config, obstacles) {
       };
 
       // Keep a legal position immediately; only blocked positions are rerolled.
-      if (!findObstacleAt(candidate, obstacles)) {
+      if (!findEntityAt(candidate, obstacles)) {
         position = candidate;
         break;
       }
@@ -140,7 +154,7 @@ function generateRandomizedAgentDrafts(config, obstacles) {
       speed,
       angle,
       color: config.color,
-      fovRadius: 100,
+      fovRadius: config.fovRadius,
       fovAngle: config.fovAngle * Math.PI / 180,
       showFOV: config.showFOV,
     };
@@ -235,8 +249,8 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     agents: agentsArray.map((agent) => ({
       id: agent.id,
       name: agent.name,
-      x: agent.position.x,
-      y: agent.position.y,
+      x: agent.x,
+      y: agent.y,
       radius: agent.radius,
       dx: agent.dx,
       dy: agent.dy,
@@ -344,33 +358,27 @@ function drawAgentPreview(ctx, preview) {
   ctx.restore();
 }
 
-function findObstacleAt(point, obstacles) {
-  for (let i = obstacles.length - 1; i >= 0; i -= 1) {
-    const obstacle = obstacles[i];
-
-    if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      if (Math.hypot(point.x - obstacle.center.x, point.y - obstacle.center.y) <= obstacle.radius + 4) {
-        return obstacle;
-      }
-    } else if (
-      isPointInsidePolygon(point, obstacle.vertices) ||
-      isPointNearPolygonEdge(point, obstacle.vertices)
-    ) {
-      return obstacle;
-    }
-  }
-
-  return null;
-}
-
 function Simulation3rdGen() {
   const navigate = useNavigate();
   const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
   const [showNoAgentsAlert, setShowNoAgentsAlert] = useState(false);
   const [pendingEntityCreation, setPendingEntityCreation] = useState(null);
   const [pendingDeletion, setPendingDeletion] = useState(null);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
+  const [showScenarioImportConfirmation, setShowScenarioImportConfirmation] = useState(false);
   const [scenarioLoadAlert, setScenarioLoadAlert] = useState(null);
   const [scenarioName, setScenarioName] = useState('Untitled Scenario');
+
+  // This function stores a destination until the user confirms they want to leave.
+  function requestScenarioExit(destination) {
+    setPendingNavigation(destination);
+  }
+
+  // This function continues to the confirmed destination.
+  function continueScenarioExit() {
+    if (!pendingNavigation) return;
+    navigate('/loading', { state: pendingNavigation });
+  }
 
   /* Canvas */
   const canvasRef = useRef(null);
@@ -381,6 +389,7 @@ function Simulation3rdGen() {
   const agentPreviewConfigKeyRef = useRef('');
   const obstaclePreviewRef = useRef(null); // Draft obstacle preview drawn over the canvas while creating
   const scenarioFileInputRef = useRef(null);
+  const pendingScenarioFileRef = useRef(null);
   const behaviorPresetFileInputRef = useRef(null);
   const dragRef = useRef(null); // Ref to hold the current drag state (null if not dragging)
   const lookAtAgentRef = useRef(null); // Double-clicked Agent that currently follows the cursor.
@@ -542,6 +551,7 @@ function Simulation3rdGen() {
       agentPreviewRef.current = agentPreviewRef.current.map((draft) => ({
         ...draft,
         color: config.color,
+        fovRadius: config.fovRadius,
         fovAngle: config.fovAngle * Math.PI / 180,
         showFOV: config.showFOV,
       }));
@@ -774,9 +784,21 @@ function Simulation3rdGen() {
     )));
   }
 
-  async function handleLoadScenario(event) {
+  // This function asks for confirmation before replacing the current Scenario.
+  function handleLoadScenario(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
+    if (!file) return;
+
+    pendingScenarioFileRef.current = file;
+    setShowScenarioImportConfirmation(true);
+  }
+
+  // This function imports the confirmed Scenario JSON file into the Simulation.
+  async function importScenarioFile() {
+    const file = pendingScenarioFileRef.current;
+    pendingScenarioFileRef.current = null;
+    setShowScenarioImportConfirmation(false);
     if (!file) return;
 
     try {
@@ -841,7 +863,7 @@ function Simulation3rdGen() {
         primary: `Loaded ${runtimeAgents.length} agents and ${runtimeObstacles.length} obstacles.`,
         secondary: 'The simulation is paused so you can review the scenario before playing.',
       });
-      setScenarioName(file.name.replace(/\.json$/i, ''));
+      setScenarioName(scenario.name);
     } catch (error) {
       setScenarioLoadAlert({
         type: 'warning',
@@ -850,6 +872,50 @@ function Simulation3rdGen() {
         secondary: 'Choose a valid scenario JSON file and try again.',
       });
     }
+  }
+
+  // This function exports the current runtime Entities as Scenario JSON.
+  function handleExportScenario() {
+    const scenario = createScenarioDocument({
+      name: scenarioName,
+      canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+      agents: agentsArrayRef.current.map((agent) => ({
+        entityType: ENTITY_TYPES.AGENT,
+        id: agent.id,
+        name: agent.name,
+        x: agent.x,
+        y: agent.y,
+        radius: agent.radius,
+        angle: -agent.angle * 180 / Math.PI,
+        speed: Math.hypot(agent.dx, agent.dy),
+        colorHex: agent.colorHex,
+        fovRadius: agent.fovRadius,
+        fovAngle: agent.fovAngle * 180 / Math.PI,
+        showFOV: agent.showFOV !== false,
+      })),
+      obstacles: obstaclesArrayRef.current.map((obstacle) => (
+        obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+          ? {
+              entityType: ENTITY_TYPES.OBSTACLE,
+              id: obstacle.id,
+              name: obstacle.name,
+              shapeType: 'circle',
+              color: obstacle.color,
+              center: { ...obstacle.center },
+              radius: obstacle.radius,
+            }
+          : {
+              entityType: ENTITY_TYPES.OBSTACLE,
+              id: obstacle.id,
+              name: obstacle.name,
+              shapeType: 'polygon',
+              color: obstacle.color,
+              vertices: obstacle.vertices.map((vertex) => ({ ...vertex })),
+            }
+      )),
+    });
+
+    downloadScenarioFile(scenario);
   }
 
   // ---- Behavior Handlers ----
@@ -1548,30 +1614,22 @@ function Simulation3rdGen() {
   }, []);
 
   // ---- Canvas Interaction Handlers ----
-  function findAgentAt(point) {
-    const roster = agentsArrayRef.current;
-
-    // Walk backwards so the last-drawn agent wins when entities overlap.
-    for (let index = roster.length - 1; index >= 0; index -= 1) {
-      const agent = roster[index];
-      if (Math.hypot(point.x - agent.position.x, point.y - agent.position.y) <= agent.radius + 4) {
-        return agent;
-      }
-    }
-
-    return null;
-  }
-
   function handleCanvasPointerDown(event) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const point = getCanvasPointFromEvent(event, canvas);
 
-    // Match Scenario Builder hit priority: agents win over obstacles.
-    const clickedAgent = findAgentAt(point);
-    const clickedObstacle = clickedAgent
-      ? null
-      : findObstacleAt(point, obstaclesArrayRef.current);
+    // Find the topmost Entity in the same order used to draw the canvas.
+    const clickedEntity = findEntityAt(point, [
+      ...obstaclesArrayRef.current,
+      ...agentsArrayRef.current,
+    ]);
+    const clickedAgent = clickedEntity?.entityType === ENTITY_TYPES.AGENT
+      ? clickedEntity
+      : null;
+    const clickedObstacle = clickedEntity?.entityType === ENTITY_TYPES.OBSTACLE
+      ? clickedEntity
+      : null;
 
     // Keep Look at Cursor only when the user clicks the same Agent.
     if (
@@ -1610,12 +1668,12 @@ function Simulation3rdGen() {
 
     if (lookAtAgent && !isSimulationRunningRef.current) {
       const point = getCanvasPointFromEvent(event, canvas);
-      const dx = point.x - lookAtAgent.position.x;
-      const dy = point.y - lookAtAgent.position.y;
+      const dx = point.x - lookAtAgent.x;
+      const dy = point.y - lookAtAgent.y;
 
       // The center has no direction, so keep the previous angle there.
       if (dx !== 0 || dy !== 0) {
-        const angle = Math.atan2(dy, dx);
+        const angle = getLookAtCursorAngle(lookAtAgent, point);
         const speed = Math.hypot(lookAtAgent.dx, lookAtAgent.dy);
 
         // Keep drawing, steering, and future movement pointed the same way.
@@ -1636,22 +1694,34 @@ function Simulation3rdGen() {
 
     if (drag.type === 'agent') {
       const agent = drag.entity;
-      agent.position.x = Math.min(CANVAS_WIDTH, Math.max(0, agent.position.x + dx));
-      agent.position.y = Math.min(CANVAS_HEIGHT, Math.max(0, agent.position.y + dy));
+      Object.assign(
+        agent,
+        getDraggedEntityGeometry(
+          agent,
+          dx,
+          dy,
+          CANVAS_WIDTH,
+          CANVAS_HEIGHT
+        )
+      );
       setAgents([...agentsArrayRef.current]);
       return;
     }
 
     const obstacle = drag.entity;
+    const draggedGeometry = getDraggedEntityGeometry(
+      obstacle,
+      dx,
+      dy,
+      CANVAS_WIDTH,
+      CANVAS_HEIGHT
+    );
+
     if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      obstacle.center.x = Math.min(CANVAS_WIDTH, Math.max(0, obstacle.center.x + dx));
-      obstacle.center.y = Math.min(CANVAS_HEIGHT, Math.max(0, obstacle.center.y + dy));
+      obstacle.center = draggedGeometry.center;
       obstacle.position = obstacle.center;
     } else {
-      obstacle.vertices = obstacle.vertices.map((vertex) => ({
-        x: Math.min(CANVAS_WIDTH, Math.max(0, vertex.x + dx)),
-        y: Math.min(CANVAS_HEIGHT, Math.max(0, vertex.y + dy)),
-      }));
+      obstacle.vertices = draggedGeometry.vertices;
       // Collision detection and labels use these derived geometry fields.
       obstacle.edges = obstacle._buildEdges(obstacle.vertices);
       obstacle.position = obstacle._computeCentroid(obstacle.vertices);
@@ -1676,7 +1746,7 @@ function Simulation3rdGen() {
     if (!canvas) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
-    const clickedAgent = findAgentAt(point);
+    const clickedAgent = findEntityAt(point, agentsArrayRef.current);
     if (!clickedAgent) return;
 
     // Double-click the same Agent again to turn the mode off.
@@ -1744,8 +1814,8 @@ function Simulation3rdGen() {
     return {
       name: agent.name,
       // Round display values only; the live Agent keeps its full precision.
-      x: roundForForm(agent.position.x),
-      y: roundForForm(agent.position.y),
+      x: roundForForm(agent.x),
+      y: roundForForm(agent.y),
       speed: roundForForm(speed),
       angle: roundForForm(angle),
       color: getAgentColor(agent),
@@ -1819,8 +1889,8 @@ function Simulation3rdGen() {
 
     // Step 3: Commit all edits together so Cancel never partially changes an Agent.
     selectedAgent.name = name;
-    selectedAgent.position.x = x;
-    selectedAgent.position.y = y;
+    selectedAgent.x = x;
+    selectedAgent.y = y;
     selectedAgent.dx = Math.cos(angle) * speed;
     selectedAgent.dy = Math.sin(angle) * speed;
     selectedAgent.angle = angle;
@@ -1931,7 +2001,7 @@ function Simulation3rdGen() {
   }
 
   // Delete selected agent workflow:
-  // EntityEditor calls this from the "Delete Agent" button. The live simulation
+  // The Inspector edit form calls this from the "Delete Agent" button. The live simulation
   // loop reads agentsArrayRef.current, so we remove from the ref first, then
   // refresh React state and clear the current editor selection.
   function requestDeleteSelectedAgent() {
@@ -2248,6 +2318,35 @@ function Simulation3rdGen() {
         />
       )}
 
+      {showScenarioImportConfirmation && (
+        <AlertBox
+          title="Import Scenario?"
+          primMessage="Your current Scenario will be replaced."
+          secMessage="Unsaved Entity changes will be permanently discarded."
+          type="warning"
+          confirmLabel="Import Scenario"
+          cancelLabel="Cancel"
+          onConfirm={importScenarioFile}
+          onCancel={() => {
+            pendingScenarioFileRef.current = null;
+            setShowScenarioImportConfirmation(false);
+          }}
+        />
+      )}
+
+      {pendingNavigation && (
+        <AlertBox
+          title="Wait! Before You Leave..."
+          primMessage="Did you save your scenario? Your changes will not be saved unless you download them as a JSON file."
+          secMessage="If you already downloaded it, you're all set and can ignore this reminder."
+          type="warning"
+          confirmLabel="Continue Anyway"
+          cancelLabel="Stay Here"
+          onConfirm={continueScenarioExit}
+          onCancel={() => setPendingNavigation(null)}
+        />
+      )}
+
       {scenarioLoadAlert && (
         <AlertBox
           title={scenarioLoadAlert.title}
@@ -2275,14 +2374,13 @@ function Simulation3rdGen() {
           recordings={recordings}
           snapshots={snapshots}
           onLoadJSON={() => scenarioFileInputRef.current?.click()}
+          onExportScenario={handleExportScenario}
           onLoadBehaviorPreset={() => behaviorPresetFileInputRef.current?.click()}
           onExportBehaviors={handleDownloadBehaviors}
-          onOpenScenarioBuilder={() => navigate('/loading', {
-            state: {
+          onOpenScenarioBuilder={() => requestScenarioExit({
               from: 'Main Simulation',
               to: 'Scenario Builder',
               path: '/scenario-builder',
-            },
           })}
           onEditAgent={selectAgentForEditing}
           onRenameAgent={handleRenameAgent}
@@ -2439,6 +2537,8 @@ function Simulation3rdGen() {
           agentEditValues={getAgentEditValues(selectedAgent)}
           onApplyAgentEdits={handleApplyAgentEdits}
           onCancelAgentEdit={handleCancelAgentEdit}
+          onDeleteSelectedAgent={requestDeleteSelectedAgent}
+          onDeleteSelectedObstacle={requestDeleteSelectedObstacle}
         />
       </main>
 
