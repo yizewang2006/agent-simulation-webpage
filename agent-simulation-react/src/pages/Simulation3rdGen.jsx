@@ -2263,7 +2263,7 @@ function Simulation3rdGen() {
                 state={{
                   from: '3rd Gen Simulation',
                   to: '2nd Gen Simulation',
-                  path: '/simulation',
+                  path: '/simulation-2nd-gen',
                 }}
               >
                 stable 2nd Gen simulation.

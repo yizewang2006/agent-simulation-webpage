@@ -1,6 +1,6 @@
 import { Bot, ChevronDown, FileDown, FileUp, MonitorPlay, PenLine, Redo2, Search, Shapes, SlidersHorizontal, Trash2, Undo2, UserRoundPen, Wrench } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/simulation-3rd-gen/Header3rdGen.jsx';
 import { getFormComponent } from '../components/simulation-3rd-gen/inspector/formRegistry.js';
 import {
@@ -42,6 +42,7 @@ const BUILDER_ENTITY_TYPES = [ENTITY_TYPES.AGENT, ENTITY_TYPES.OBSTACLE];
 
 export default function ScenarioBuilder3rdGen() {
   const navigate = useNavigate();
+  const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
   const agentPreviewRef = useRef([]);
   const agentPreviewKeyRef = useRef('');
   const scenarioFileInputRef = useRef(null);
@@ -52,6 +53,8 @@ export default function ScenarioBuilder3rdGen() {
   const redoStackRef = useRef([]);
   const canvasEditRef = useRef(null);
   const lookAtAgentIdRef = useRef(null);
+  const explorerListRef = useRef(null);
+  const inspectorContentRef = useRef(null);
   const undoActionRef = useRef(null);
   const redoActionRef = useRef(null);
   const [scenarioName, setScenarioName] = useState('Untitled Scenario');
@@ -82,6 +85,8 @@ export default function ScenarioBuilder3rdGen() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [lookAtAgentId, setLookAtAgentId] = useState(null);
+  const [hasExplorerMoreBelow, setHasExplorerMoreBelow] = useState(false);
+  const [hasInspectorMoreBelow, setHasInspectorMoreBelow] = useState(false);
   const isCreatingEntity = inspectorMode === INSPECTOR_MODES.ADD_AGENT
     || inspectorMode === INSPECTOR_MODES.ADD_OBSTACLE;
 
@@ -111,6 +116,61 @@ export default function ScenarioBuilder3rdGen() {
   useEffect(() => {
     obstaclesRef.current = obstacles;
   }, [obstacles]);
+
+  // This effect shows the Explorer gradient only while more entries remain below.
+  useEffect(() => {
+    const list = explorerListRef.current;
+    if (!list) return undefined;
+
+    function updateScrollHint() {
+      setHasExplorerMoreBelow(
+        list.scrollTop + list.clientHeight < list.scrollHeight - 2
+      );
+    }
+
+    updateScrollHint();
+    const resizeObserver = new ResizeObserver(updateScrollHint);
+    resizeObserver.observe(list);
+
+    return () => resizeObserver.disconnect();
+  }, [builderTab, searchTerm, entityFilters, collapsedGroups, showEntityFilters, agents, obstacles]);
+
+  // This effect shows the Inspector gradient only while more form content remains below.
+  useEffect(() => {
+    const content = inspectorContentRef.current;
+    if (!content) return undefined;
+
+    function getScroller() {
+      return content.querySelector(
+        `.${styles.inspectorForm}, .${styles.settingsForm}`
+      );
+    }
+
+    function updateScrollHint() {
+      const scroller = getScroller();
+      setHasInspectorMoreBelow(Boolean(
+        scroller
+        && scroller.scrollTop + scroller.clientHeight < scroller.scrollHeight - 2
+      ));
+    }
+
+    updateScrollHint();
+    content.addEventListener('scroll', updateScrollHint, true);
+
+    const resizeObserver = new ResizeObserver(updateScrollHint);
+    resizeObserver.observe(content);
+    const scroller = getScroller();
+    if (scroller) resizeObserver.observe(scroller);
+
+    const mutationObserver = new MutationObserver(updateScrollHint);
+    mutationObserver.observe(content, { childList: true, subtree: true });
+
+    return () => {
+      content.removeEventListener('scroll', updateScrollHint, true);
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [inspectorMode, selection]);
 
   // This function updates the enabled state of the Undo and Redo buttons.
   function updateHistoryButtons() {
@@ -850,7 +910,9 @@ export default function ScenarioBuilder3rdGen() {
 
     return (
       <WorkspaceExplorer title="Scenario Explorer">
-        <div className={styles.explorerContent}>
+        <div className={`${styles.explorerContent} ${
+          hasExplorerMoreBelow ? styles.hasMoreBelow : ''
+        }`}>
           <section className={styles.scenarioCard} aria-labelledby="builder-current-scenario-title">
             <p className={styles.scenarioEyebrow} id="builder-current-scenario-title">
               Current Scenario
@@ -961,7 +1023,17 @@ export default function ScenarioBuilder3rdGen() {
               role="tabpanel"
               aria-labelledby={`builder-tab-${BUILDER_TABS.ENTITIES}`}
             >
-              <div className={styles.explorerList}>
+              <div
+                ref={explorerListRef}
+                className={styles.explorerList}
+                onScroll={() => {
+                  const list = explorerListRef.current;
+                  if (!list) return;
+                  setHasExplorerMoreBelow(
+                    list.scrollTop + list.clientHeight < list.scrollHeight - 2
+                  );
+                }}
+              >
                 {!hasVisibleEntities ? (
                   <p className={styles.explorerEmpty}>
                     {/* Keep this empty-state copy aligned with the Main Simulation Explorer. */}
@@ -1238,7 +1310,12 @@ export default function ScenarioBuilder3rdGen() {
 
     return (
       <WorkspaceInspector>
-        <div className={styles.inspectorContent}>
+        <div
+          ref={inspectorContentRef}
+          className={`${styles.inspectorContent} ${
+            hasInspectorMoreBelow ? styles.hasMoreBelow : ''
+          }`}
+        >
           {inspectorMode === INSPECTOR_MODES.ADD_AGENT && FormComponent ? (
             <FormComponent
               onRegeneratePreview={regenerateAgentPreview}
@@ -1298,6 +1375,34 @@ export default function ScenarioBuilder3rdGen() {
 
   return (
     <div className={styles.simulationPage}>
+      {showWelcomeAlert && (
+        <AlertBox
+          title="Welcome to the Scenario Builder!"
+          primMessage="This is where you can create and configure entities for your agent-based simulations. After you are satisfied with your scenario, you can export it as a JSON file to use in your simulations."
+          secMessage={(
+            <>
+              Don&apos;t know where to start?{' '}
+              <Link
+                to="/loading"
+                state={{
+                  from: 'Scenario Builder',
+                  to: 'Tutorial',
+                  path: '/tutorial',
+                }}
+              >
+                Check out the tutorial.
+              </Link>
+            </>
+          )}
+          confirmLabel="Get Started"
+          cancelLabel="Close"
+          permanentDismiss
+          dismissStorageKey="scenario-builder-3rd-gen-welcome-dismissed"
+          onConfirm={() => setShowWelcomeAlert(false)}
+          onCancel={() => setShowWelcomeAlert(false)}
+        />
+      )}
+
       {showImportConfirmation && (
         <AlertBox
           title="Import Scenario?"

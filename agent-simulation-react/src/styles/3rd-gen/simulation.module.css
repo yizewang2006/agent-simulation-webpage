@@ -42,7 +42,7 @@
 }
 
 .workspaceSidePanel {
-  height: 740px;
+  height: 742px;
   align-self: start;
 }
 
@@ -850,6 +850,7 @@
 /* Runtime Control */
 .runtimeCard {
   width: 100%;
+  min-height: 180px;
   padding: 10px 14px 14px;
   box-sizing: border-box;
   border: 2px solid #303030;

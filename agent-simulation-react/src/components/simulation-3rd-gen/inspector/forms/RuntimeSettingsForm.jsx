@@ -73,6 +73,7 @@ export default function RuntimeSettingsForm({
             <input
               type="checkbox"
               name="debuggingMode"
+              disabled="true"
             />
             Enable Debug Mode
           </label>
