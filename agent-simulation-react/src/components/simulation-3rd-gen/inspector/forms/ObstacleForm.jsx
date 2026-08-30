@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, CirclePlus, CopyPlus, Trash2, X } from "lucide-react";
-import { FORM_MODES } from "../modeConstants.js";
+import { FORM_MODES } from "../formRegistry.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
+
+export const OBSTACLE_FORM_DESCRIPTION = "Add a circle or polygon obstacle.";
 
 // Start Polygon mode with a simple rectangle.
 const DEFAULT_POLYGON_VERTICES = [

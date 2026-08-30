@@ -23,6 +23,191 @@ export {
   TARGET_PROPERTIES,
 } from "../utils/constants.js";
 
+export const ACTIVATION_TYPES = Object.freeze({
+  BINARY: "binary",
+  LINEAR: "linear",
+  ALWAYS_ACTIVE: "always-active",
+});
+
+// Every Behavior starts usable. Beginners can safely skip Activation setup.
+export function createDefaultActivation(overrides = {}) {
+  return {
+    type: ACTIVATION_TYPES.ALWAYS_ACTIVE,
+    valueToCheck: MEASUREMENT_TYPES.DISTANCE,
+    checkSource: "neighbor",
+    lowerRange: "0",
+    upperRange: "1",
+    weight: "1",
+    inside: true,
+    slope: "1",
+    increase: true,
+    nullActivation: false,
+    fallbackWeight: "0",
+    filters: [],
+    ...overrides,
+  };
+}
+
+// Forms use strings so empty number inputs remain editable.
+export function createActivationDraft(savedActivation) {
+  const activation = createDefaultActivation(savedActivation);
+  return {
+    ...activation,
+    lowerRange: String(activation.lowerRange),
+    upperRange: String(activation.upperRange),
+    weight: String(activation.weight),
+    slope: String(activation.slope),
+    fallbackWeight: String(activation.fallbackWeight),
+    filters: activation.filters.map((filter) => ({ ...filter })),
+  };
+}
+
+// Convert one UI draft into the single Activation saved on a Behavior.
+export function normalizeActivationDraft(draft) {
+  const type = draft?.type;
+  if (!Object.values(ACTIVATION_TYPES).includes(type)) {
+    throw new Error("Choose a valid Activation Function.");
+  }
+
+  if (type === ACTIVATION_TYPES.ALWAYS_ACTIVE) {
+    const weight = Number(draft.weight);
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new Error("Always Active Weight must be zero or greater.");
+    }
+    return { type, weight };
+  }
+
+  const lowerRange = Number(draft.lowerRange);
+  const upperRange = Number(draft.upperRange);
+  const valueToCheck = Number(draft.valueToCheck);
+  if (!Number.isFinite(lowerRange) || !Number.isFinite(upperRange)) {
+    throw new Error("Activation Lower and Upper Range must be valid numbers.");
+  }
+  if (!Object.values(MEASUREMENT_TYPES).includes(valueToCheck)) {
+    throw new Error("Choose a valid Value to Check.");
+  }
+  if (
+    valueToCheck === MEASUREMENT_TYPES.HEADING
+    && (lowerRange < 0 || lowerRange > 360 || upperRange < 0 || upperRange > 360)
+  ) {
+    throw new Error("Heading Activation Range must be between 0° and 360°.");
+  }
+  if (
+    (
+      valueToCheck === MEASUREMENT_TYPES.HEADING_DIFFERENCE
+      || valueToCheck === MEASUREMENT_TYPES.ANGLE_TO_ENTITY
+    )
+    && (lowerRange < 0 || lowerRange > 180 || upperRange < 0 || upperRange > 180)
+  ) {
+    throw new Error("Activation angle range must be between 0° and 180°.");
+  }
+  if (lowerRange > upperRange) {
+    throw new Error("Activation Lower Range cannot exceed Upper Range.");
+  }
+
+  const common = {
+    type,
+    valueToCheck,
+    checkSource: draft.checkSource,
+    lowerRange,
+    upperRange,
+    nullActivation: Boolean(draft.nullActivation),
+    filters: normalizeFilterDrafts(draft.filters, "Activation Filter"),
+  };
+
+  if (common.nullActivation) {
+    const fallbackWeight = Number(draft.fallbackWeight);
+    if (!Number.isFinite(fallbackWeight) || fallbackWeight < 0) {
+      throw new Error("No-Entity Weight must be zero or greater.");
+    }
+    common.fallbackWeight = fallbackWeight;
+  }
+
+  if (!["self", "neighbor"].includes(common.checkSource)) {
+    throw new Error("Choose Self or Neighbor Property.");
+  }
+
+  if (type === ACTIVATION_TYPES.BINARY) {
+    const weight = Number(draft.weight);
+    if (!Number.isFinite(weight) || weight < 0) {
+      throw new Error("Binary Weight must be zero or greater.");
+    }
+    return { ...common, weight, inside: Boolean(draft.inside) };
+  }
+
+  const slope = Number(draft.slope);
+  if (!Number.isFinite(slope) || slope < 0) {
+    throw new Error("Linear Slope must be zero or greater.");
+  }
+  return { ...common, slope, increase: Boolean(draft.increase) };
+}
+
+// Weight calculation
+export function calculateActivationWeight(activation, activationValue) { // activationValue is the extracted property value Pa
+    let weight = 0;
+
+    // 1. Always Active: directly return weight
+    if (activation.type === ACTIVATION_TYPES.ALWAYS_ACTIVE) { return activation.weight; }
+
+    // Binary and Linear require a valid activation value.
+    if (
+        activationValue === null ||
+        activationValue === undefined ||
+        !Number.isFinite(activationValue)
+    ) {
+        return activation.nullActivation
+            ? activation.fallbackWeight
+            : weight;
+    }
+
+    // 2. Binary
+    if (activation.type === ACTIVATION_TYPES.BINARY) {
+        const isInsideRange =
+            activationValue >= activation.lowerRange &&
+            activationValue <= activation.upperRange;
+
+        const qualifies = activation.inside
+            ? isInsideRange
+            : !isInsideRange;
+
+        return qualifies ? activation.weight : 0; // If value qualifies for activation, return weight, otherwise return 0
+    }
+
+    // 3. Linear
+    if (activation.type === ACTIVATION_TYPES.LINEAR) {
+        if (activation.increase) { // <-- if increasing slope
+            if (activationValue < activation.lowerRange) { return 0 } // 1st condition: Pa < lowerRange, return 0
+            weight = activationValue > activation.upperRange ?
+                activation.slope * (activation.upperRange - activation.lowerRange) : // 2nd condition: Pa > upperRange, return slope * (upperRange - lowerRange)
+                activation.slope * (activationValue - activation.lowerRange); // 3rd condition: Pa is between lowerRange and upperRange, return slope * (Pa - lowerRange)
+        }
+        else {
+            if (activationValue > activation.upperRange) { return 0 } // 1st condition: Pa > upperRange, return 0
+            weight = activationValue < activation.lowerRange ?
+                activation.slope * (activation.upperRange - activation.lowerRange) : // 2nd condition: Pa < lowerRange, return slope * (upperRange - lowerRange)
+                activation.slope * (activation.upperRange - activationValue); // 3rd condition: Pa is between lowerRange and upperRange, return slope * (upperRange - Pa)
+        }
+        return weight;
+    }
+    // 4. Unknown
+    return 0;
+}
+
+export function normalizeWeight(rawActivationWeight, activeBehaviorGroup) {
+  let totalWeight = 0;
+
+  // Receives runtime group, so only normalize within the group
+  for (const activeBehavior of activeBehaviorGroup) {
+        totalWeight += activeBehavior.rawActivationWeight;
+    }
+
+    if (totalWeight === 0) {
+        return 0;
+    }
+
+    return rawActivationWeight / totalWeight;
+}
+
 // ─── Behavior class (currently unused; runtime uses plain objects) ───────────
 // export class Behavior {
 //   constructor(name, targetProperty) {
@@ -61,8 +246,8 @@ export class RangedFilter extends Filter {
   constructor(propertyType, low, high) {
     super();
     this.propertyType = propertyType;
-    this.low = parseRangeBound(low, 0);
-    this.high = parseRangeBound(high, getDefaultRangeHigh(propertyType));
+    this.low = low;
+    this.high = high;
   }
 
   apply(self, entities) {
@@ -70,7 +255,7 @@ export class RangedFilter extends Filter {
       const value = getEntityMeasurementValue(this.propertyType, self, entity);
       if (value === null) return false;
 
-      if (isAngleMeasurement(this.propertyType)) {
+      if (this.propertyType === MEASUREMENT_TYPES.HEADING) {
         return isAngleInRange(value, this.low, this.high);
       }
 
@@ -111,6 +296,83 @@ export class MethodFilter extends Filter {
   }
 }
 
+export function normalizeFilterDrafts(filters, ownerLabel) {
+  return filters.map((filter, index) => {
+    const label = `${ownerLabel} ${index + 1}`;
+    const obstacleTargets = filter.targets[ENTITY_TYPES.OBSTACLE];
+    const hasTarget = Object.values(ENTITY_TYPES)
+      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
+      .some((entityType) => filter.targets[entityType] === true)
+      || obstacleTargets.enabled === true;
+
+    if (!hasTarget) {
+      throw new Error(`${label} needs at least one Target Entity Type.`);
+    }
+    if (
+      obstacleTargets.enabled
+      && !obstacleTargets[OBSTACLE_SHAPE_TYPES.CIRCLE]
+      && !obstacleTargets[OBSTACLE_SHAPE_TYPES.POLYGON]
+    ) {
+      throw new Error(`${label} needs at least one Obstacle shape.`);
+    }
+    if (!Object.values(MEASUREMENT_TYPES).includes(filter.propertyType)) {
+      throw new Error(`${label} needs a valid Property.`);
+    }
+
+    if (filter.filterType === 'method') {
+      if (!Object.values(METHOD_TYPES).includes(filter.methodType)) {
+        throw new Error(`${label} needs a valid Method.`);
+      }
+      return {
+        ...filter,
+        targets: {
+          ...filter.targets,
+          [ENTITY_TYPES.OBSTACLE]: { ...obstacleTargets },
+        },
+      };
+    }
+
+    if (filter.filterType !== 'ranged') {
+      throw new Error(`${label} needs a valid Type.`);
+    }
+
+    const low = Number(filter.low);
+    const high = Number(filter.high);
+
+    if (!Number.isFinite(low) || !Number.isFinite(high)) {
+      throw new Error(`${label} needs valid Low and High values.`);
+    }
+
+    if (filter.propertyType === MEASUREMENT_TYPES.HEADING) {
+      if (low < 0 || low > 360 || high < 0 || high > 360) {
+        throw new Error(`${label} Heading range must be between 0° and 360°.`);
+      }
+    } else if (
+      filter.propertyType === MEASUREMENT_TYPES.HEADING_DIFFERENCE
+      || filter.propertyType === MEASUREMENT_TYPES.ANGLE_TO_ENTITY
+    ) {
+      if (low < 0 || low > 180 || high < 0 || high > 180) {
+        throw new Error(`${label} angle range must be between 0° and 180°.`);
+      }
+      if (low > high) {
+        throw new Error(`${label} Low cannot be greater than High.`);
+      }
+    } else if (low > high) {
+      throw new Error(`${label} Low cannot be greater than High.`);
+    }
+
+    return {
+      ...filter,
+      targets: {
+        ...filter.targets,
+        [ENTITY_TYPES.OBSTACLE]: { ...obstacleTargets },
+      },
+      low,
+      high,
+    };
+  });
+}
+
 // ─── Entity value readers ────────────────────────────────────────────────────
 // These functions read geometry, Filter values, or Action values from Entities.
 
@@ -143,10 +405,10 @@ export function getShortestOffset(fromPosition, toPosition, canvas) {
   return { diffX, diffY };
 }
 
+// Now uses shortest difference angle
 export function getHeadingDifferenceDeg(self, neighbor) {
-  const selfHeading = (getEntityHeading(self) * 180 / Math.PI + 360) % 360;
-  const neighborHeading = (getEntityHeading(neighbor) * 180 / Math.PI + 360) % 360;
-  return (neighborHeading - selfHeading + 360) % 360;
+  const difference = getEntityHeading(neighbor) - getEntityHeading(self);
+  return Math.abs(Math.atan2(Math.sin(difference), Math.cos(difference))) * 180 / Math.PI;
 }
 
 export function getEntityCenterPoint(entity) {
@@ -208,14 +470,14 @@ function getEntityMeasurementValue(measurementType, self, entity) {
       if (!self?.hasHeading || entity.hasHeading !== true) return null;
       return getHeadingDifferenceDeg(self, entity);
     }
-    case MEASUREMENT_TYPES.RELATIVE_BEARING: {
+    case MEASUREMENT_TYPES.ANGLE_TO_ENTITY: {
       const referencePosition = getEntityReferencePosition(self, entity);
       if (!referencePosition) return null;
       // Bearing-based filters should aim at the closest obstacle boundary point.
       const { diffX, diffY } = getShortestOffset(self, referencePosition, self.canvas);
-      const bearing = Math.atan2(diffY, diffX) * 180 / Math.PI;
-      const selfHeading = (getEntityHeading(self) * 180 / Math.PI + 360) % 360;
-      return (bearing - selfHeading + 360) % 360;
+      const bearing = Math.atan2(diffY, diffX);
+      const difference = bearing - getEntityHeading(self);
+      return Math.abs(Math.atan2(Math.sin(difference), Math.cos(difference))) * 180 / Math.PI;
     }
 
     case MEASUREMENT_TYPES.SPEED:
@@ -280,18 +542,17 @@ function getEntityActionValue(targetProperty, self, entity) {
 
 // Apply entity targets first, then the selected Ranged or Method algorithm.
 function applyEntityFilter(agentFilter, self, entities) {
-  const targets = agentFilter?.targets ?? null;
+  if (!agentFilter) {
+    return entities.filter((entity) => entity.entityType === ENTITY_TYPES.AGENT);
+  }
+
+  const targets = agentFilter.targets;
   const targetedEntities = entities.filter((entity) => {
     if (!entity) return false;
-
-    // Legacy filters did not have target scopes. Keep them agent-only by default
-    // so old behavior presets do not suddenly react to obstacles.
-    if (!targets) return entity.entityType === ENTITY_TYPES.AGENT;
 
     if (entity.entityType === ENTITY_TYPES.OBSTACLE) {
       const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE];
 
-      if (!obstacleTargets) return false;
       if (!obstacleTargets.enabled) return false;
       if (entity.shapeType === undefined || entity.shapeType === null) return false;
       if (!obstacleTargets[entity.shapeType]) return false;
@@ -304,41 +565,16 @@ function applyEntityFilter(agentFilter, self, entities) {
     return Boolean(targets[entity.entityType]);
   });
 
-  // No Filter means the default agent-only target scope.
-  if (!agentFilter) return targetedEntities;
-
   if (agentFilter.filterType === 'ranged')
     return new RangedFilter(agentFilter.propertyType, agentFilter.low, agentFilter.high).apply(self, targetedEntities);
-  if (agentFilter.filterType === 'method')
-    return new MethodFilter(agentFilter.propertyType, agentFilter.methodType).apply(self, targetedEntities);
-  return targetedEntities;
-}
-
-function isAngleMeasurement(measurementType) {
-  return (
-    measurementType === MEASUREMENT_TYPES.HEADING_DIFFERENCE ||
-    measurementType === MEASUREMENT_TYPES.HEADING ||
-    measurementType === MEASUREMENT_TYPES.RELATIVE_BEARING
-  );
-}
-
-function parseRangeBound(value, fallback) {
-  if (value === '' || value === null || value === undefined) return fallback;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-// Some default high/low values
-function getDefaultRangeHigh(propertyType) {
-  if (isAngleMeasurement(propertyType)) return 360;
-  return Infinity;
+  return new MethodFilter(agentFilter.propertyType, agentFilter.methodType).apply(self, targetedEntities);
 }
 
 // ─── Behavior value calculation ──────────────────────────────────────────────
 // Apply Behavior Filters, then combine the qualifying Entities' Action values.
 // Return a target value depending on the behavior
 export function calculateBehaviorValue(behavior, self, detectedEntities) {
-    const filters = Array.isArray(behavior.filters) ? behavior.filters : [];
+    const filters = behavior.filters;
     let detectedEntitiesForBehavior = [...detectedEntities]; // All detected entities before filtering
 
     if (filters.length === 0) detectedEntitiesForBehavior = applyEntityFilter(null, self, detectedEntitiesForBehavior);
@@ -368,6 +604,7 @@ export function calculateBehaviorValue(behavior, self, detectedEntities) {
             sinSum += Math.sin(value);
             cosSum += Math.cos(value);
           }
+          if (Math.hypot(sinSum, cosSum) < 1e-12) return null;
           return Math.atan2(sinSum, cosSum);
         }
         case TARGET_PROPERTIES.SPEED: {
@@ -381,6 +618,7 @@ export function calculateBehaviorValue(behavior, self, detectedEntities) {
             sinSum += Math.sin(value);
             cosSum += Math.cos(value);
           }
+          if (Math.hypot(sinSum, cosSum) < 1e-12) return null;
           return Math.atan2(sinSum, cosSum);
         }
       }
@@ -402,7 +640,8 @@ export function smoothTowardAngle(currentAngle, targetAngle, smoothingFactor) {
     Math.cos(targetAngle - currentAngle)
   );
 
-  return currentAngle + shortestDifference * smoothingFactor;
+  const nextAngle = currentAngle + shortestDifference * smoothingFactor;
+  return Math.atan2(Math.sin(nextAngle), Math.cos(nextAngle));
 }
 
 // Smoothing Calculator (based on max angle)
@@ -410,7 +649,8 @@ export function turnTowardAngle(initial, final, maxAngle) {
   let diff = final - initial;
   if (diff > Math.PI) diff -= 2 * Math.PI;
   if (diff < -Math.PI) diff += 2 * Math.PI;
-  return initial + Math.sign(diff) * Math.min(Math.abs(diff), maxAngle);
+  const nextAngle = initial + Math.sign(diff) * Math.min(Math.abs(diff), maxAngle);
+  return Math.atan2(Math.sin(nextAngle), Math.cos(nextAngle));
 }
 
 // ─── Activation value calculation ────────────────────────────────────────────
@@ -423,7 +663,7 @@ export function getActivationInputValue(activation, self, detectedEntities) {
   if (activation.checkSource !== "neighbor") return null;
 
   // If source = neighbor-property, then use detectedEntities as normal
-  const filters = Array.isArray(activation.filters) ? activation.filters : [];
+  const filters = activation.filters;
 
   let qualifyingEntities = [...detectedEntities]; // read detectedEntities
 
@@ -475,7 +715,7 @@ function calculateAverageActivationValue(measurementType, values = []) {
   let total = 0;
 
   // Circular: ANGLUAR variables are circular, should be treated differently
-  const isCircular = measurementType === MEASUREMENT_TYPES.HEADING || measurementType === MEASUREMENT_TYPES.RELATIVE_BEARING;
+  const isCircular = measurementType === MEASUREMENT_TYPES.HEADING;
 
   // Speed, or other numeric non-circular variables, use arithmetic mean
   if (!isCircular) {
@@ -495,6 +735,8 @@ function calculateAverageActivationValue(measurementType, values = []) {
     sinSum += Math.sin(radian);
     cosSum += Math.cos(radian);
   }
+
+  if (Math.hypot(sinSum, cosSum) < 1e-12) return null;
 
   const averageRadians = Math.atan2(
     sinSum,

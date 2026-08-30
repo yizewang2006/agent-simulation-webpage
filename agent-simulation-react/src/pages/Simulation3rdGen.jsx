@@ -22,7 +22,13 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
+import {
+  ACTIVATION_TYPES,
+  createDefaultActivation,
+  normalizeActivationDraft,
+  normalizeFilterDrafts,
+} from "../models/behavior.js";
+import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
 import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import {
   findEntityAt,
@@ -34,11 +40,6 @@ import {
   downloadScenarioFile,
   loadScenarioFile,
 } from "../utils/scenarioUtilities.js";
-import {
-  ACTIVATION_TYPES,
-  createDefaultActivation,
-  normalizeActivationDraft,
-} from "../models/activation.js";
 import {
   BEHAVIOR_GROUP_DEFINITIONS,
   getBehaviorGroupKey,
@@ -53,7 +54,7 @@ const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at onc
 const MAX_SNAPSHOTS = 10;
 
 // NEW 3rd Generation Imports
-import { INSPECTOR_MODES } from "../components/simulation-3rd-gen/inspector/modeConstants.js"; // Inspector DISPLAY MODES
+import { INSPECTOR_MODES } from "../components/simulation-3rd-gen/inspector/formRegistry.js"; // Inspector DISPLAY MODES
 
 function randomBetween(min, max) {
   return min + Math.random() * (max - min);
@@ -106,8 +107,12 @@ function normalizeAgentCreationConfig(values) {
   if (config.speedMin < 0 || config.speedMin > config.speedMax) {
     throw new Error('Initial Speed Min must be non-negative and no greater than Max.');
   }
-  if (config.angleMin > config.angleMax) {
-    throw new Error('Initial Angle Min cannot be greater than Max.');
+  if (
+    config.angleMin < 0
+    || config.angleMax > 360
+    || config.angleMin > config.angleMax
+  ) {
+    throw new Error('Initial Heading range must stay between 0 and 360 degrees, with Min no greater than Max.');
   }
   if (values.fovRadius === '' || config.fovRadius < 0) {
     throw new Error('FOV Radius must be non-negative.');
@@ -412,6 +417,9 @@ function Simulation3rdGen() {
   const [agentsListExpanded, setAgentsListExpanded] = useState(false); // State to toggle agents list visibility
   const [obstacles, setObstacles] = useState([]); // State to hold obstacles for display in the control panel
   const [obstaclesListExpanded, setObstaclesListExpanded] = useState(false); // State to toggle obstacles list visibility
+
+  // Debug State
+  const [isDebugging, setIsDebugging] = useState(false);
 
   // Keep this here so creation handlers can reveal their new Explorer entry.
   const [explorerTab, setExplorerTab] = useState(EXPLORER_TABS.ENTITIES);
@@ -886,7 +894,7 @@ function Simulation3rdGen() {
         x: agent.x,
         y: agent.y,
         radius: agent.radius,
-        angle: -agent.angle * 180 / Math.PI,
+        angle: (((-agent.angle * 180 / Math.PI) % 360) + 360) % 360,
         speed: Math.hypot(agent.dx, agent.dy),
         colorHex: agent.colorHex,
         fovRadius: agent.fovRadius,
@@ -940,56 +948,15 @@ function Simulation3rdGen() {
     if (offset !== '' && !Number.isFinite(offset)) {
       throw new Error('Offset must be a valid number.');
     }
+    if (
+      offset !== ''
+      && values.targetProperty !== TARGET_PROPERTIES.SPEED
+      && (offset < -360 || offset > 360)
+    ) {
+      throw new Error('Angular Offset must be between -360 and 360 degrees.');
+    }
 
-    const filters = values.filters.map((filter, index) => {
-        const obstacleTargets = filter.targets[ENTITY_TYPES.OBSTACLE];
-        const hasTarget = Object.values(ENTITY_TYPES)
-          .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
-          .some((entityType) => filter.targets[entityType] === true)
-          || obstacleTargets?.enabled === true;
-
-        if (!hasTarget) {
-          throw new Error(`Filter ${index + 1} needs at least one Target Entity Type.`);
-        }
-        if (
-          obstacleTargets?.enabled &&
-          !obstacleTargets[OBSTACLE_SHAPE_TYPES.CIRCLE] &&
-          !obstacleTargets[OBSTACLE_SHAPE_TYPES.POLYGON]
-        ) {
-          throw new Error(`Filter ${index + 1} needs at least one Obstacle shape.`);
-        }
-        if (!Object.values(MEASUREMENT_TYPES).includes(filter.propertyType)) {
-          throw new Error(`Filter ${index + 1} needs a valid Property.`);
-        }
-
-        if (filter.filterType === 'method') {
-          if (!Object.values(METHOD_TYPES).includes(filter.methodType)) {
-            throw new Error(`Filter ${index + 1} needs a valid Method.`);
-          }
-        } else if (filter.filterType === 'ranged') {
-          const low = Number(filter.low);
-          const high = Number(filter.high);
-
-          if (!Number.isFinite(low) || !Number.isFinite(high)) {
-            throw new Error(`Filter ${index + 1} needs valid Low and High values.`);
-          }
-          if (low > high) {
-            throw new Error(`Filter ${index + 1} Low cannot be greater than High.`);
-          }
-        } else {
-          throw new Error(`Filter ${index + 1} needs a valid Type.`);
-        }
-
-      return {
-          ...filter,
-          targets: {
-            ...filter.targets,
-            [ENTITY_TYPES.OBSTACLE]: { ...obstacleTargets },
-          },
-          low: filter.filterType === 'ranged' ? Number(filter.low) : filter.low,
-          high: filter.filterType === 'ranged' ? Number(filter.high) : filter.high,
-      };
-    });
+    const filters = normalizeFilterDrafts(values.filters, 'Action Filter');
 
     return {
       enabled: behaviorToIgnore?.enabled ?? values.enabled ?? true,
@@ -1455,6 +1422,19 @@ function Simulation3rdGen() {
     isSimulationRunningRef.current = true;
   }
 
+  // Toggle Debugging State
+  function handleTogglingDebugging() {
+    if (!isDebugging) {
+      // Enter debugging mode
+      setIsSimulationRunning(false); // Pause Simulation
+      isSimulationRunningRef.current = false;
+
+      if (isRecordingRef.current) handleStopRecording();
+    }
+
+    setIsDebugging((current) => !current) // Toggling
+  }
+
   function createSnapshot(name = null) {
     const snapshotData = storeScenarioInformation({
       agents: agentsArrayRef,
@@ -1484,7 +1464,6 @@ function Simulation3rdGen() {
       setShowNoAgentsAlert(true);
       return;
     }
-
     createSnapshot();
   }
 
@@ -1808,7 +1787,7 @@ function Simulation3rdGen() {
 
     // Convert runtime vectors and radians into values people can edit directly.
     const speed = Math.hypot(agent.dx, agent.dy);
-    const angle = -agent.angle * 180 / Math.PI;
+    const angle = (((-agent.angle * 180 / Math.PI) % 360) + 360) % 360;
     const roundForForm = (value) => String(Math.round(value * 100) / 100);
 
     return {
@@ -1820,6 +1799,7 @@ function Simulation3rdGen() {
       angle: roundForForm(angle),
       color: getAgentColor(agent),
       showFOV: agent.showFOV !== false,
+      fovRadius: roundForForm(agent.fovRadius),
       fovAngle: roundForForm(agent.fovAngle * 180 / Math.PI),
     };
   }
@@ -1858,6 +1838,7 @@ function Simulation3rdGen() {
     const y = Number(values.y);
     const speed = Number(values.speed);
     const angleDegrees = Number(values.angle);
+    const fovRadius = Number(values.fovRadius);
     const fovAngleDegrees = Number(values.fovAngle);
     const name = values.name.trim();
 
@@ -1873,8 +1854,11 @@ function Simulation3rdGen() {
     if (!Number.isFinite(speed) || speed < 0) {
       return { ok: false, error: 'Speed must be zero or greater.' };
     }
-    if (!Number.isFinite(angleDegrees)) {
-      return { ok: false, error: 'Angle must be a valid number.' };
+    if (!Number.isFinite(angleDegrees) || angleDegrees < 0 || angleDegrees > 360) {
+      return { ok: false, error: 'Heading must be between 0 and 360 degrees.' };
+    }
+    if (!Number.isFinite(fovRadius) || fovRadius < 0) {
+      return { ok: false, error: 'FOV Radius must be zero or greater.' };
     }
     if (
       !Number.isFinite(fovAngleDegrees) ||
@@ -1885,7 +1869,8 @@ function Simulation3rdGen() {
     }
 
     // Step 2: Convert the displayed clockwise degrees back to canvas radians.
-    const angle = -angleDegrees * Math.PI / 180;
+    const angleInRadians = -angleDegrees * Math.PI / 180;
+    const angle = Math.atan2(Math.sin(angleInRadians), Math.cos(angleInRadians));
 
     // Step 3: Commit all edits together so Cancel never partially changes an Agent.
     selectedAgent.name = name;
@@ -1899,6 +1884,7 @@ function Simulation3rdGen() {
     selectedAgent.colorHex = values.color;
     selectedAgent.showFOV = values.showFOV;
     selectedAgent.isSpecial = values.showFOV;
+    selectedAgent.fovRadius = fovRadius;
     selectedAgent.fovAngle = fovAngleDegrees * Math.PI / 180;
 
     // Step 4: Refresh React UI, then close the editor.
@@ -2497,6 +2483,8 @@ function Simulation3rdGen() {
             onNoAgents={() => setShowNoAgentsAlert(true)}
             onRestoreLatest={handleRestoreLatestSnapshot}
             onOpenHistory={() => setExplorerTab(EXPLORER_TABS.HISTORY)}
+            isDebugging={isDebugging}
+            onToggleDebugging={handleTogglingDebugging}
           />
         </section>
 

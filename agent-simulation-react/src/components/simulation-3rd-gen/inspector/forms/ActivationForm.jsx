@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Activity, Check, X } from "lucide-react";
 import ActivationFields from "../fields/ActivationFields.jsx";
-import { createActivationDraft } from "../../../../models/activation.js";
+import { createActivationDraft } from "../../../../models/behavior.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
+
+export const ACTIVATION_FORM_DESCRIPTION = "Configure how a behavior calculates its weight. Each behavior must have one and only one activation function.";
 
 export default function ActivationForm({ behaviors = [], initialValues, onApply, onCancel }) {
   const [behaviorId, setBehaviorId] = useState(initialValues?.behaviorId ?? "");

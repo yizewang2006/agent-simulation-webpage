@@ -7,13 +7,13 @@ import {
   CopyPlus,
   X,
 } from "lucide-react";
-import { FORM_MODES } from "../modeConstants.js";
+import { FORM_MODES } from "../formRegistry.js";
 import ActivationFields from "../fields/ActivationFields.jsx";
 import FilterFields from "../fields/FilterFields.jsx";
 import {
   ACTIVATION_TYPES,
   createActivationDraft,
-} from "../../../../models/activation.js";
+} from "../../../../models/behavior.js";
 import {
   ENTITY_TYPES,
   REFERENCE_LABELS,
@@ -23,7 +23,9 @@ import {
 } from "../../../../utils/constants.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
-export default function BehaviorForm({
+export const AGENT_BEHAVIOR_FORM_DESCRIPTION = "Create a definition of how agents respond to other entities.";
+
+export default function AgentBehaviorForm({
   mode = FORM_MODES.CREATE,
   initialValues,
   onSubmit,
@@ -226,6 +228,8 @@ export default function BehaviorForm({
                     className={styles.formInput}
                     type="number"
                     value={offset}
+                    min={targetProperty === TARGET_PROPERTIES.SPEED ? undefined : -360}
+                    max={targetProperty === TARGET_PROPERTIES.SPEED ? undefined : 360}
                     onChange={(event) => setOffset(event.target.value)}
                   />
                   <span className={styles.inputUnit}>{offsetUnit}</span>

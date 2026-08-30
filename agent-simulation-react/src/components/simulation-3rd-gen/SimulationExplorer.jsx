@@ -39,7 +39,7 @@ import {
   PROPERTY_LABELS,
   REFERENCE_LABELS,
 } from '../../utils/constants.js';
-import { ACTIVATION_TYPES } from '../../models/activation.js';
+import { ACTIVATION_TYPES } from '../../models/behavior.js';
 import { formatID } from '../../utils/utilities.js';
 import styles from '../../styles/3rd-gen/simulation.module.css';
 

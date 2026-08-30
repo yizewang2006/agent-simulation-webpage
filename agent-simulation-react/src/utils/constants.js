@@ -18,7 +18,7 @@ export const MEASUREMENT_TYPES = {
   SPEED_DIFFERENCE: 2,
   HEADING_DIFFERENCE: 3,
   HEADING: 4,
-  RELATIVE_BEARING: 5,
+  ANGLE_TO_ENTITY: 5,
 };
 
 export const ENTITY_TYPES = {
@@ -59,7 +59,7 @@ export const MEASUREMENT_LABELS = {
   [MEASUREMENT_TYPES.SPEED]: 'Speed',
   [MEASUREMENT_TYPES.HEADING_DIFFERENCE]: 'Heading Difference',
   [MEASUREMENT_TYPES.HEADING]: 'Heading Angle',
-  [MEASUREMENT_TYPES.RELATIVE_BEARING]: 'Relative Bearing',
+  [MEASUREMENT_TYPES.ANGLE_TO_ENTITY]: 'Angle to Entity',
   [MEASUREMENT_TYPES.SPEED_DIFFERENCE]: 'Speed Difference',
 };
 
@@ -73,7 +73,7 @@ export const ACTIVATION_MEASUREMENT_OPTIONS = Object.freeze({
     [MEASUREMENT_TYPES.DISTANCE, 'Distance'],
     [MEASUREMENT_TYPES.HEADING, 'Neighbor’s Heading Angle'],
     [MEASUREMENT_TYPES.HEADING_DIFFERENCE, 'Heading Difference'],
-    [MEASUREMENT_TYPES.RELATIVE_BEARING, 'Relative Bearing'],
+    [MEASUREMENT_TYPES.ANGLE_TO_ENTITY, 'Angle to Entity'],
     [MEASUREMENT_TYPES.SPEED, 'Neighbor’s Speed'],
     [MEASUREMENT_TYPES.SPEED_DIFFERENCE, 'Speed Difference'],
   ],
@@ -132,9 +132,9 @@ export const METHOD_LABELS_BY_PROPERTY = {
     [METHOD_TYPES.FARTHEST]: 'Highest Heading',
     [METHOD_TYPES.AVERAGE]: 'Average',
   },
-  [MEASUREMENT_TYPES.RELATIVE_BEARING]: {
-    [METHOD_TYPES.CLOSEST]: 'Smallest Relative Bearing',
-    [METHOD_TYPES.FARTHEST]: 'Largest Relative Bearing',
+  [MEASUREMENT_TYPES.ANGLE_TO_ENTITY]: {
+    [METHOD_TYPES.CLOSEST]: 'Smallest Angle to Entity',
+    [METHOD_TYPES.FARTHEST]: 'Largest Angle to Entity',
     [METHOD_TYPES.AVERAGE]: 'Average',
   },
   [MEASUREMENT_TYPES.SPEED_DIFFERENCE]: {
@@ -163,7 +163,7 @@ export const LOADING_MESSAGES = [
   'Finding the nearest neighbor...',
   'Finding the farthest neighbor...',
   'Calculating average neighbor properties...',
-  'Calculating relative bearings...',
+  'Calculating angles to entities...',
   'Calculating heading differences...',
   'Calculating self-reference properties...',
   'Calculating neighbor reference properties...',

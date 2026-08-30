@@ -52,6 +52,10 @@ function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
   if (x < 0 || x > canvasWidth || y < 0 || y > canvasHeight) {
     throw new Error(`Agent ${index + 1} must be within the canvas.`);
   }
+  const angle = requireFiniteNumber(agent.angle, `Agent ${index + 1} heading`);
+  if (angle < 0 || angle > 360) {
+    throw new Error(`Agent ${index + 1} heading must be between 0 and 360 degrees.`);
+  }
 
   return {
     entityType: ENTITY_TYPES.AGENT,
@@ -64,7 +68,7 @@ function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
     x,
     y,
     radius: Math.max(1, requireFiniteNumber(agent.radius ?? 5, `Agent ${index + 1} radius`)),
-    angle: requireFiniteNumber(agent.angle ?? 0, `Agent ${index + 1} heading`),
+    angle,
     speed: Math.max(0, requireFiniteNumber(agent.speed ?? 1.5, `Agent ${index + 1} speed`)),
     colorHex: typeof agent.colorHex === 'string' ? agent.colorHex : '#000000',
     fovRadius: Math.max(0, requireFiniteNumber(agent.fovRadius ?? 100, `Agent ${index + 1} FOV radius`)),

@@ -850,7 +850,7 @@
 /* Runtime Control */
 .runtimeCard {
   width: 100%;
-  min-height: 180px;
+  height: 180px;
   padding: 10px 14px 14px;
   box-sizing: border-box;
   border: 2px solid #303030;
@@ -859,17 +859,33 @@
   font-family: 'Outfit', sans-serif;
 }
 
-.runtimeTitle {
-  margin: 0;
+.runtimeHeader {
   padding-bottom: 7px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
   border-bottom: 1px solid #d6d6d6;
+}
+
+.runtimeTitle {
+  margin: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: #333333;
   font-size: 1.22rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.debugModeButton {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 5px;
 }
 
 .runtimeRow {

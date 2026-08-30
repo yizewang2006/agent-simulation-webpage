@@ -1,10 +1,11 @@
 import {
   ACTIVATION_MEASUREMENT_OPTIONS,
+  MEASUREMENT_TYPES,
 } from "../../../../utils/constants.js";
 import {
   ACTIVATION_TYPES,
   createActivationDraft,
-} from "../../../../models/activation.js";
+} from "../../../../models/behavior.js";
 import FilterFields from "./FilterFields.jsx";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
@@ -79,6 +80,12 @@ export default function ActivationFields({ value, onChange, idPrefix = "activati
 function VariableActivationFields({ draft, update, idPrefix }) {
   const isBinary = draft.type === ACTIVATION_TYPES.BINARY;
   const valueOptions = ACTIVATION_MEASUREMENT_OPTIONS[draft.checkSource];
+  const angularRangeMaximum = draft.valueToCheck === MEASUREMENT_TYPES.HEADING
+    ? 360
+    : [
+        MEASUREMENT_TYPES.HEADING_DIFFERENCE,
+        MEASUREMENT_TYPES.ANGLE_TO_ENTITY,
+      ].includes(draft.valueToCheck) ? 180 : undefined;
 
   function changeSource(checkSource) {
     const nextOptions = ACTIVATION_MEASUREMENT_OPTIONS[checkSource];
@@ -139,6 +146,8 @@ function VariableActivationFields({ draft, update, idPrefix }) {
               className={styles.formInput}
               type="number"
               step="any"
+              min={angularRangeMaximum === undefined ? undefined : 0}
+              max={angularRangeMaximum}
               value={draft[field]}
               onChange={(event) => update({ [field]: event.target.value })}
             />

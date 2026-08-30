@@ -1,11 +1,13 @@
 // If mode = create, render one
 // If mode = edit, render another one
 
-import { FORM_MODES } from "../modeConstants";
+import { FORM_MODES } from "../formRegistry.js";
 
 import { useEffect, useRef, useState } from "react";
 import { Check, CopyPlus, RefreshCw, Trash2, X } from "lucide-react";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
+
+export const AGENT_FORM_DESCRIPTION = "Create one or more simulation agents.";
 
 const AGENT_CREATION_DEFAULTS = {
     count: '1',
@@ -308,7 +310,7 @@ export default function AgentForm({
 
           <fieldset className={styles.formSection}>
             <legend className={styles.formSectionTitle}>
-              Initial Angle
+              Initial Heading
             </legend>
 
             <div className={styles.formFieldRow}>
@@ -323,6 +325,8 @@ export default function AgentForm({
                     type="number"
                     name="angleMin"
                     value={values.angleMin}
+                    min="0"
+                    max="360"
                     step="1"
                     onChange={updateField}
                   />
@@ -341,6 +345,8 @@ export default function AgentForm({
                     type="number"
                     name="angleMax"
                     value={values.angleMax}
+                    min="0"
+                    max="360"
                     step="1"
                     onChange={updateField}
                   />
@@ -494,7 +500,7 @@ export default function AgentForm({
 
               <div className={styles.inputGroup}>
                 <label className={styles.formLabel} htmlFor="agent-angle">
-                  Angle
+                  Heading
                 </label>
                 <div className={styles.inputWithUnit}>
                   <input
@@ -503,6 +509,8 @@ export default function AgentForm({
                     type="number"
                     name="angle"
                     value={values.angle}
+                    min="0"
+                    max="360"
                     step="0.01"
                     onChange={updateField}
                   />
@@ -555,25 +563,46 @@ export default function AgentForm({
         </label>
 
         {mode === FORM_MODES.EDIT && (
-          <div className={styles.inputGroup}>
-            <label className={styles.formLabel} htmlFor="agent-fov-angle">
-              FOV Angle
-            </label>
-            <div className={styles.inputWithUnit}>
-              <input
-                id="agent-fov-angle"
-                className={styles.formInput}
-                type="number"
-                name="fovAngle"
-                value={values.fovAngle}
-                min="0"
-                max="360"
-                step="0.01"
-                onChange={updateField}
-              />
-              <span className={styles.inputUnit}>degrees</span>
+          <>
+            <div className={styles.inputGroup}>
+              <label className={styles.formLabel} htmlFor="agent-fov-radius">
+                FOV Radius
+              </label>
+              <div className={styles.inputWithUnit}>
+                <input
+                  id="agent-fov-radius"
+                  className={styles.formInput}
+                  type="number"
+                  name="fovRadius"
+                  value={values.fovRadius}
+                  min="0"
+                  step="0.01"
+                  onChange={updateField}
+                />
+                <span className={styles.inputUnit}>px</span>
+              </div>
             </div>
-          </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.formLabel} htmlFor="agent-fov-angle">
+                FOV Angle
+              </label>
+              <div className={styles.inputWithUnit}>
+                <input
+                  id="agent-fov-angle"
+                  className={styles.formInput}
+                  type="number"
+                  name="fovAngle"
+                  value={values.fovAngle}
+                  min="0"
+                  max="360"
+                  step="0.01"
+                  onChange={updateField}
+                />
+                <span className={styles.inputUnit}>degrees</span>
+              </div>
+            </div>
+          </>
         )}
       </fieldset>
 

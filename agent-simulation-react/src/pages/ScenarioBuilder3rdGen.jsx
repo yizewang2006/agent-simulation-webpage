@@ -6,7 +6,7 @@ import { getFormComponent } from '../components/simulation-3rd-gen/inspector/for
 import {
   FORM_MODES,
   INSPECTOR_MODES,
-} from '../components/simulation-3rd-gen/inspector/modeConstants.js';
+} from '../components/simulation-3rd-gen/inspector/formRegistry.js';
 import AddToSimulationMenu from '../components/simulation-3rd-gen/inspector/sub-components/AddToSimulationMenu.jsx';
 import AlertBox from '../components/simulation/AlertBox.jsx';
 import ScenarioBuilderCanvas from '../components/scenario-builder-3rd-gen/ScenarioBuilderCanvas.jsx';
@@ -87,8 +87,8 @@ export default function ScenarioBuilder3rdGen() {
   const [lookAtAgentId, setLookAtAgentId] = useState(null);
   const [hasExplorerMoreBelow, setHasExplorerMoreBelow] = useState(false);
   const [hasInspectorMoreBelow, setHasInspectorMoreBelow] = useState(false);
-  const isCreatingEntity = inspectorMode === INSPECTOR_MODES.ADD_AGENT
-    || inspectorMode === INSPECTOR_MODES.ADD_OBSTACLE;
+  const isCreatingEntity = inspectorMode === INSPECTOR_MODES.CREATE_AGENT
+    || inspectorMode === INSPECTOR_MODES.CREATE_OBSTACLE;
 
   // This function stores a destination until the user confirms they want to leave.
   function requestScenarioExit(destination) {
@@ -388,6 +388,7 @@ export default function ScenarioBuilder3rdGen() {
     const y = Number(values.y);
     const speed = Number(values.speed);
     const angle = Number(values.angle);
+    const fovRadius = Number(values.fovRadius);
     const fovAngle = Number(values.fovAngle);
 
     if (!name) return { ok: false, error: 'Agent Name cannot be empty.' };
@@ -400,8 +401,11 @@ export default function ScenarioBuilder3rdGen() {
     if (!Number.isFinite(speed) || speed < 0) {
       return { ok: false, error: 'Speed must be non-negative.' };
     }
-    if (!Number.isFinite(angle)) {
-      return { ok: false, error: 'Angle must be a valid number.' };
+    if (!Number.isFinite(angle) || angle < 0 || angle > 360) {
+      return { ok: false, error: 'Heading must be between 0 and 360 degrees.' };
+    }
+    if (!Number.isFinite(fovRadius) || fovRadius < 0) {
+      return { ok: false, error: 'FOV Radius must be non-negative.' };
     }
     if (!Number.isFinite(fovAngle) || fovAngle < 0 || fovAngle > 360) {
       return { ok: false, error: 'FOV Angle must be between 0 and 360 degrees.' };
@@ -416,6 +420,7 @@ export default function ScenarioBuilder3rdGen() {
       angle,
       colorHex: values.color,
       showFOV: Boolean(values.showFOV),
+      fovRadius,
       fovAngle,
     };
     const nextAgents = agentsRef.current.map((item) => (
@@ -1316,14 +1321,14 @@ export default function ScenarioBuilder3rdGen() {
             hasInspectorMoreBelow ? styles.hasMoreBelow : ''
           }`}
         >
-          {inspectorMode === INSPECTOR_MODES.ADD_AGENT && FormComponent ? (
+          {inspectorMode === INSPECTOR_MODES.CREATE_AGENT && FormComponent ? (
             <FormComponent
               onRegeneratePreview={regenerateAgentPreview}
               onUpdatePreviewAppearance={updateAgentPreviewAppearance}
               onSubmit={createAgents}
               onCancel={cancelAgentCreation}
             />
-          ) : inspectorMode === INSPECTOR_MODES.ADD_OBSTACLE && FormComponent ? (
+          ) : inspectorMode === INSPECTOR_MODES.CREATE_OBSTACLE && FormComponent ? (
             <FormComponent
               onUpdatePreview={updateObstaclePreview}
               onClearPreview={clearObstaclePreview}

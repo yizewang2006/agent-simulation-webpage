@@ -66,21 +66,6 @@ export default function RuntimeSettingsForm({
       </div>
 
       <fieldset className={styles.formSection}>
-        <legend className={styles.formSectionTitle}>Debugging</legend>
-
-        <div className={styles.inputGroup}>
-          <label className={styles.formCheckbox}>
-            <input
-              type="checkbox"
-              name="debuggingMode"
-              disabled="true"
-            />
-            Enable Debug Mode
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset className={styles.formSection}>
         <legend className={styles.formSectionTitle}>Simulation Rate</legend>
 
         {/* inputGroup is shared by labels, controls, and helper text. */}

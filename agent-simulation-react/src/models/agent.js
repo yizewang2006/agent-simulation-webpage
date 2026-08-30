@@ -1,12 +1,13 @@
 import { Entity } from "./entity.js";
 import { calculateBehaviorValue,
+    calculateActivationWeight,
     getActivationInputValue,
     getEntityCenterPoint,
     getEntityDetectionPoints,
     getShortestOffset,
     smoothTowardAngle,
-    turnTowardAngle } from "./behavior.js";
-import { calculateActivationWeight, normalizeWeight } from "./activation.js";
+    turnTowardAngle,
+    normalizeWeight } from "./behavior.js";
 import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNumberOrDefault } from "../utils/utilities.js";
 import { BEHAVIOR_GROUPS } from "../utils/behaviorGroups.js";
@@ -31,8 +32,8 @@ export class Agent extends Entity{
         this.dx = dx;
         this.dy = dy;
         // 25.2.17 FIX: ANGLE INDEPENDENT OF dy & dx
-        this.angle = angle; // We have now set the angle to be independent of dy & dx
-        this.steeringAngle = angle;
+        this.angle = Math.atan2(Math.sin(angle), Math.cos(angle)); // We have now set the angle to be independent of dy & dx
+        this.steeringAngle = this.angle;
         this.colorHex = colorHex;  // Default color
         this.originalColor = colorHex; // Store original color: won't change, java
         this.fovRadius = fovRadius; // FOV range of detection
@@ -259,7 +260,7 @@ export class Agent extends Entity{
             weightedDirectionX += Math.cos(desiredAngle) * activeBehavior.normalizedActivationWeight;
         }
 
-        if (activeHeadingBehaviors.length > 0 && (weightedDirectionY !== 0 || weightedDirectionX !== 0)) {
+        if (activeHeadingBehaviors.length > 0 && Math.hypot(weightedDirectionY, weightedDirectionX) >= 1e-12) {
             const desiredAngle = Math.atan2(weightedDirectionY, weightedDirectionX);
             // Smooth the behavior target first, then respect the turn-angle cap.
             this.steeringAngle = smoothTowardAngle(

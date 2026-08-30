@@ -59,8 +59,12 @@ export function parseAgentCreationValues(values) {
   if (config.speedMin < 0 || config.speedMin > config.speedMax) {
     throw new Error('Initial Speed Min must be non-negative and no greater than Max.');
   }
-  if (config.angleMin > config.angleMax) {
-    throw new Error('Initial Angle Min cannot be greater than Max.');
+  if (
+    config.angleMin < 0
+    || config.angleMax > 360
+    || config.angleMin > config.angleMax
+  ) {
+    throw new Error('Initial Heading range must stay between 0 and 360 degrees, with Min no greater than Max.');
   }
   if (values.fovRadius === '' || config.fovRadius < 0) {
     throw new Error('FOV Radius must be non-negative.');

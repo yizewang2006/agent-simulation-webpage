@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import {
     // Activity, // Standalone Activation menu entry is intentionally hidden.
     BrainCircuit,
+    Workflow,
     ChevronDown,
     CirclePlus,
     Flag,
@@ -10,10 +11,11 @@ import {
     UserPlus,
 } from 'lucide-react'
 
-import { INSPECTOR_MODES } from '../modeConstants';
 import {
-    ENTITY_CREATE_MODES,
-    hasFormComponent,
+  ENTITY_CREATE_MODES,
+  getFormDescription,
+  hasFormComponent,
+  INSPECTOR_MODES,
 } from '../formRegistry.js';
 import { ENTITY_LABELS, ENTITY_TYPES } from '../../../../utils/constants.js';
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
@@ -21,19 +23,15 @@ import styles from "../../../../styles/3rd-gen/simulation.module.css";
 const ENTITY_MENU_DETAILS = Object.freeze({
     [ENTITY_TYPES.AGENT]: {
         Icon: UserPlus,
-        description: 'Create one or more simulation agents.',
     },
     [ENTITY_TYPES.OBSTACLE]: {
         Icon: Shapes,
-        description: 'Add a circle or polygon obstacle.',
     },
     [ENTITY_TYPES.LEADER]: {
         Icon: Flag,
-        description: 'Add a designated simulation leader.',
     },
     [ENTITY_TYPES.EXIT]: {
         Icon: LogOut,
-        description: 'Add an exit or escape point.',
     },
 });
 
@@ -48,8 +46,10 @@ export default function AddToSimulationMenu({
     const availableEntityTypes = entityTypes.filter(
         (entityType) => hasFormComponent(ENTITY_CREATE_MODES[entityType])
     );
-    const hasBehaviorForm = showBehaviors
-        && hasFormComponent(INSPECTOR_MODES.CREATE_BEHAVIOR);
+    const hasAgentBehaviorForm = showBehaviors
+        && hasFormComponent(INSPECTOR_MODES.CREATE_AGENT_BEHAVIOR);
+    const hasObstacleBehaviorForm = showBehaviors
+        && hasFormComponent(INSPECTOR_MODES.CREATE_OBSTACLE_BEHAVIOR);
     // Activation is configured inside BehaviorForm, not added as a separate component.
     // const hasActivationForm = hasFormComponent(INSPECTOR_MODES.CREATE_ACTIVATION);
 
@@ -120,7 +120,7 @@ export default function AddToSimulationMenu({
                                             {ENTITY_LABELS[entityType] ?? `Entity ${entityType}`}
                                         </span>
                                         <span className={styles.listEntryDescription}>
-                                            {details.description}
+                                            {getFormDescription(createMode)}
                                         </span>
                                     </span>
                                 </button>
@@ -128,23 +128,41 @@ export default function AddToSimulationMenu({
                         })}
                     </section>
 
-                    {hasBehaviorForm && (
+                    {(hasAgentBehaviorForm || hasObstacleBehaviorForm) && (
                     <section className={styles.addMenuSection}>
                         <h4 className={styles.addMenuSectionTitle}>Behaviors</h4>
 
+                        {hasAgentBehaviorForm && (
                         <button
                             type="button"
                             className={styles.listEntry}
-                            onClick={() => selectMode(INSPECTOR_MODES.CREATE_BEHAVIOR)}
+                            onClick={() => selectMode(INSPECTOR_MODES.CREATE_AGENT_BEHAVIOR)}
                         >
                             <BrainCircuit className={styles.listEntryIcon} size={19} aria-hidden="true" />
                             <span className={styles.listEntryText}>
-                                <span className={styles.listEntryName}>Behavior</span>
+                                <span className={styles.listEntryName}>Agent Behavior</span>
                                 <span className={styles.listEntryDescription}>
-                                    Create a definition of how agents respond to other entities.
+                                    {getFormDescription(INSPECTOR_MODES.CREATE_AGENT_BEHAVIOR)}
                                 </span>
                             </span>
                         </button>
+                        )}
+
+                        {hasObstacleBehaviorForm && (
+                        <button
+                            type="button"
+                            className={styles.listEntry}
+                            onClick={() => selectMode(INSPECTOR_MODES.CREATE_OBSTACLE_BEHAVIOR)}
+                        >
+                            <Workflow className={styles.listEntryIcon} size={19} aria-hidden="true" />
+                            <span className={styles.listEntryText}>
+                                <span className={styles.listEntryName}>Obstacle Behavior</span>
+                                <span className={styles.listEntryDescription}>
+                                    {getFormDescription(INSPECTOR_MODES.CREATE_OBSTACLE_BEHAVIOR)}
+                                </span>
+                            </span>
+                        </button>
+                        )}
                     </section>
                     )}
 
@@ -163,7 +181,7 @@ export default function AddToSimulationMenu({
                             <span className={styles.listEntryText}>
                                 <span className={styles.listEntryName}>Configure Activation</span>
                                 <span className={styles.listEntryDescription}>
-                                    Configure how a behavior calculates its weight. Each behavior must have one and only one activation function.
+                                    {getFormDescription(INSPECTOR_MODES.CREATE_ACTIVATION)}
                                 </span>
                             </span>
                         </button>

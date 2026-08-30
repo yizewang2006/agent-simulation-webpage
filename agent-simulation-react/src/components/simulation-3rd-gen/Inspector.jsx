@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FORM_MODES, INSPECTOR_MODES } from "./inspector/modeConstants.js";
+import { FORM_MODES, INSPECTOR_MODES } from "./inspector/formRegistry.js";
 import InspectorBuild from "./inspector/forms/InspectorBuild.jsx";
 import WorkspaceInspector from '../workspace/WorkspaceInspector.jsx';
 import styles from "../../styles/3rd-gen/simulation.module.css";
@@ -84,7 +84,7 @@ export default function Inspector({
     const FormComponent = getFormComponent(view.mode);
 
     switch (view.mode) {
-      case INSPECTOR_MODES.ADD_AGENT:
+      case INSPECTOR_MODES.CREATE_AGENT:
         return (
           <FormComponent
             mode={FORM_MODES.CREATE}
@@ -116,7 +116,7 @@ export default function Inspector({
           />
         );
 
-      case INSPECTOR_MODES.ADD_OBSTACLE:
+      case INSPECTOR_MODES.CREATE_OBSTACLE:
         return (
           <FormComponent
             mode={FORM_MODES.CREATE}
@@ -148,11 +148,21 @@ export default function Inspector({
           />
         );
 
-      case INSPECTOR_MODES.CREATE_BEHAVIOR:
+      case INSPECTOR_MODES.CREATE_AGENT_BEHAVIOR:
         return (
           <FormComponent
             mode={FORM_MODES.CREATE}
             onSubmit={onCreateBehavior}
+            onCancel={() =>
+              onChangeView({ mode: INSPECTOR_MODES.EMPTY })
+            }
+          />
+        );
+
+      case INSPECTOR_MODES.CREATE_OBSTACLE_BEHAVIOR:
+      case INSPECTOR_MODES.EDIT_OBSTACLE_BEHAVIOR:
+        return (
+          <FormComponent
             onCancel={() =>
               onChangeView({ mode: INSPECTOR_MODES.EMPTY })
             }
