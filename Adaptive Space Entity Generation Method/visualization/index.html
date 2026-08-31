@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Adaptive Space Entity Generation — Interactive</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Adaptive Space Entity Generation</h1>
+    <p>by Elaine Ding</p>
+  </header>
+
+  <main>
+    <div class="canvas-wrap">
+      <canvas id="canvas" width="900" height="650"></canvas>
+      <p class="hint">Drag entities to move · Click <strong>s1…sN</strong> on the FOV for extra detail</p>
+
+      <div class="panel algorithm-panel">
+        <h2>Algorithm output</h2>
+        <div id="stats" class="stats-output"></div>
+      </div>
+
+      <div class="panel canvas-bottom-panel">
+        <section>
+          <h2>Display</h2>
+          <label class="check"><input type="checkbox" id="showSegments" checked /> Occupied segments (agent / obstacle / wall)</label>
+          <label class="check"><input type="checkbox" id="showKeyHeadings" checked /> Key heading rays (dashed)</label>
+          <label class="check"><input type="checkbox" id="showSpaceEntities" checked /> Space entity arrows (s1…sN)</label>
+          <label class="check"><input type="checkbox" id="showLabels" checked /> Entity labels</label>
+        </section>
+
+        <section>
+          <h2>Legend</h2>
+          <ul class="legend">
+            <li><span class="swatch processing"></span> Processing agent A</li>
+            <li><span class="swatch agent"></span> Neighbor agents (A1–A4)</li>
+            <li><span class="swatch obstacle"></span> Circle obstacle (O1)</li>
+            <li><span class="swatch wall"></span> Rectangle walls (W1, W2)</li>
+            <li><span class="swatch fov"></span> 360° FOV circle</li>
+            <li><span class="swatch space"></span> Space entities on FOV</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+
+    <aside id="sidebar">
+      <div class="panel">
+        <section>
+          <h2>Parameters</h2>
+          <label>
+            FOV radius
+            <input type="range" id="fovSlider" min="40" max="200" value="120" />
+            <span id="fovValue">120</span> px
+          </label>
+          <label>
+            Heading interval
+            <input type="range" id="intervalSlider" min="5" max="30" value="15" />
+            <span id="intervalValue">15</span>°
+          </label>
+        </section>
+
+        <section>
+          <h2>Scene Editor</h2>
+          <div id="sceneEditor" class="scene-editor"></div>
+          <button id="reset" class="scene-reset">Reset to Default</button>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <script src="scenario.js"></script>
+  <script src="geometry.js"></script>
+  <script src="algorithm.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

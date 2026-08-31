@@ -116,6 +116,8 @@
 <script type="module"> 
   import { Agent } from "./agent.js";
 
+  
+
   // New as of 3/18: selectable agent:
   let selectedAgent = null;
 
@@ -131,6 +133,43 @@
   
   // Create a list of circles.
   let agents = [];
+
+agentCount++;
+const agent1 = new Agent(
+  true,
+  canvas.width * 0.3,
+  canvas.height * 0.3,
+  5,
+  1,
+  0,
+  '#000000',
+  100,
+  5 * Math.PI / 6,
+  0,
+  `Agent ${agentCount}`
+);
+
+agents.push(agent1);
+
+
+agentCount++;
+const agent2 = new Agent(
+  true,
+  canvas.width * 0.7,
+  canvas.height * 0.7,
+  5,
+  -1,
+  0,
+  '#000000',
+  100,
+  5 * Math.PI / 6,
+  Math.PI,
+  `Agent ${agentCount}`
+);
+
+agents.push(agent2);
+
+
 
   /*
   //agents.push(agentOne);
@@ -150,6 +189,9 @@
   const agentList = document.getElementById('agentList');
   const agentSection = document.getElementById('agentsSection');
   
+  addAgentToList(agent1, agentList);
+  addAgentToList(agent2, agentList);
+
   // Helper to add agent entry to a list
   function addAgentToList(agent, listElement) {
     const li = document.createElement('li');
@@ -515,3 +557,9 @@
 
 </body>
 </html>
+
+
+
+
+
+
