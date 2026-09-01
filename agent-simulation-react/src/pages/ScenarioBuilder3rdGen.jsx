@@ -570,6 +570,17 @@ export default function ScenarioBuilder3rdGen() {
 
     clipboard.pasteCount += 1;
     const offset = clipboard.pasteCount * 10;
+    const existingEntities = clipboard.entity.entityType === ENTITY_TYPES.AGENT
+      ? agentsRef.current
+      : obstaclesRef.current;
+    const baseName = `${clipboard.entity.name} Copy`;
+    let pastedName = baseName;
+    let copyNumber = 2;
+    while (existingEntities.some((entity) => entity.name === pastedName)) {
+      pastedName = `${baseName} ${copyNumber}`;
+      copyNumber += 1;
+    }
+
     const pastedEntity = {
       ...structuredClone(clipboard.entity),
       ...getDraggedEntityGeometry(
@@ -580,6 +591,7 @@ export default function ScenarioBuilder3rdGen() {
         SCENARIO_CANVAS_HEIGHT
       ),
       id: createEntityID(clipboard.entity.entityType),
+      name: pastedName,
     };
 
     if (pastedEntity.entityType === ENTITY_TYPES.AGENT) {
