@@ -63,6 +63,7 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
 
       agent.showFOV = showFOV;
       agent.move();
+      agent.draw();
     }
 
     onAgentsAdded([...roster]);

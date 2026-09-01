@@ -24,6 +24,7 @@ import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
 import {
   ACTIVATION_TYPES,
+  DEFAULT_BEHAVIOR_COLOR,
   createDefaultActivation,
   normalizeActivationDraft,
   normalizeFilterDrafts,
@@ -41,6 +42,7 @@ import {
   loadScenarioFile,
 } from "../utils/scenarioUtilities.js";
 import {
+  BEHAVIOR_GROUPS,
   BEHAVIOR_GROUP_DEFINITIONS,
   getBehaviorGroupKey,
   groupBehaviors,
@@ -52,6 +54,7 @@ const CANVAS_HEIGHT = 500;
 
 const MAX_AGENTS = 500; // Maximum number of agents allowed on the canvas at once
 const MAX_SNAPSHOTS = 10;
+const MAX_DEBUG_SECONDS = 20;
 
 // NEW 3rd Generation Imports
 import { INSPECTOR_MODES } from "../components/simulation-3rd-gen/inspector/formRegistry.js"; // Inspector DISPLAY MODES
@@ -363,6 +366,74 @@ function drawAgentPreview(ctx, preview) {
   ctx.restore();
 }
 
+// Vector Drawing
+function drawDecisionVector(ctx, agent, angle, color, label, labelColor = color) { // <-- Draws any decision vector
+  // Define start and end (how long)
+  const start = agent.radius;
+  const end = start + 50;
+
+  ctx.save();
+  ctx.translate(agent.x, agent.y);
+  ctx.rotate(angle);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineCap = 'round';
+
+  ctx.beginPath();
+  ctx.moveTo(start, 0);
+  ctx.lineTo(end, 0);
+
+  // Arrow head
+  ctx.moveTo(end, 0);
+  ctx.lineTo(end - 8, -5);
+  ctx.moveTo(end, 0);
+  ctx.lineTo(end - 8, 5);
+
+  ctx.stroke();
+  ctx.restore();
+
+  // Text
+  // Calculate the arrow endpoint in Canvas coordinates.
+  const labelX = agent.x + Math.cos(angle) * end;
+  const labelY = agent.y + Math.sin(angle) * end;
+
+  // Text Position Correction
+  const labelOffsetX = Math.cos(angle) >= 0 ? 6 : -6;
+  const labelOffsetY = Math.sin(angle) >= 0 ? 14 : -4;
+
+  ctx.save();
+  ctx.fillStyle = labelColor;
+  ctx.font = '600 12px Outfit';
+  ctx.textAlign = Math.cos(angle) >= 0 ? 'left' : 'right';
+  ctx.textBaseline = Math.sin(angle) >= 0 ? 'top' : 'bottom';
+  ctx.fillText(label, labelX + labelOffsetX, labelY + labelOffsetY);
+  ctx.restore();
+}
+
+function drawBehaviorDecisionVector(ctx, agent, activeBehavior){
+  const behavior = activeBehavior.behavior;
+  drawDecisionVector(
+    ctx,
+    agent,
+    activeBehavior.desiredAngle,
+    behavior.visualSettings.color,
+    behavior.name
+  );
+}
+
+function drawFinalDecisionVector(ctx, agent, finalAngle) {
+  // Final Vector
+  drawDecisionVector(
+    ctx,
+    agent,
+    finalAngle,
+    '#000000',
+    'Final',
+    '#e32636'
+  );
+}
+
+// Simulation
 function Simulation3rdGen() {
   const navigate = useNavigate();
   const [showWelcomeAlert, setShowWelcomeAlert] = useState(true);
@@ -420,6 +491,17 @@ function Simulation3rdGen() {
 
   // Debug State
   const [isDebugging, setIsDebugging] = useState(false);
+  const [isDebugPlaying, setIsDebugPlaying] = useState(false);
+  const [debugFrameNumber, setDebugFrameNumber] = useState(0);
+  const [debugStepsPerClick, setDebugStepsPerClick] = useState(1);
+  const isDebugPlayingRef = useRef(false);
+  const debugAgentRef = useRef(null);
+  const debugSessionRef = useRef({ // Initialization
+    frames: [],
+    currentIndex: -1,
+    nextFrameNumber: 0,
+    maxFrames: 1,
+  });
 
   // Keep this here so creation handlers can reveal their new Explorer entry.
   const [explorerTab, setExplorerTab] = useState(EXPLORER_TABS.ENTITIES);
@@ -436,9 +518,12 @@ function Simulation3rdGen() {
 
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
-  const [selectedAgentWeights, setSelectedAgentWeights] = useState([]);
   const [selectedObstacle, setSelectedObstacle] = useState(null); // the live Obstacle object
   const [selectedBehavior, setSelectedBehavior] = useState(null); // the saved Behavior draft source
+
+  useEffect(() => {
+    debugAgentRef.current = isDebugging ? selectedAgent : null;
+  }, [isDebugging, selectedAgent]);
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -464,25 +549,6 @@ function Simulation3rdGen() {
 
   const isRuntimeSettingsOpen =
     inspectorMode.mode === INSPECTOR_MODES.RUNTIME_SETTINGS;
-
-  useEffect(() => {
-    if (!selectedAgent) {
-      setSelectedAgentWeights([]);
-      return undefined;
-    }
-
-    // The Agent calculates every frame; React only copies the latest numbers
-    // 10 times per second so this small monitor stays lightweight.
-    const updateWeights = () => {
-      setSelectedAgentWeights(
-        Object.values(selectedAgent.activeBehaviorGroups ?? {}).flat()
-      );
-    };
-
-    updateWeights();
-    const timer = window.setInterval(updateWeights, 100);
-    return () => window.clearInterval(timer);
-  }, [selectedAgent]);
 
   function toggleRuntimeSettings() {
     if (isRuntimeSettingsOpen) {
@@ -930,6 +996,7 @@ function Simulation3rdGen() {
   function normalizeBehaviorDraft(values, behaviorToIgnore = null) {
     const name = values.name.trim();
     const offset = values.offset === '' ? '' : Number(values.offset);
+    const color = values.visualSettings?.color ?? DEFAULT_BEHAVIOR_COLOR;
 
     if (!name) throw new Error('Behavior Name cannot be empty.');
     if (
@@ -948,6 +1015,9 @@ function Simulation3rdGen() {
     if (offset !== '' && !Number.isFinite(offset)) {
       throw new Error('Offset must be a valid number.');
     }
+    if (!/^#[0-9a-f]{6}$/i.test(color)) {
+      throw new Error('Choose a valid Decision Vector Color.');
+    }
     if (
       offset !== ''
       && values.targetProperty !== TARGET_PROPERTIES.SPEED
@@ -961,6 +1031,7 @@ function Simulation3rdGen() {
     return {
       enabled: behaviorToIgnore?.enabled ?? values.enabled ?? true,
       name,
+      visualSettings: { color },
       targetProperty: values.targetProperty,
       action: values.referenceSource,
       offset,
@@ -1008,6 +1079,7 @@ function Simulation3rdGen() {
     return {
       id: behavior.id,
       name: behavior.name,
+      visualSettings: behavior.visualSettings,
       targetProperty: behavior.targetProperty,
       referenceSource: behavior.action,
       offset: String(behavior.offset ?? ''),
@@ -1264,6 +1336,7 @@ function Simulation3rdGen() {
     const config = normalizeBehaviorDraft({
       enabled: behavior.enabled,
       name: getUniqueBehaviorName(existingBehaviors, behavior.name.trim()),
+      visualSettings: behavior.visualSettings,
       targetProperty: behavior.targetProperty,
       referenceSource: behavior.action,
       offset: behavior.offset,
@@ -1422,19 +1495,6 @@ function Simulation3rdGen() {
     isSimulationRunningRef.current = true;
   }
 
-  // Toggle Debugging State
-  function handleTogglingDebugging() {
-    if (!isDebugging) {
-      // Enter debugging mode
-      setIsSimulationRunning(false); // Pause Simulation
-      isSimulationRunningRef.current = false;
-
-      if (isRecordingRef.current) handleStopRecording();
-    }
-
-    setIsDebugging((current) => !current) // Toggling
-  }
-
   function createSnapshot(name = null) {
     const snapshotData = storeScenarioInformation({
       agents: agentsArrayRef,
@@ -1510,6 +1570,151 @@ function Simulation3rdGen() {
     });
   }, [behaviorList]);
 
+  // Debug Session
+  // When the scenario changes in Debug Mode, refresh every Agent's decision vectors by calling calculateDecision() again.
+  function refreshDebugDecisions() {
+    const runtimeAgents = agentsArrayRef.current;
+    const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
+
+    runtimeAgents.forEach((agent) => {
+      agent.behaviorDx = agent.dx;
+      agent.behaviorDy = agent.dy;
+      agent.behaviorAngle = agent.angle;
+    });
+
+    runtimeAgents.forEach((agent) => {
+      agent.debugDecision = agent.calculateDecision(
+        allEntities,
+        behaviorGroupsRef.current,
+        maxSpeedRef.current,
+        maxAngleRef.current,
+        smoothingFactorRef.current
+      );
+    });
+  }
+
+  function createDebugFrame(frameNumber) {
+    return {
+      frameNumber,
+      data: storeScenarioInformation({
+        agents: agentsArrayRef,
+      }),
+    };
+  }
+
+  function startDebugSession() {
+    refreshDebugDecisions();
+
+    debugSessionRef.current = {
+      frames: [createDebugFrame(0)],
+      currentIndex: 0,
+      nextFrameNumber: 1,
+      maxFrames: Math.round(fpsRef.current * MAX_DEBUG_SECONDS) + 1,
+    };
+
+    setDebugFrameNumber(0);
+  }
+
+  function stopDebugSession() {
+    debugSessionRef.current = {
+      frames: [],
+      currentIndex: -1,
+      nextFrameNumber: 0,
+      maxFrames: 1,
+    };
+
+    setDebugFrameNumber(0);
+    setIsDebugPlaying(false);
+    isDebugPlayingRef.current = false;
+  }
+
+  function restoreDebugFrame(frame) {
+    if (!frame) return;
+
+    resetScenario(frame.data);
+    refreshDebugDecisions();
+    setDebugFrameNumber(frame.frameNumber);
+  }
+
+  function stepDebugForward(numberOfSteps = 1) {
+    const session = debugSessionRef.current;
+
+    if (agentsArrayRef.current.length === 0) return;
+
+    for (let step = 0; step < numberOfSteps; step += 1) {
+      if (session.currentIndex < session.frames.length - 1) {
+        session.currentIndex += 1;
+        restoreDebugFrame(session.frames[session.currentIndex]);
+        continue;
+      }
+
+      refreshDebugDecisions();
+
+      agentsArrayRef.current.forEach((agent) => {
+        agent.applyDecision(agent.debugDecision);
+      });
+      agentsArrayRef.current.forEach((agent) => {
+        agent.move(maxSpeedRef.current);
+      });
+
+      refreshDebugDecisions();
+
+      const frame = createDebugFrame(session.nextFrameNumber);
+      session.frames.push(frame);
+      session.nextFrameNumber += 1;
+
+      if (session.frames.length > session.maxFrames) {
+        session.frames.shift();
+      }
+
+      session.currentIndex = session.frames.length - 1;
+      setDebugFrameNumber(frame.frameNumber);
+    }
+  }
+
+  function stepDebugBackward(numberOfSteps = 1) {
+    const session = debugSessionRef.current;
+
+    if (session.currentIndex <= 0) return;
+
+    session.currentIndex = Math.max(0, session.currentIndex - numberOfSteps);
+    restoreDebugFrame(session.frames[session.currentIndex]);
+  }
+
+  function resetDebugSession() {
+    if (!isDebugging) return;
+    startDebugSession();
+  }
+
+  function toggleDebugPlay() {
+    const next = !isDebugPlaying;
+    if (next && debugSessionRef.current.currentIndex < 0) {
+      startDebugSession();
+    }
+    setIsDebugPlaying(next);
+    isDebugPlayingRef.current = next;
+  }
+
+  // Toggle Debugging State
+  function handleTogglingDebugging() {
+    if (!isDebugging) {
+      // Enter debugging mode
+      setIsSimulationRunning(false); // Pause Simulation
+      isSimulationRunningRef.current = false;
+
+      if (isRecordingRef.current) handleStopRecording();
+      startDebugSession();
+    } else {
+      stopDebugSession();
+    }
+
+    setIsDebugging((current) => !current) // Toggling
+  }
+
+  useEffect(() => {
+    if (isDebugging) resetDebugSession();
+  }, [agents, obstacles, behaviorList]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -1537,6 +1742,12 @@ function Simulation3rdGen() {
       const elapsed = currentTime - lastFrameTime;
       if (elapsed >= frameInterval) {
         lastFrameTime = currentTime - (elapsed % frameInterval);
+        const pixelRatio = window.devicePixelRatio || 1;
+        const requiredWidth = Math.round(CANVAS_WIDTH * pixelRatio);
+        const requiredHeight = Math.round(CANVAS_HEIGHT * pixelRatio);
+        if (canvas.width !== requiredWidth || canvas.height !== requiredHeight) {
+          configureHighDpiCanvas(canvas, ctx, CANVAS_WIDTH, CANVAS_HEIGHT);
+        }
         ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
         obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
         drawObstaclePreview(ctx, obstaclePreviewRef.current);
@@ -1549,7 +1760,9 @@ function Simulation3rdGen() {
         // initial agentsArray would leave the canvas drawing a stale list.
         const runtimeAgents = agentsArrayRef.current;
 
-        if (isSimulationRunningRef.current) {
+        if (isDebugPlayingRef.current) {
+          stepDebugForward();
+        } else if (isSimulationRunningRef.current) {
           // Only advance positions and behaviors while the simulation is playing.
           runtimeAgents.forEach(agent => agent.move(maxSpeedRef.current));
           runtimeAgents.forEach(agent => {
@@ -1560,13 +1773,18 @@ function Simulation3rdGen() {
             agent.behaviorAngle = agent.angle;
           });
           const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
-          runtimeAgents.forEach(agent => agent.behave(
-            allEntities,
-            behaviorGroupsRef.current,
-            maxSpeedRef.current,
-            maxAngleRef.current,
-            smoothingFactorRef.current
-          ));
+          const decisions = runtimeAgents.map((agent) =>
+            agent.calculateDecision(
+              allEntities,
+              behaviorGroupsRef.current,
+              maxSpeedRef.current,
+              maxAngleRef.current,
+              smoothingFactorRef.current
+            )
+          );
+          runtimeAgents.forEach((agent, index) => {
+            agent.applyDecision(decisions[index]);
+          });
 
           // Record only frames in which the simulation actually advanced.
           if (isRecordingRef.current) {
@@ -1580,10 +1798,30 @@ function Simulation3rdGen() {
             );
             recordedFrameIndexRef.current += 1;
           }
-        } else {
-          // Pausing freezes positions, but agents must still be redrawn because
-          // the canvas is cleared at the beginning of every rendered frame.
-          runtimeAgents.forEach(agent => agent.draw());
+        }
+
+        // Movement and frame restoration only update state. Render every Agent
+        // exactly once after the canvas has been cleared.
+        runtimeAgents.forEach(agent => agent.draw());
+
+        if (debugAgentRef.current) { // If selected, draw the selected agent's decision vector
+          const debugDecision = debugAgentRef.current.debugDecision;
+          if (!debugDecision) return;
+
+          const activeHeadingBehaviors =
+            debugDecision.activeBehaviorGroups[
+              BEHAVIOR_GROUPS.HEADING_DIRECTION
+            ] ?? [];
+
+          activeHeadingBehaviors.forEach((activeBehavior) => {
+            drawBehaviorDecisionVector(ctx, debugAgentRef.current, activeBehavior);
+          });
+
+          drawFinalDecisionVector(
+            ctx,
+            debugAgentRef.current,
+            debugDecision.finalAngle
+          );
         }
       }
     }
@@ -1624,7 +1862,11 @@ function Simulation3rdGen() {
 
     // Runtime movement and pointer movement must never compete for ownership of
     // an agent's position. Selection still works while playing, dragging does not.
-    if (isSimulationRunningRef.current || (!clickedAgent && !clickedObstacle)) {
+    if (
+      isDebugPlayingRef.current ||
+      isSimulationRunningRef.current ||
+      (!clickedAgent && !clickedObstacle)
+    ) {
       dragRef.current = null;
       return;
     }
@@ -1645,7 +1887,11 @@ function Simulation3rdGen() {
 
     const lookAtAgent = lookAtAgentRef.current;
 
-    if (lookAtAgent && !isSimulationRunningRef.current) {
+    if (
+      lookAtAgent
+      && !isDebugPlayingRef.current
+      && !isSimulationRunningRef.current
+    ) {
       const point = getCanvasPointFromEvent(event, canvas);
       const dx = point.x - lookAtAgent.x;
       const dy = point.y - lookAtAgent.y;
@@ -1660,6 +1906,7 @@ function Simulation3rdGen() {
         lookAtAgent.steeringAngle = angle;
         lookAtAgent.dx = Math.cos(angle) * speed;
         lookAtAgent.dy = Math.sin(angle) * speed;
+        if (isDebugging) setAgents([...agentsArrayRef.current]);
       }
     }
 
@@ -1719,7 +1966,7 @@ function Simulation3rdGen() {
   }
 
   function handleCanvasDoubleClick(event) {
-    if (isSimulationRunningRef.current) return;
+    if (isDebugPlayingRef.current || isSimulationRunningRef.current) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -2429,32 +2676,6 @@ function Simulation3rdGen() {
                 onPointerCancel={handleCanvasPointerUp}
                 onDoubleClick={handleCanvasDoubleClick}
               />
-
-              {selectedAgent && (
-                <aside className={styles.weightMonitor} aria-live="polite">
-                  <strong>{selectedAgent.name}</strong>
-
-                  {selectedAgentWeights.length > 0 ? (
-                    <>
-                      <div className={styles.weightMonitorHeader} aria-hidden="true">
-                        <span />
-                        <span>Raw</span>
-                        <span>Normalized</span>
-                      </div>
-
-                      {selectedAgentWeights.map((behavior) => (
-                        <div className={styles.weightMonitorRow} key={behavior.behavior.id}>
-                          <span>{behavior.behavior.name}</span>
-                          <output>{behavior.rawActivationWeight.toFixed(3)}</output>
-                          <output>{behavior.normalizedActivationWeight.toFixed(3)}</output>
-                        </div>
-                      ))}
-                    </>
-                  ) : (
-                    <span className={styles.weightMonitorEmpty}>Play to calculate weights.</span>
-                  )}
-                </aside>
-              )}
             </div>
 
             {isRecording && (
@@ -2485,6 +2706,15 @@ function Simulation3rdGen() {
             onOpenHistory={() => setExplorerTab(EXPLORER_TABS.HISTORY)}
             isDebugging={isDebugging}
             onToggleDebugging={handleTogglingDebugging}
+            selectedAgent={selectedAgent}
+            debugFrameNumber={debugFrameNumber}
+            canStepDebugBackward={debugSessionRef.current.currentIndex > 0}
+            debugStepsPerClick={debugStepsPerClick}
+            onDebugStepsPerClickChange={setDebugStepsPerClick}
+            onStepDebugBackward={() => stepDebugBackward(debugStepsPerClick)}
+            onStepDebugForward={() => stepDebugForward(debugStepsPerClick)}
+            isDebugPlaying={isDebugPlaying}
+            onToggleDebugPlay={toggleDebugPlay}
           />
         </section>
 

@@ -324,7 +324,7 @@ export default function Playback() {
           onCancel={() => setFileError('')}
         />
       )}
-      <Header title="Playback Window" />
+      <Header title="Playback Window" subtitle="3rd Generation"/>
       <main className="playback-main">
         <section className="playback-shell">
           <div className="playback-canvas-wrap">

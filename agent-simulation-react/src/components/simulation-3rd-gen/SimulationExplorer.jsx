@@ -107,6 +107,7 @@ export default function SimulationExplorer({
         name: behavior.name || `Behavior ${index + 1}`,
         type: 'Behavior',
         Icon: BrainCircuit,
+        color: behavior.visualSettings.color,
         target: behavior,
         subtitle: behavior.id ? `#${behavior.id.slice(0, 6)}` : 'Behavior',
       }));
@@ -334,7 +335,7 @@ export default function SimulationExplorer({
     );
   }
 
-  function renderEntry({ id, name, type, Icon, target, subtitle, trimmedId }) {
+  function renderEntry({ id, name, type, Icon, color, target, subtitle, trimmedId }) {
     // Renaming changes only the History label, not the saved Entity data.
     const renameHandlers = {
       Agent: onRenameAgent,
@@ -355,6 +356,7 @@ export default function SimulationExplorer({
         name={name}
         type={type}
         Icon={Icon}
+        color={color}
         subtitle={subtitle}
         trimmedId={trimmedId}
         onRename={onRename}

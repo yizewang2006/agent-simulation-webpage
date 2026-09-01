@@ -42,7 +42,7 @@
 }
 
 .workspaceSidePanel {
-  height: 742px;
+  height: 762px;
   align-self: start;
 }
 
@@ -560,6 +560,14 @@
   flex-direction: column;
 }
 
+.explorerEntryColor {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border: 1px solid rgba(15, 23, 42, 0.25);
+  border-radius: 50%;
+}
+
 .explorerEntryTitleRow {
   min-width: 0;
   display: flex;
@@ -781,48 +789,6 @@
   background-color: #ffffff;
 }
 
-.weightMonitor {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  min-width: 150px;
-  max-width: 280px;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border: 1px solid #d7dce5;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.94);
-  color: #303030;
-  font-size: 0.75rem;
-  pointer-events: none;
-}
-
-.weightMonitorHeader,
-.weightMonitorRow {
-  display: grid;
-  grid-template-columns: minmax(70px, 1fr) auto auto;
-  gap: 12px;
-  align-items: center;
-}
-
-.weightMonitorHeader {
-  color: #777c85;
-  font-size: 0.65rem;
-}
-
-.weightMonitorRow output {
-  text-align: right;
-  color: #012169;
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-}
-
-.weightMonitorEmpty {
-  color: #777c85;
-}
-
 .canvas { /* Fixed */
   display: block;
   width: 500px;
@@ -850,7 +816,7 @@
 /* Runtime Control */
 .runtimeCard {
   width: 100%;
-  height: 180px;
+  height: 200px;
   padding: 10px 14px 14px;
   box-sizing: border-box;
   border: 2px solid #303030;
@@ -886,6 +852,257 @@
   min-height: 30px;
   padding: 0;
   border-radius: 5px;
+}
+
+.debugWorkspace {
+  height: calc(100% - 38px);
+  padding-top: 4px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 0.6fr) minmax(0, 1.4fr);
+  gap: 0;
+}
+
+.debugTransport,
+.debugInformation {
+  min-width: 0;
+  padding: 4px 8px 8px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+}
+
+.debugTransport {
+  padding-right: 12px;
+  padding-left: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-right: 1px solid #d7dce5;
+}
+
+.debugPanelHeading {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #4f5663;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.debugFrameStatus {
+  width: 100%;
+  margin-top: 9px;
+  padding: 5px 8px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 4px;
+  background-color: #f3f5f8;
+  color: #6f7580;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.debugFrameStatus output {
+  color: #303030;
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.debugTransportActions {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.debugStepsControl {
+  width: 100%;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #6f7580;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.debugStepsControl input {
+  width: 54px;
+  height: 26px;
+  padding: 0 6px;
+  box-sizing: border-box;
+  border: 1px solid #cfd4dc;
+  border-radius: 5px;
+  color: #303030;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.debugTransportButton,
+.debugPlayButton {
+  width: auto;
+  height: 26px;
+  min-height: 26px;
+  flex: 1;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cfd4dc;
+  border-radius: 5px;
+  line-height: 0;
+  box-shadow: none;
+}
+
+.debugTransportActions .debugTransportButton:disabled,
+.debugTransportActions .debugTransportButton:disabled:hover {
+  border-color: #cfd4dc;
+  background-color: #ffffff;
+  color: #7f8794;
+}
+
+.debugTransportActions .debugPlayButton:disabled,
+.debugTransportActions .debugPlayButton:disabled:hover {
+  border-color: #cfd4dc;
+  background-color: #e9edf4;
+  color: #012169;
+  box-shadow: none;
+}
+
+.debugTransportButton svg,
+.debugPlayButton svg {
+  display: block;
+}
+
+.debugPlayButton {
+  width: auto;
+}
+
+.debugPlayButton svg {
+  transform: translateX(1px);
+}
+
+.debugInformation {
+  overflow: auto;
+}
+
+.debugInformationBody {
+  margin-top: 6px;
+}
+
+.debugInformationAgent {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: #012169;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.debugDecisionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.debugDecisionCard {
+  min-width: 0;
+  padding: 6px 7px;
+  border: 1px solid #e0e4ea;
+  border-radius: 5px;
+  background-color: #f8f9fb;
+}
+
+.debugDecisionCardTitle {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: #303030;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.debugDecisionColor {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.debugDecisionCard dl {
+  margin: 5px 0 0;
+}
+
+.debugDecisionCard dl div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  color: #737985;
+  font-size: 0.61rem;
+}
+
+.debugDecisionCard dt,
+.debugDecisionCard dd {
+  margin: 0;
+}
+
+.debugDecisionCard dd {
+  color: #303030;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.debugFinalDecision {
+  grid-column: 1 / -1;
+  padding: 5px 7px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  border-radius: 5px;
+  background-color: #edf2fa;
+  color: #59616e;
+  font-size: 0.62rem;
+}
+
+.debugFinalDecision strong {
+  color: #012169;
+  font-size: 0.66rem;
+}
+
+.debugFinalDecision span {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.debugFinalDecision output {
+  color: #303030;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.debugInformationEmpty {
+  margin: 28px 8px 0;
+  color: #8a8f97;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .runtimeRow {
@@ -977,7 +1194,9 @@
 }
 
 .runtimeOptions {
-  padding-top: 11px;
+  height: 66px;
+  padding-top: 0;
+  box-sizing: border-box;
   display: grid;
   grid-template-columns: minmax(170px, 1fr) 150px 150px;
   align-items: center;

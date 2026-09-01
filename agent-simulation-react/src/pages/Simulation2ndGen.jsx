@@ -695,7 +695,17 @@ function Simulation2ndGen() {
             agent.behaviorAngle = agent.angle;
           });
           const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
-          runtimeAgents.forEach(agent => agent.behave(allEntities, behaviorListRef.current, maxSpeedRef.current, maxAngleRef.current));
+          const decisions = runtimeAgents.map((agent) =>
+            agent.calculateDecision(
+              allEntities,
+              behaviorListRef.current,
+              maxSpeedRef.current,
+              maxAngleRef.current
+            )
+          );
+          runtimeAgents.forEach((agent, index) => {
+            agent.applyDecision(decisions[index]);
+          });
 
           // Record only frames in which the simulation actually advanced.
           if (isRecordingRef.current) {
@@ -709,11 +719,9 @@ function Simulation2ndGen() {
             );
             recordedFrameIndexRef.current += 1;
           }
-        } else {
-          // Pausing freezes positions, but agents must still be redrawn because
-          // the canvas is cleared at the beginning of every rendered frame.
-          runtimeAgents.forEach(agent => agent.draw());
         }
+
+        runtimeAgents.forEach(agent => agent.draw());
       }
     }
     animate(0);

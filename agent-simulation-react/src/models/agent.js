@@ -142,7 +142,7 @@ export class Agent extends Entity{
         return offsets;
     }
 
-    // Phase 1: move, warp, and draw — all agents run this before any behavior is applied
+    // Phase 1: move and warp — rendering is handled separately by the simulation.
     move(maxSpeed = null) {
         this.x += this.dx;
         this.y += this.dy;
@@ -159,13 +159,14 @@ export class Agent extends Entity{
             }
         }
         this.warpAgent();
-        this.draw();
     }
 
     // Phase 2: detect and apply behaviors using consistent post-move positions
-    behave(allEntities, behaviorGroups, maxSpeed = null, maxAngle = null, smoothingFactor = 0.15) {
+    calculateDecision(allEntities, behaviorGroups, maxSpeed = null, maxAngle = null, smoothingFactor = 0.15) {
         this.detectEntities(allEntities);
         let weightedDirectionY = 0, weightedDirectionX = 0;
+        let finalAngle = this.angle;
+        let finalSteeringAngle = this.steeringAngle;
         const speedCap = parseNumberCap(maxSpeed);
         const angleCap = parseNumberCap(maxAngle) * Math.PI / 180;
         const smoothing = Math.min(
@@ -236,9 +237,6 @@ export class Agent extends Entity{
             }
         }
 
-        // Expose this frame's actual calculation objects to the canvas monitor.
-        this.activeBehaviorGroups = activeBehaviorGroups;
-
         // ---- HEADING DIRECTION GROUP ----
         // Heading Direction uses a weighted circular mean because angles wrap at 360 degrees.
         const activeHeadingBehaviors = activeBehaviorGroups[BEHAVIOR_GROUPS.HEADING_DIRECTION];
@@ -256,6 +254,7 @@ export class Agent extends Entity{
 
             if (desiredAngle === null) continue;
 
+            activeBehavior.desiredAngle = desiredAngle;
             weightedDirectionY += Math.sin(desiredAngle) * activeBehavior.normalizedActivationWeight;
             weightedDirectionX += Math.cos(desiredAngle) * activeBehavior.normalizedActivationWeight;
         }
@@ -263,15 +262,15 @@ export class Agent extends Entity{
         if (activeHeadingBehaviors.length > 0 && Math.hypot(weightedDirectionY, weightedDirectionX) >= 1e-12) {
             const desiredAngle = Math.atan2(weightedDirectionY, weightedDirectionX);
             // Smooth the behavior target first, then respect the turn-angle cap.
-            this.steeringAngle = smoothTowardAngle(
+            finalSteeringAngle = smoothTowardAngle(
                 this.steeringAngle,
                 desiredAngle,
                 smoothing
             );
-            this.angle = turnTowardAngle(this.angle, this.steeringAngle, angleCap);
+            finalAngle = turnTowardAngle(this.angle, finalSteeringAngle, angleCap);
         } else {
             // Do not carry an inactive Heading Behavior's target into a later frame.
-            this.steeringAngle = this.angle;
+            finalSteeringAngle = this.angle;
         }
 
         // ---- SPEED BEHAVIOR GROUP ----
@@ -295,16 +294,32 @@ export class Agent extends Entity{
             if (desiredSpeed === null) continue;
 
             desiredSpeed = Math.min(Math.max(0, desiredSpeed), speedCap);
+            activeBehavior.desiredSpeed = desiredSpeed;
+            activeBehavior.speedChange = desiredSpeed - currentSpeed;
             weightedSpeedSum += desiredSpeed * activeBehavior.normalizedActivationWeight;
         }
 
         // Use the weighted sum because weights were already normalized above.
         if (activeSpeedBehaviors.length > 0) finalSpeed = weightedSpeedSum;
 
+        return {
+            activeBehaviorGroups,
+            finalAngle,
+            finalSpeed,
+            finalSteeringAngle,
+        };
+    }
+
+    applyDecision(decision) {
+        // Expose this frame's actual calculation objects to the canvas monitor.
+        this.activeBehaviorGroups = decision.activeBehaviorGroups;
+        this.steeringAngle = decision.finalSteeringAngle;
+        this.angle = decision.finalAngle;
+
         // ------
         // Apply the final Heading and Speed together so one Group does not overwrite the other.
-        this.dx = Math.cos(this.angle) * finalSpeed;
-        this.dy = Math.sin(this.angle) * finalSpeed;
+        this.dx = Math.cos(this.angle) * decision.finalSpeed;
+        this.dy = Math.sin(this.angle) * decision.finalSpeed;
     }
 
     // Wrap to the other side of the canvas if out of bounds

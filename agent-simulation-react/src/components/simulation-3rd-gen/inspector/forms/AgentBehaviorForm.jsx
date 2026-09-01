@@ -13,6 +13,7 @@ import FilterFields from "../fields/FilterFields.jsx";
 import {
   ACTIVATION_TYPES,
   createActivationDraft,
+  getNextBehaviorColor,
 } from "../../../../models/behavior.js";
 import {
   ENTITY_TYPES,
@@ -32,6 +33,9 @@ export default function AgentBehaviorForm({
   onCancel,
 }) {
   const [name, setName] = useState(initialValues?.name ?? "Behavior");
+  const [color, setColor] = useState(
+    () => initialValues?.visualSettings?.color ?? getNextBehaviorColor()
+  );
   const [targetProperty, setTargetProperty] = useState(
     initialValues?.targetProperty ?? TARGET_PROPERTIES.POSITION
   );
@@ -71,6 +75,7 @@ export default function AgentBehaviorForm({
     // Submit the complete draft only when the user clicks Create.
     const result = onSubmit?.({
       name,
+      visualSettings: { color },
       targetProperty,
       referenceSource,
       offset,
@@ -133,6 +138,24 @@ export default function AgentBehaviorForm({
                 Behavior ID: #{initialValues.id.slice(0, 6)}
               </p>
             )}
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label className={styles.formLabel} htmlFor="behavior-color">
+              Decision Vector Color
+            </label>
+            <div className={styles.formColorControl}>
+              <input
+                id="behavior-color"
+                className={styles.formColorInput}
+                type="color"
+                value={color}
+                onChange={(event) => setColor(event.target.value)}
+              />
+              <span className={styles.formColorValue}>
+                {color.toUpperCase()}
+              </span>
+            </div>
           </div>
         </div>
 

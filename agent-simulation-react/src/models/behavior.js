@@ -29,6 +29,24 @@ export const ACTIVATION_TYPES = Object.freeze({
   ALWAYS_ACTIVE: "always-active",
 });
 
+export const DEFAULT_BEHAVIOR_COLOR = "#4f86d7";
+
+const BEHAVIOR_COLOR_PALETTE = [
+  "#4f86d7",
+  "#e32636",
+  "#2ca25f",
+  "#8b5cf6",
+  "#e58b00",
+  "#0891b2",
+];
+let nextBehaviorColorIndex = 0;
+
+export function getNextBehaviorColor() {
+  const color = BEHAVIOR_COLOR_PALETTE[nextBehaviorColorIndex];
+  nextBehaviorColorIndex = (nextBehaviorColorIndex + 1) % BEHAVIOR_COLOR_PALETTE.length;
+  return color;
+}
+
 // Every Behavior starts usable. Beginners can safely skip Activation setup.
 export function createDefaultActivation(overrides = {}) {
   return {

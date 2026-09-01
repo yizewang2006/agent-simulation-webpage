@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Circle, MonitorPlay, Pause, Play, RotateCcw, Settings, Square, Bug } from 'lucide-react';
+import { Bug, Circle, MonitorPlay, Pause, Play, RotateCcw, Settings, Square } from 'lucide-react';
 import AlertBox from '../simulation/AlertBox.jsx';
+import DebuggingControlCard from './DebuggingControlCard.jsx';
 import styles from '../../styles/3rd-gen/simulation.module.css';
 
 export default function RuntimeControlCard({
@@ -20,6 +21,15 @@ export default function RuntimeControlCard({
   onOpenHistory,
   isDebugging, // true/false
   onToggleDebugging,
+  selectedAgent,
+  debugFrameNumber,
+  canStepDebugBackward,
+  debugStepsPerClick,
+  onDebugStepsPerClickChange,
+  onStepDebugBackward,
+  onStepDebugForward,
+  isDebugPlaying,
+  onToggleDebugPlay,
 }) {
   const [showRestoreAlert, setShowRestoreAlert] = useState(false);
 
@@ -37,16 +47,6 @@ export default function RuntimeControlCard({
     // This card closes its AlertBox; Main only switches the Explorer tab.
     setShowRestoreAlert(false);
     onOpenHistory();
-  }
-
-  // DEBUG MODE RENDERING
-  function renderDebugControls() {
-    return (
-      <div className={styles.runtimeRow}>
-        <span className={styles.runtimeLabel}>Debug Session</span>
-        <span className={styles.runtimeStatus}>Active</span>
-      </div>
-    );
   }
 
   // RUNTIME MODE RENDERING
@@ -167,7 +167,10 @@ export default function RuntimeControlCard({
         />
       )}
 
-      <section className={styles.runtimeCard} aria-labelledby="runtime-control-title">
+      <section
+        className={styles.runtimeCard}
+        aria-labelledby="runtime-control-title"
+      >
         <div className={styles.runtimeHeader}>
           <h2 className={styles.runtimeTitle} id="runtime-control-title">
             {isDebugging ? (
@@ -194,7 +197,21 @@ export default function RuntimeControlCard({
           </button>
         </div>
 
-        {isDebugging ? renderDebugControls() : renderRuntimeControls()}
+        {isDebugging ? (
+          <DebuggingControlCard
+            selectedAgent={selectedAgent}
+            hasAgents={hasAgents}
+            currentFrame={debugFrameNumber}
+            canStepBackward={canStepDebugBackward}
+            canStepForward={hasAgents}
+            stepsPerClick={debugStepsPerClick}
+            onStepsPerClickChange={onDebugStepsPerClickChange}
+            onStepBackward={onStepDebugBackward}
+            onStepForward={onStepDebugForward}
+            isPlaying={isDebugPlaying}
+            onTogglePlay={onToggleDebugPlay}
+          />
+        ) : renderRuntimeControls()}
       </section>
     </>
   );

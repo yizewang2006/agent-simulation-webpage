@@ -8,6 +8,7 @@ export default function ExplorerEntry({
   name,
   type,
   Icon,
+  color,
   subtitle,
   trimmedId,
   onRename,
@@ -29,6 +30,13 @@ export default function ExplorerEntry({
       <div className={styles.explorerEntryMain}>
         <div className={styles.explorerEntryInfo}>
           {createElement(Icon, { size: 17, 'aria-hidden': true })}
+          {color && (
+            <span
+              className={styles.explorerEntryColor}
+              style={{ backgroundColor: color }}
+              aria-label={`Decision vector color ${color}`}
+            />
+          )}
           <span>
             <span className={styles.explorerEntryTitleRow}>
               {onRename ? (
