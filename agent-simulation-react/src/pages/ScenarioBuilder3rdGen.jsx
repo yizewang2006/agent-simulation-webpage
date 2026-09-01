@@ -51,12 +51,16 @@ export default function ScenarioBuilder3rdGen() {
   const obstaclesRef = useRef([]);
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
+  const entityClipboardRef = useRef(null);
   const canvasEditRef = useRef(null);
   const lookAtAgentIdRef = useRef(null);
   const explorerListRef = useRef(null);
   const inspectorContentRef = useRef(null);
   const undoActionRef = useRef(null);
   const redoActionRef = useRef(null);
+  const copyActionRef = useRef(null);
+  const cutActionRef = useRef(null);
+  const pasteActionRef = useRef(null);
   const [scenarioName, setScenarioName] = useState('Untitled Scenario');
   const [builderTab, setBuilderTab] = useState(BUILDER_TABS.ENTITIES);
   const [searchTerm, setSearchTerm] = useState('');
@@ -378,6 +382,35 @@ export default function ScenarioBuilder3rdGen() {
     }
   }
 
+  // This function renames one Builder Entity as an undoable action.
+  function renameEntity(entityType, id, name) {
+    const entities = entityType === ENTITY_TYPES.AGENT
+      ? agentsRef.current
+      : obstaclesRef.current;
+    const entity = entities.find((item) => item.id === id);
+    if (!entity || entity.name === name) return;
+
+    const renamedEntity = { ...entity, name };
+    const nextEntities = entities.map((item) => (
+      item.id === id ? renamedEntity : item
+    ));
+
+    if (entityType === ENTITY_TYPES.AGENT) {
+      agentsRef.current = nextEntities;
+      setAgents(nextEntities);
+    } else {
+      obstaclesRef.current = nextEntities;
+      setObstacles(nextEntities);
+    }
+
+    recordHistoryAction({
+      action: 'update',
+      entityType,
+      before: structuredClone(entity),
+      after: structuredClone(renamedEntity),
+    });
+  }
+
   // This function applies Agent form values to the selected Builder Agent.
   function applyAgentEdits(values) {
     const agent = agentsRef.current.find((item) => item.id === selection?.id);
@@ -495,6 +528,81 @@ export default function ScenarioBuilder3rdGen() {
     selectEntity(null);
   }
 
+  // This function copies the selected Entity into the Builder clipboard.
+  function copySelectedEntity() {
+    if (isCreatingEntity || !selection) return false;
+
+    const entities = selection.entityType === ENTITY_TYPES.AGENT
+      ? agentsRef.current
+      : obstaclesRef.current;
+    const entity = entities.find((item) => item.id === selection.id);
+    if (!entity) return false;
+
+    entityClipboardRef.current = {
+      entity: structuredClone(entity),
+      pasteCount: 0,
+    };
+    return true;
+  }
+
+  // This function copies and removes the selected Entity as an undoable action.
+  function cutSelectedEntity() {
+    if (!copySelectedEntity()) return;
+    deleteEntity(selection);
+  }
+
+  // This function creates an offset copy of the Builder clipboard Entity.
+  function pasteClipboardEntity() {
+    const clipboard = entityClipboardRef.current;
+    if (isCreatingEntity || !clipboard) return;
+    if (
+      clipboard.entity.entityType === ENTITY_TYPES.AGENT
+      && agentsRef.current.length >= MAX_SCENARIO_AGENTS
+    ) {
+      setScenarioFileAlert({
+        type: 'warning',
+        title: 'Unable to Paste Agent',
+        primary: `A Scenario can contain at most ${MAX_SCENARIO_AGENTS} Agents.`,
+        secondary: 'Delete an Agent before pasting another one.',
+      });
+      return;
+    }
+
+    clipboard.pasteCount += 1;
+    const offset = clipboard.pasteCount * 10;
+    const pastedEntity = {
+      ...structuredClone(clipboard.entity),
+      ...getDraggedEntityGeometry(
+        clipboard.entity,
+        offset,
+        offset,
+        SCENARIO_CANVAS_WIDTH,
+        SCENARIO_CANVAS_HEIGHT
+      ),
+      id: createEntityID(clipboard.entity.entityType),
+    };
+
+    if (pastedEntity.entityType === ENTITY_TYPES.AGENT) {
+      const nextAgents = [...agentsRef.current, pastedEntity];
+      agentsRef.current = nextAgents;
+      setAgents(nextAgents);
+    } else {
+      const nextObstacles = [...obstaclesRef.current, pastedEntity];
+      obstaclesRef.current = nextObstacles;
+      setObstacles(nextObstacles);
+    }
+
+    recordHistoryAction({
+      action: 'create',
+      entityType: pastedEntity.entityType,
+      entities: [structuredClone(pastedEntity)],
+    });
+    selectEntity({
+      entityType: pastedEntity.entityType,
+      id: pastedEntity.id,
+    });
+  }
+
   // This function updates an entire Entity while it is dragged on the canvas.
   function moveEntity(entityType, id, dx, dy) {
     if (entityType === ENTITY_TYPES.AGENT) {
@@ -541,10 +649,12 @@ export default function ScenarioBuilder3rdGen() {
 
   // This function points an Agent toward the current cursor location.
   function lookAtAgent(id, canvasAngle) {
+    const angle = ((-canvasAngle * 180 / Math.PI) + 360) % 360;
+
     setAgents((currentAgents) => {
       const nextAgents = currentAgents.map((agent) => (
         agent.id === id
-          ? { ...agent, angle: -canvasAngle * 180 / Math.PI }
+          ? { ...agent, angle }
           : agent
       ));
       agentsRef.current = nextAgents;
@@ -790,6 +900,9 @@ export default function ScenarioBuilder3rdGen() {
 
   undoActionRef.current = undoLastAction;
   redoActionRef.current = redoLastAction;
+  copyActionRef.current = copySelectedEntity;
+  cutActionRef.current = cutSelectedEntity;
+  pasteActionRef.current = pasteClipboardEntity;
 
   // This function asks for confirmation before replacing the current Scenario.
   function requestScenarioImport(event) {
@@ -847,8 +960,8 @@ export default function ScenarioBuilder3rdGen() {
   }
 
   useEffect(() => {
-    // This function maps standard keyboard shortcuts to Builder history.
-    function handleHistoryShortcut(event) {
+    // This function maps keyboard shortcuts to Builder editing actions.
+    function handleBuilderShortcut(event) {
       const target = event.target;
       if (
         target instanceof HTMLInputElement
@@ -858,21 +971,37 @@ export default function ScenarioBuilder3rdGen() {
       ) {
         return;
       }
+      if (document.querySelector('[role="alertdialog"]')) return;
 
       const modifierPressed = event.metaKey || event.ctrlKey;
       const key = event.key.toLowerCase();
-      if (!modifierPressed || (key !== 'z' && key !== 'y')) return;
+      if (!modifierPressed) return;
+
+      if (key === 'z' || key === 'y') {
+        event.preventDefault();
+        if ((key === 'z' && event.shiftKey) || key === 'y') {
+          redoActionRef.current();
+        } else {
+          undoActionRef.current();
+        }
+        return;
+      }
+
+      if (
+        event.shiftKey
+        || event.altKey
+        || event.repeat
+        || (key !== 'c' && key !== 'x' && key !== 'v')
+      ) return;
 
       event.preventDefault();
-      if ((key === 'z' && event.shiftKey) || key === 'y') {
-        redoActionRef.current();
-      } else {
-        undoActionRef.current();
-      }
+      if (key === 'c') copyActionRef.current();
+      if (key === 'x') cutActionRef.current();
+      if (key === 'v') pasteActionRef.current();
     }
 
-    window.addEventListener('keydown', handleHistoryShortcut);
-    return () => window.removeEventListener('keydown', handleHistoryShortcut);
+    window.addEventListener('keydown', handleBuilderShortcut);
+    return () => window.removeEventListener('keydown', handleBuilderShortcut);
   }, []);
 
   // This function exports the current Builder state as Scenario JSON.
@@ -1080,6 +1209,11 @@ export default function ScenarioBuilder3rdGen() {
                               Icon={Bot}
                               subtitle="Agent"
                               trimmedId={`#${formatID(agent.id)}`}
+                              onRename={(name) => renameEntity(
+                                ENTITY_TYPES.AGENT,
+                                agent.id,
+                                name
+                              )}
                               onSelect={() => selectEntity({
                                 entityType: ENTITY_TYPES.AGENT,
                                 id: agent.id,
@@ -1150,6 +1284,11 @@ export default function ScenarioBuilder3rdGen() {
                               Icon={Shapes}
                               subtitle={`${obstacle.shapeType === 'circle' ? 'Circle' : 'Polygon'} Obstacle`}
                               trimmedId={`#${formatID(obstacle.id)}`}
+                              onRename={(name) => renameEntity(
+                                ENTITY_TYPES.OBSTACLE,
+                                obstacle.id,
+                                name
+                              )}
                               onSelect={() => selectEntity({
                                 entityType: ENTITY_TYPES.OBSTACLE,
                                 id: obstacle.id,
@@ -1219,10 +1358,12 @@ export default function ScenarioBuilder3rdGen() {
         />
 
         <section className={styles.runtimeCard} aria-labelledby="build-tools-title">
-          <h2 className={styles.runtimeTitle} id="build-tools-title">
-            <Wrench size={20} aria-hidden="true" />
-            Build Tools
-          </h2>
+          <div className={styles.runtimeHeader}>
+            <h2 className={styles.runtimeTitle} id="build-tools-title">
+              <Wrench size={20} aria-hidden="true" />
+              Build Tools
+            </h2>
+          </div>
 
           <div className={`${styles.runtimeOptions} ${styles.buildToolActions}`}>
             <button
@@ -1337,7 +1478,7 @@ export default function ScenarioBuilder3rdGen() {
             />
           ) : inspectorMode === INSPECTOR_MODES.EDIT_AGENT && selectedAgent && FormComponent ? (
             <FormComponent
-              key={selectedAgent.id}
+              key={`${selectedAgent.id}:${selectedAgent.name}`}
               mode={FORM_MODES.EDIT}
               initialValues={agentEditValues}
               onSubmit={applyAgentEdits}
@@ -1346,7 +1487,7 @@ export default function ScenarioBuilder3rdGen() {
             />
           ) : inspectorMode === INSPECTOR_MODES.EDIT_OBSTACLE && selectedObstacle && FormComponent ? (
             <FormComponent
-              key={selectedObstacle.id}
+              key={`${selectedObstacle.id}:${selectedObstacle.name}`}
               mode={FORM_MODES.EDIT}
               initialValues={obstacleEditValues}
               onSubmit={applyObstacleEdits}

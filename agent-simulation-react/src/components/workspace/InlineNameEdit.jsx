@@ -20,8 +20,10 @@ export default function InlineNameEdit({
       type="text"
       defaultValue={value}
       aria-label={ariaLabel}
+      onClick={(event) => event.stopPropagation()}
       onBlur={commit}
       onKeyDown={(event) => {
+        event.stopPropagation();
         if (event.key === 'Enter') event.currentTarget.blur();
       }}
     />

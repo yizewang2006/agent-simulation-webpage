@@ -1204,6 +1204,8 @@
 }
 
 .buildToolActions {
+  height: auto;
+  padding-top: 12px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
