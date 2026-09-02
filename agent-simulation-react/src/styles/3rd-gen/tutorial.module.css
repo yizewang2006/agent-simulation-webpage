@@ -1,0 +1,137 @@
+.tutorialPage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f5f6f8;
+}
+
+.tutorialMain {
+  width: 100%;
+  flex: 1;
+  padding: 48px 24px;
+  box-sizing: border-box;
+}
+
+.tutorialContent {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 48px 56px;
+  box-sizing: border-box;
+  border: 1px solid #dfe3e8;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #292929;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.tutorialContent h1,
+.tutorialContent h2,
+.tutorialContent h3,
+.tutorialContent h4 {
+  color: #012169;
+  line-height: 1.25;
+}
+
+.tutorialContent h1 {
+  margin: 0 0 20px;
+  font-size: 2.25rem;
+}
+
+.tutorialContent h2 {
+  margin: 40px 0 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #dfe3e8;
+  font-size: 1.6rem;
+}
+
+.tutorialContent h1 + h2 {
+  margin-top: 12px;
+}
+
+.tutorialContent h3 {
+  margin: 28px 0 12px;
+  font-size: 1.25rem;
+}
+
+.tutorialContent h4 {
+  margin: 22px 0 10px;
+  font-size: 1.05rem;
+}
+
+.tutorialContent p,
+.tutorialContent ol,
+.tutorialContent ul {
+  margin: 0 0 18px;
+}
+
+.tutorialContent li + li {
+  margin-top: 8px;
+}
+
+.tutorialContent a {
+  color: #005eb8;
+}
+
+.tutorialContent img {
+  max-width: 100%;
+  height: auto;
+  margin: 18px auto 28px;
+  display: block;
+  border: 1px solid #cbd1d8;
+  border-radius: 6px;
+}
+
+.tutorialContent code {
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background-color: #edf0f3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.tutorialContent pre {
+  margin: 0 0 24px;
+  padding: 18px;
+  overflow-x: auto;
+  border-radius: 6px;
+  background-color: #172033;
+  color: #f7f8fa;
+}
+
+.tutorialContent pre code {
+  padding: 0;
+  background: none;
+}
+
+.tutorialContent table {
+  width: 100%;
+  margin-bottom: 24px;
+  border-collapse: collapse;
+}
+
+.tutorialContent th,
+.tutorialContent td {
+  padding: 10px 12px;
+  border: 1px solid #cbd1d8;
+  text-align: left;
+}
+
+.tutorialContent th {
+  background-color: #edf0f3;
+}
+
+@media (max-width: 640px) {
+  .tutorialMain {
+    padding: 20px 12px;
+  }
+
+  .tutorialContent {
+    padding: 28px 20px;
+  }
+
+  .tutorialContent h1 {
+    font-size: 1.8rem;
+  }
+}

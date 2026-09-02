@@ -475,7 +475,7 @@ function Simulation3rdGen() {
   const fpsRef = useRef(targetFPS); // Ref to hold the current FPS value, reference this value without the need of rendering
   const [maxSpeed, setMaxSpeed] = useState('3');
   const [maxAngle, setMaxAngle] = useState('45');
-  const [smoothingFactor, setSmoothingFactor] = useState('0.15');
+  const [smoothingFactor, setSmoothingFactor] = useState('1.00');
   const maxSpeedRef = useRef(maxSpeed);
   const maxAngleRef = useRef(maxAngle);
   const smoothingFactorRef = useRef(smoothingFactor);
