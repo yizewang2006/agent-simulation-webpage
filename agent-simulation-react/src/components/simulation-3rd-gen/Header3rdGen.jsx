@@ -94,9 +94,14 @@ export default function Header({
             >
               Tutorial
             </NavLink>
-            <button className={`${styles.navLink} ${styles.navFuture}`} type="button" disabled>
+            <NavLink
+              className={({ isActive }) => (
+                `${styles.navLink}${isActive ? ` ${styles.isActive}` : ''}`
+              )}
+              to="/documentation"
+            >
               Documentation
-            </button>
+            </NavLink>
             <button className={`${styles.navLink} ${styles.navFuture}`} type="button" disabled>
               Resource Center
             </button>

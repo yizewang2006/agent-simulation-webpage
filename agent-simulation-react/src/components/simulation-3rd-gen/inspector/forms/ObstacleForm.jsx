@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, CirclePlus, CopyPlus, Trash2, X } from "lucide-react";
 import { FORM_MODES } from "../formRegistry.js";
+import ColorSelector from "../sub-components/ColorSelector.jsx";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
 export const OBSTACLE_FORM_DESCRIPTION = "Add a circle or polygon obstacle.";
@@ -203,18 +204,11 @@ export default function ObstacleForm({
             <label className={styles.formLabel} htmlFor="obstacle-color">
               Color
             </label>
-            <div className={styles.formColorControl}>
-              <input
-                id="obstacle-color"
-                className={styles.formColorInput}
-                type="color"
-                value={color}
-                onChange={(event) => setColor(event.target.value)}
-              />
-              <span className={styles.formColorValue}>
-                {color.toUpperCase()}
-              </span>
-            </div>
+            <ColorSelector
+              id="obstacle-color"
+              value={color}
+              onChange={setColor}
+            />
           </div>
         </fieldset>
 

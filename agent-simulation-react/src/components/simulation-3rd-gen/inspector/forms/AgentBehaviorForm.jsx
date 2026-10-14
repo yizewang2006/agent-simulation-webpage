@@ -29,6 +29,7 @@ export const AGENT_BEHAVIOR_FORM_DESCRIPTION = "Create a definition of how agent
 export default function AgentBehaviorForm({
   mode = FORM_MODES.CREATE,
   initialValues,
+  properties,
   onSubmit,
   onCancel,
 }) {
@@ -63,6 +64,16 @@ export default function AgentBehaviorForm({
   const [isActionExpanded, setIsActionExpanded] = useState(false);
   const [isActivationExpanded, setIsActivationExpanded] = useState(false);
 
+  const propertyOptions = [
+    ...Object.entries(PROPERTY_LABELS).map(([id, label]) => ({
+      id: Number(id),
+      label,
+    })),
+    ...properties.map((property) => ({
+      id: property.id,
+      label: property.name,
+    })),
+  ];
 
   // Position and Angle are angular; Speed uses distance per update.
   const offsetUnit =
@@ -208,14 +219,17 @@ export default function AgentBehaviorForm({
                 <select
                   id="behavior-target-property"
                   className={`${styles.formInput} ${styles.formSelect}`}
-                  value={targetProperty}
-                  onChange={(event) =>
-                    setTargetProperty(Number(event.target.value))
-                  }
+                  value={String(targetProperty)}
+                  onChange={(event) => {
+                    const selectedProperty = propertyOptions.find(
+                      (property) => String(property.id) === event.target.value
+                    );
+                    setTargetProperty(selectedProperty.id);
+                  }}
                 >
-                  {Object.entries(PROPERTY_LABELS).map(([value, label]) => (
-                    <option value={value} key={value}>
-                      {label}
+                  {propertyOptions.map((property) => (
+                    <option value={String(property.id)} key={property.id}>
+                      {property.label}
                     </option>
                   ))}
                 </select>

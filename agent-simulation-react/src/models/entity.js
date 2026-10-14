@@ -12,5 +12,8 @@ export class Entity {
         this.hasMotion = false;
         // Obstacle does not have a useful meaning of heading
         this.hasHeading = false;
+
+        // For custom properties:
+        this.propertyValues = {} // every entity should have a list of entities
     }
 }

@@ -1627,6 +1627,12 @@
   cursor: pointer;
 }
 
+.colorSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .formColorControl {
   min-height: 38px;
   padding: 5px 9px;

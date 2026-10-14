@@ -3,16 +3,10 @@ import Inspector from "../components/simulation-3rd-gen/Inspector.jsx";
 import RuntimeControlCard from "../components/simulation-3rd-gen/RuntimeControlCard.jsx";
 import SimulationExplorer from "../components/simulation-3rd-gen/SimulationExplorer.jsx";
 import Footer from "../components/shared/Footer.jsx";
-import AddAgentCard from "../components/simulation/AddAgentCard.jsx";
-import AddMultipleAgentsCard from "../components/simulation/AddMultipleAgentsCard.jsx";
-import EntityEditor from "../components/simulation/EntityEditor.jsx";
-import MiscPanel from "../components/simulation/MiscPanel.jsx";
-import BehaviorCard from "../components/simulation/BehaviorCard.jsx";
-import ObstacleCard from "../components/simulation/ObstacleCard.jsx";
-import RecordingCard from "../components/simulation/RecordingCard.jsx";
 import AlertBox from "../components/simulation/AlertBox.jsx";
 import { ArrowBigDownDash, ArrowLeft, Blocks, ChevronDown, ChevronUp, CopyPlus, FileUp, MousePointer2, Pause, Play, Settings, SquarePlus, UserCog } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { normalizePropertyDefinition, assignPropertyToEntity } from "../models/properties.js";
 /* 
 These imports ensures the correct styles and components are included for the Simulation page.
 */
@@ -58,6 +52,7 @@ const MAX_DEBUG_SECONDS = 20;
 
 // NEW 3rd Generation Imports
 import { INSPECTOR_MODES } from "../components/simulation-3rd-gen/inspector/formRegistry.js"; // Inspector DISPLAY MODES
+import { registerColor } from "../components/simulation-3rd-gen/inspector/colorRegistry.js";
 
 function randomBetween(min, max) {
   return min + Math.random() * (max - min);
@@ -489,6 +484,10 @@ function Simulation3rdGen() {
   const [obstacles, setObstacles] = useState([]); // State to hold obstacles for display in the control panel
   const [obstaclesListExpanded, setObstaclesListExpanded] = useState(false); // State to toggle obstacles list visibility
 
+  // Property List
+  const [propertyList, setPropertyList] = useState([]); // initializes an empty array of properties
+  const [selectedProperty, setSelectedProperty] = useState(null); // currently selected property
+
   // Debug State
   const [isDebugging, setIsDebugging] = useState(false);
   const [isDebugPlaying, setIsDebugPlaying] = useState(false);
@@ -698,10 +697,15 @@ function Simulation3rdGen() {
         );
 
         agent.showFOV = draft.showFOV;
+
+        propertyList.forEach((property) => {
+          assignPropertyToEntity(agent, property);
+        });
       });
 
       setAgents([...roster]);
       setExplorerTab(EXPLORER_TABS.ENTITIES);
+      registerColor(config.color);
       clearAgentCreationPreview();
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -1495,6 +1499,120 @@ function Simulation3rdGen() {
     isSimulationRunningRef.current = true;
   }
 
+  // --- Property Handlers ---
+  function handleCreateCustomProperty(propertyDraft) {
+    try {
+      const property = normalizePropertyDefinition(propertyDraft);
+
+      const entities = [...agentsArrayRef.current, ...obstaclesArrayRef.current]; // change here for more types
+
+      entities.forEach((entity) => {
+        assignPropertyToEntity(entity, property);
+      });
+
+      setPropertyList((currentList) => [
+        ...currentList,
+        property,
+      ]);
+
+      setInspectorMode({
+        mode: INSPECTOR_MODES.EMPTY,
+      });
+
+      return {ok: true}
+    }
+    catch (error) {
+      return {
+        ok: false,
+        error: error.message,
+      };
+    }
+  }
+
+  function handleEditCustomProperty(property) {
+    setSelectedProperty(property);
+    setInspectorMode({
+      mode: INSPECTOR_MODES.EDIT_CUSTOM_PROPERTY,
+      propertyId: property.id,
+    });
+  }
+
+  function getCustomPropertyEditValues(property) {
+    if (!property) return null;
+
+    return {
+      id: property.id,
+      name: property.name,
+      type: property.type,
+      lower: String(property.range[0]),
+      upper: String(property.range[1]),
+      vinit: property.vinit === null ? '' : String(property.vinit),
+      assignments: {
+        ...property.assignments,
+        [ENTITY_TYPES.OBSTACLE]: {
+          ...property.assignments[ENTITY_TYPES.OBSTACLE],
+        },
+      },
+    };
+  }
+
+  function handleApplyCustomPropertyEdits(propertyDraft) {
+    if (!selectedProperty) {
+      return { ok: false, error: 'Select a property before applying changes.' };
+    }
+
+    try {
+      const updatedProperty = normalizePropertyDefinition({
+        ...propertyDraft,
+        id: selectedProperty.id,
+        type: selectedProperty.type,
+      });
+
+      const entities = [
+        ...agentsArrayRef.current,
+        ...obstaclesArrayRef.current,
+      ];
+
+      entities.forEach((entity) => {
+        const isAssigned = assignPropertyToEntity(entity, updatedProperty);
+
+        if (!isAssigned) {
+          delete entity.propertyValues[updatedProperty.id];
+        }
+      });
+
+      setPropertyList((currentList) =>
+        currentList.map((property) =>
+          property.id === selectedProperty.id ? updatedProperty : property
+        )
+      );
+      setSelectedProperty(null);
+      setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  }
+
+  function handleCancelCustomPropertyEdit() {
+    setSelectedProperty(null);
+    setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
+  }
+
+  function handleRenameCustomProperty(propertyId, name) {
+    setPropertyList((currentList) =>
+      currentList.map((property) =>
+        property.id === propertyId
+          ? { ...property, name }
+          : property
+      )
+    );
+  }
+
+  // TODO: Add Property deletion after Behavior, Filter, and Activation store
+  // Custom Property references by ID. Deletion must first check those references.
+
+  // --- Snapshot Handlers ---
   function createSnapshot(name = null) {
     const snapshotData = storeScenarioInformation({
       agents: agentsArrayRef,
@@ -2136,6 +2254,7 @@ function Simulation3rdGen() {
 
     // Step 4: Refresh React UI, then close the editor.
     setAgents([...agentsArrayRef.current]);
+    registerColor(values.color);
     setSelectedAgent(null);
     setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
     return { ok: true };
@@ -2208,10 +2327,15 @@ function Simulation3rdGen() {
               ctx
             );
 
+      propertyList.forEach((property) => {
+        assignPropertyToEntity(obstacle, property);
+      });
+
       // Step 4: Commit once, then close the draft form.
       obstaclesArrayRef.current.push(obstacle);
       setObstacles([...obstaclesArrayRef.current]);
       setExplorerTab(EXPLORER_TABS.ENTITIES);
+      registerColor(config.color);
       handleClearObstaclePreview();
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -2307,6 +2431,7 @@ function Simulation3rdGen() {
 
       // Step 3: Refresh the UI and close the editor.
       setObstacles([...obstaclesArrayRef.current]);
+      registerColor(config.color);
       setSelectedObstacle(null);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -2604,6 +2729,7 @@ function Simulation3rdGen() {
           agents={agents}
           obstacles={obstacles}
           behaviors={behaviorList}
+          properties={propertyList}
           recordings={recordings}
           snapshots={snapshots}
           onLoadJSON={() => scenarioFileInputRef.current?.click()}
@@ -2628,6 +2754,8 @@ function Simulation3rdGen() {
           onSetBehaviorEnabled={handleSetBehaviorEnabled}
           onDeleteBehavior={requestDeleteBehavior}
           onDeleteAllBehaviors={requestDeleteAllBehaviors}
+          onEditProperty={handleEditCustomProperty}
+          onRenameProperty={handleRenameCustomProperty}
           onPlayRecording={handleOpenPlayback}
           onRenameRecording={handleRenameRecording}
           onDownloadRecording={handleDownloadPlayback}
@@ -2746,6 +2874,7 @@ function Simulation3rdGen() {
           onCancelObstacleEdit={handleCancelObstacleEdit}
           onCreateBehavior={handleCreateBehavior}
           behaviors={behaviorList}
+          properties={propertyList}
           selectedBehavior={selectedBehavior}
           behaviorEditValues={getBehaviorEditValues(selectedBehavior)}
           onApplyBehaviorEdits={handleApplyBehaviorEdits}
@@ -2757,6 +2886,11 @@ function Simulation3rdGen() {
           onCancelAgentEdit={handleCancelAgentEdit}
           onDeleteSelectedAgent={requestDeleteSelectedAgent}
           onDeleteSelectedObstacle={requestDeleteSelectedObstacle}
+          onCreateCustomProperty={handleCreateCustomProperty}
+          selectedProperty={selectedProperty}
+          propertyEditValues={getCustomPropertyEditValues(selectedProperty)}
+          onApplyCustomPropertyEdits={handleApplyCustomPropertyEdits}
+          onCancelCustomPropertyEdit={handleCancelCustomPropertyEdit}
         />
       </main>
 

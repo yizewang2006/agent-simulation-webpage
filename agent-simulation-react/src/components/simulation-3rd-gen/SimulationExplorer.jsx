@@ -51,6 +51,7 @@ export default function SimulationExplorer({
   agents,
   obstacles,
   behaviors,
+  properties,
   recordings,
   snapshots,
   onLoadJSON,
@@ -71,6 +72,8 @@ export default function SimulationExplorer({
   onSetBehaviorEnabled,
   onDeleteBehavior,
   onDeleteAllBehaviors,
+  onEditProperty,
+  onRenameProperty,
   onPlayRecording,
   onRenameRecording,
   onDownloadRecording,
@@ -101,6 +104,18 @@ export default function SimulationExplorer({
   const listRef = useRef(null);
 
   const entries = useMemo(() => {
+    if (activeTab === EXPLORER_TABS.PROPERTIES) {
+      return properties.map((property) => ({
+        id: property.id,
+        name: property.name,
+        type: 'Property',
+        Icon: SlidersHorizontal,
+        target: property,
+        subtitle: `${property.type} · [${property.range.join(', ')}]`,
+        trimmedId: `#${formatID(property.id)}`,
+      }));
+    }
+
     if (activeTab === EXPLORER_TABS.BEHAVIORS) {
       return behaviors.map((behavior, index) => ({
         id: behavior.id ?? `behavior-${index}`,
@@ -155,7 +170,7 @@ export default function SimulationExplorer({
         trimmedId: `#${formatID(obstacle.id)}`,
       })),
     ];
-  }, [activeTab, agents, behaviors, obstacles, recordings, snapshots]);
+  }, [activeTab, agents, behaviors, obstacles, properties, recordings, snapshots]);
 
   const visibleEntries = entries.filter((entry) => {
     const matchesSearch = entry.name
@@ -341,6 +356,7 @@ export default function SimulationExplorer({
       Agent: onRenameAgent,
       Obstacle: onRenameObstacle,
       Behavior: onRenameBehavior,
+      Property: onRenameProperty,
       Recording: onRenameRecording,
       Snapshot: onRenameSnapshot,
     };
@@ -400,6 +416,20 @@ export default function SimulationExplorer({
               <Trash2 size={16} aria-hidden="true" />
             </button>
 
+          </div>
+        )}
+
+        {type === 'Property' && (
+          <div className={styles.explorerEntryActions}>
+            <button
+              className={`${styles.secondaryAction} ${styles.explorerIconButton}`}
+              type="button"
+              aria-label={`Edit ${name}`}
+              title="Edit Property"
+              onClick={() => onEditProperty(target)}
+            >
+              <PenLine size={16} aria-hidden="true" />
+            </button>
           </div>
         )}
 

@@ -5,6 +5,7 @@ import Simulation3rdGen from "./pages/Simulation3rdGen";
 import Landing from "./pages/Landing";
 import LandingLegacy from "./pages/LandingLegacy";
 import Tutorial from "./pages/Tutorial"
+import Documentation from "./pages/Documentation";
 import Playback from "./pages/Playback";
 import ScenarioBuilder3rdGen from './pages/ScenarioBuilder3rdGen';
 import NavigationLoading from "./pages/NavigationLoading";
@@ -22,6 +23,7 @@ function App() {
         <Route path="/scenario-builder" element={<ScenarioBuilder3rdGen />} />
         <Route path="/playback" element={<Playback />} />
         <Route path="/tutorial" element={<Tutorial />} />
+        <Route path="/documentation" element={<Documentation />} />
         <Route path="/loading" element={<NavigationLoading />} />
       </Routes>
     </BrowserRouter>

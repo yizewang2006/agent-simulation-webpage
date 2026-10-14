@@ -28,6 +28,7 @@ export default function Inspector({
   onCancelObstacleEdit,
   onCreateBehavior,
   behaviors,
+  properties,
   selectedBehavior,
   behaviorEditValues,
   onApplyBehaviorEdits,
@@ -39,6 +40,11 @@ export default function Inspector({
   onCancelAgentEdit,
   onDeleteSelectedAgent,
   onDeleteSelectedObstacle,
+  onCreateCustomProperty,
+  selectedProperty,
+  propertyEditValues,
+  onApplyCustomPropertyEdits,
+  onCancelCustomPropertyEdit,
 }) {
   const contentRef = useRef(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
@@ -152,6 +158,7 @@ export default function Inspector({
         return (
           <FormComponent
             mode={FORM_MODES.CREATE}
+            properties={properties}
             onSubmit={onCreateBehavior}
             onCancel={() =>
               onChangeView({ mode: INSPECTOR_MODES.EMPTY })
@@ -166,6 +173,37 @@ export default function Inspector({
             onCancel={() =>
               onChangeView({ mode: INSPECTOR_MODES.EMPTY })
             }
+          />
+        );
+
+      case INSPECTOR_MODES.CREATE_CUSTOM_PROPERTY:
+        return (
+          <FormComponent
+            mode={FORM_MODES.CREATE}
+            onSubmit={onCreateCustomProperty}
+            onCancel={() =>
+              onChangeView({ mode: INSPECTOR_MODES.EMPTY })
+            }
+          />
+        );
+
+      case INSPECTOR_MODES.EDIT_CUSTOM_PROPERTY:
+        if (!selectedProperty || !propertyEditValues) {
+          return (
+            <InspectorBuild
+              hasContent={hasSimulationContent}
+              onChangeView={onChangeView}
+            />
+          );
+        }
+
+        return (
+          <FormComponent
+            key={selectedProperty.id}
+            mode={FORM_MODES.EDIT}
+            initialValues={propertyEditValues}
+            onSubmit={onApplyCustomPropertyEdits}
+            onCancel={onCancelCustomPropertyEdit}
           />
         );
 
@@ -195,6 +233,7 @@ export default function Inspector({
           <FormComponent
             key={selectedBehavior.id}
             mode={FORM_MODES.EDIT}
+            properties={properties}
             initialValues={behaviorEditValues}
             onSubmit={onApplyBehaviorEdits}
             onCancel={onCancelBehaviorEdit}

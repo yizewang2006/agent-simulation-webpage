@@ -14,12 +14,20 @@ const obstacleShapeOptions = Object.entries(OBSTACLE_SHAPE_LABELS).map(
   ([type, label]) => ({ type: Number(type), label })
 );
 
-export default function TargetEntitySelector({ value: targets, onChange, idPrefix }) {
+export default function TargetEntitySelector({
+  value: targets,
+  onChange,
+  idPrefix,
+  entityTypes = Object.values(ENTITY_TYPES),
+}) {
+  const availableEntityOptions = entityOptions.filter(({ type }) =>
+    entityTypes.includes(type)
+  );
   const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE] ?? {};
 
   // Select All is derived from the current checkboxes. It is true only when
   // every regular entity and every obstacle shape is selected.
-  const allSelected = entityOptions.every(({ type }) => {
+  const allSelected = availableEntityOptions.every(({ type }) => {
     if (type === ENTITY_TYPES.OBSTACLE) {
       return obstacleShapeOptions.every(
         ({ type: shapeType }) => obstacleTargets[shapeType] === true
@@ -41,7 +49,7 @@ export default function TargetEntitySelector({ value: targets, onChange, idPrefi
 
     // Use the option lists so newly registered entity types and obstacle
     // shapes automatically participate in Select All.
-    entityOptions.forEach(({ type }) => {
+    availableEntityOptions.forEach(({ type }) => {
       if (type === ENTITY_TYPES.OBSTACLE) {
         const nextObstacleTargets = { ...obstacleTargets, enabled: checked };
         obstacleShapeOptions.forEach(({ type: shapeType }) => {
@@ -90,7 +98,7 @@ export default function TargetEntitySelector({ value: targets, onChange, idPrefi
     // requested entity or obstacle shape.
     const nextTargets = { ...targets };
 
-    entityOptions.forEach(({ type }) => {
+    availableEntityOptions.forEach(({ type }) => {
       if (type === ENTITY_TYPES.OBSTACLE) {
         const nextObstacleTargets = { ...obstacleTargets, enabled: false };
         obstacleShapeOptions.forEach(({ type: currentShapeType }) => {
@@ -139,7 +147,7 @@ export default function TargetEntitySelector({ value: targets, onChange, idPrefi
 
       <div className={styles.targetSelectorDivider} />
 
-      {entityOptions.map(({ type: entityType, label }) => {
+      {availableEntityOptions.map(({ type: entityType, label }) => {
         const isObstacle = entityType === ENTITY_TYPES.OBSTACLE;
         const checked = isObstacle
           ? allObstacleShapesSelected

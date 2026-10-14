@@ -7,6 +7,7 @@ import {
     CirclePlus,
     Flag,
     LogOut,
+    ListPlus,
     Shapes,
     UserPlus,
 } from 'lucide-react'
@@ -50,6 +51,9 @@ export default function AddToSimulationMenu({
         && hasFormComponent(INSPECTOR_MODES.CREATE_AGENT_BEHAVIOR);
     const hasObstacleBehaviorForm = showBehaviors
         && hasFormComponent(INSPECTOR_MODES.CREATE_OBSTACLE_BEHAVIOR);
+    const hasCustomPropertyForm = hasFormComponent(
+        INSPECTOR_MODES.CREATE_CUSTOM_PROPERTY
+    );
     // Activation is configured inside BehaviorForm, not added as a separate component.
     // const hasActivationForm = hasFormComponent(INSPECTOR_MODES.CREATE_ACTIVATION);
 
@@ -127,6 +131,26 @@ export default function AddToSimulationMenu({
                             );
                         })}
                     </section>
+
+                    {hasCustomPropertyForm && (
+                    <section className={styles.addMenuSection}>
+                        <h4 className={styles.addMenuSectionTitle}>Properties</h4>
+
+                        <button
+                            type="button"
+                            className={styles.listEntry}
+                            onClick={() => selectMode(INSPECTOR_MODES.CREATE_CUSTOM_PROPERTY)}
+                        >
+                            <ListPlus className={styles.listEntryIcon} size={19} aria-hidden="true" />
+                            <span className={styles.listEntryText}>
+                                <span className={styles.listEntryName}>Custom Property</span>
+                                <span className={styles.listEntryDescription}>
+                                    {getFormDescription(INSPECTOR_MODES.CREATE_CUSTOM_PROPERTY)}
+                                </span>
+                            </span>
+                        </button>
+                    </section>
+                    )}
 
                     {(hasAgentBehaviorForm || hasObstacleBehaviorForm) && (
                     <section className={styles.addMenuSection}>

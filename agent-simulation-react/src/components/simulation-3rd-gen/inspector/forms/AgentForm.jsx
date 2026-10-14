@@ -5,6 +5,7 @@ import { FORM_MODES } from "../formRegistry.js";
 
 import { useEffect, useRef, useState } from "react";
 import { Check, CopyPlus, RefreshCw, Trash2, X } from "lucide-react";
+import ColorSelector from "../sub-components/ColorSelector.jsx";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
 export const AGENT_FORM_DESCRIPTION = "Create one or more simulation agents.";
@@ -99,10 +100,7 @@ export default function AgentForm({
       values.angleMax,
     ]);
 
-    // When a field is updated
-    function updateField(event) {
-        const { name, value, type, checked } = event.target;
-        const nextValue = type === "checkbox" ? checked : value;
+    function updateValue(name, nextValue) {
         const nextValues = {
           ...values,
           [name]: nextValue,
@@ -129,6 +127,12 @@ export default function AgentForm({
             setFormError(result.error);
           }
         }
+    }
+
+    // When a field is updated
+    function updateField(event) {
+        const { name, value, type, checked } = event.target;
+        updateValue(name, type === "checkbox" ? checked : value);
     }
 
     // When submitted (i.e. Add agent)
@@ -535,20 +539,11 @@ export default function AgentForm({
             Color
           </label>
 
-          <div className={styles.formColorControl}>
-            <input
-              id="agent-color"
-              className={styles.formColorInput}
-              type="color"
-              name="color"
-              value={values.color}
-              onChange={updateField}
-            />
-
-            <span className={styles.formColorValue}>
-              {values.color.toUpperCase()}
-            </span>
-          </div>
+          <ColorSelector
+            id="agent-color"
+            value={values.color}
+            onChange={(color) => updateValue("color", color)}
+          />
         </div>
 
         <label className={styles.formCheckbox}>

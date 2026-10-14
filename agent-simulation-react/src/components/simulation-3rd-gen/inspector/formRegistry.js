@@ -4,6 +4,7 @@ import AgentBehaviorForm, { AGENT_BEHAVIOR_FORM_DESCRIPTION } from "./forms/Agen
 import ObstacleForm, { OBSTACLE_FORM_DESCRIPTION } from "./forms/ObstacleForm.jsx";
 import ActivationForm, { ACTIVATION_FORM_DESCRIPTION } from "./forms/ActivationForm.jsx";
 import ObstacleBehaviorForm, { OBSTACLE_BEHAVIOR_FORM_DESCRIPTION } from "./forms/ObstacleBehaviorForm.jsx";
+import CustomPropertyForm, {CUSTOM_PROPERTY_FORM_DESCRIPTION} from "./forms/CustomPropertyForm.jsx";
 import { Inspect } from "lucide-react";
 
 export const INSPECTOR_MODES = Object.freeze({
@@ -13,11 +14,13 @@ export const INSPECTOR_MODES = Object.freeze({
     CREATE_AGENT_BEHAVIOR: "create-agent-behavior",
     CREATE_OBSTACLE_BEHAVIOR: "create-obstacle-behavior",
     CREATE_ACTIVATION: "create-activation",
+    CREATE_CUSTOM_PROPERTY: 'create-custom-property',
     EDIT_AGENT: "edit-agent",
     EDIT_OBSTACLE: "edit-obstacle",
     EDIT_BEHAVIOR: "edit-behavior",
     EDIT_OBSTACLE_BEHAVIOR: "edit-obstacle-behavior",
     EDIT_ACTIVATION: "edit-activation",
+    EDIT_CUSTOM_PROPERTY: 'edit-custom-property',
     RUNTIME_SETTINGS: "runtime-settings",
 });
 
@@ -39,6 +42,8 @@ const FORM_REGISTRY = Object.freeze({
   [INSPECTOR_MODES.EDIT_OBSTACLE_BEHAVIOR]: { Component: ObstacleBehaviorForm, description: OBSTACLE_BEHAVIOR_FORM_DESCRIPTION },
   [INSPECTOR_MODES.CREATE_ACTIVATION]: { Component: ActivationForm, description: ACTIVATION_FORM_DESCRIPTION },
   [INSPECTOR_MODES.EDIT_ACTIVATION]: { Component: ActivationForm, description: ACTIVATION_FORM_DESCRIPTION },
+  [INSPECTOR_MODES.CREATE_CUSTOM_PROPERTY] : {Component: CustomPropertyForm, description: CUSTOM_PROPERTY_FORM_DESCRIPTION},
+  [INSPECTOR_MODES.EDIT_CUSTOM_PROPERTY] : {Component: CustomPropertyForm, description: CUSTOM_PROPERTY_FORM_DESCRIPTION},
 });
 
 // Adding an entity type to constants makes it appear in the menu. Add its

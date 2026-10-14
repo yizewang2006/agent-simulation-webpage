@@ -91,6 +91,7 @@ export const ENTITY_LABELS = {
 export const EXPLORER_TABS = Object.freeze({
   ENTITIES: 'entities',
   BEHAVIORS: 'behaviors',
+  PROPERTIES: 'properties',
   RECORDINGS: 'recordings',
   HISTORY: 'history',
 });
