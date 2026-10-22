@@ -26,10 +26,10 @@ import {
 import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
 import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import {
-  findEntityAt,
-  getDraggedEntityGeometry,
-  getLookAtCursorAngle,
-} from "../utils/canvasInteractionUtilities.js";
+  findRuntimeEntityAt,
+  getDraggedRuntimeEntityGeometry,
+  getRuntimeLookAtCursorAngle,
+} from "../utils/runtimeCanvasInteractionUtilities.js";
 import {
   createScenarioDocument,
   downloadScenarioFile,
@@ -137,7 +137,7 @@ function generateRandomizedAgentDrafts(config, obstacles) {
       };
 
       // Keep a legal position immediately; only blocked positions are rerolled.
-      if (!findEntityAt(candidate, obstacles)) {
+      if (!findRuntimeEntityAt(candidate, obstacles)) {
         position = candidate;
         break;
       }
@@ -252,12 +252,12 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     agents: agentsArray.map((agent) => ({
       id: agent.id,
       name: agent.name,
-      x: agent.x,
-      y: agent.y,
+      x: agent.transform.position.x,
+      y: agent.transform.position.y,
       radius: agent.radius,
-      dx: agent.dx,
-      dy: agent.dy,
-      angle: agent.angle,
+      dx: agent.velocity.x,
+      dy: agent.velocity.y,
+      angle: agent.transform.rotation,
       colorHex: agent.colorHex,
       fovRadius: agent.fovRadius,
       fovAngle: agent.fovAngle,
@@ -269,8 +269,8 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
       name: obstacle.name,
       shapeType: obstacle.shapeType,
       color: obstacle.color,
-      center: obstacle.center
-        ? { x: obstacle.center.x, y: obstacle.center.y }
+      center: obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+        ? { ...obstacle.transform.position }
         : null,
       radius: obstacle.radius,
       vertices: Array.isArray(obstacle.vertices)
@@ -368,7 +368,7 @@ function drawDecisionVector(ctx, agent, angle, color, label, labelColor = color)
   const end = start + 50;
 
   ctx.save();
-  ctx.translate(agent.x, agent.y);
+  ctx.translate(agent.transform.position.x, agent.transform.position.y);
   ctx.rotate(angle);
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
@@ -389,8 +389,8 @@ function drawDecisionVector(ctx, agent, angle, color, label, labelColor = color)
 
   // Text
   // Calculate the arrow endpoint in Canvas coordinates.
-  const labelX = agent.x + Math.cos(angle) * end;
-  const labelY = agent.y + Math.sin(angle) * end;
+  const labelX = agent.transform.position.x + Math.cos(angle) * end;
+  const labelY = agent.transform.position.y + Math.sin(angle) * end;
 
   // Text Position Correction
   const labelOffsetX = Math.cos(angle) >= 0 ? 6 : -6;
@@ -961,11 +961,11 @@ function Simulation3rdGen() {
         entityType: ENTITY_TYPES.AGENT,
         id: agent.id,
         name: agent.name,
-        x: agent.x,
-        y: agent.y,
+        x: agent.transform.position.x,
+        y: agent.transform.position.y,
         radius: agent.radius,
-        angle: (((-agent.angle * 180 / Math.PI) % 360) + 360) % 360,
-        speed: Math.hypot(agent.dx, agent.dy),
+        angle: (((-agent.transform.rotation * 180 / Math.PI) % 360) + 360) % 360,
+        speed: Math.hypot(agent.velocity.x, agent.velocity.y),
         colorHex: agent.colorHex,
         fovRadius: agent.fovRadius,
         fovAngle: agent.fovAngle * 180 / Math.PI,
@@ -979,7 +979,7 @@ function Simulation3rdGen() {
               name: obstacle.name,
               shapeType: 'circle',
               color: obstacle.color,
-              center: { ...obstacle.center },
+              center: { ...obstacle.transform.position },
               radius: obstacle.radius,
             }
           : {
@@ -1684,7 +1684,7 @@ function Simulation3rdGen() {
 
     // A changed Behavior configuration must not reuse the previous steering target.
     agentsArrayRef.current.forEach((agent) => {
-      agent.steeringAngle = agent.angle;
+      agent.runtimeState.steeringRotation = agent.transform.rotation;
     });
   }, [behaviorList]);
 
@@ -1695,9 +1695,8 @@ function Simulation3rdGen() {
     const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
 
     runtimeAgents.forEach((agent) => {
-      agent.behaviorDx = agent.dx;
-      agent.behaviorDy = agent.dy;
-      agent.behaviorAngle = agent.angle;
+      agent.runtimeState.behaviorVelocity = { ...agent.velocity };
+      agent.runtimeState.behaviorRotation = agent.transform.rotation;
     });
 
     runtimeAgents.forEach((agent) => {
@@ -1886,9 +1885,8 @@ function Simulation3rdGen() {
           runtimeAgents.forEach(agent => {
             // Snapshot motion before behavior so neighbor-reference rules do not
             // read speeds/headings already changed earlier in the same frame.
-            agent.behaviorDx = agent.dx;
-            agent.behaviorDy = agent.dy;
-            agent.behaviorAngle = agent.angle;
+            agent.runtimeState.behaviorVelocity = { ...agent.velocity };
+            agent.runtimeState.behaviorRotation = agent.transform.rotation;
           });
           const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
           const decisions = runtimeAgents.map((agent) =>
@@ -1955,7 +1953,7 @@ function Simulation3rdGen() {
     const point = getCanvasPointFromEvent(event, canvas);
 
     // Find the topmost Entity in the same order used to draw the canvas.
-    const clickedEntity = findEntityAt(point, [
+    const clickedEntity = findRuntimeEntityAt(point, [
       ...obstaclesArrayRef.current,
       ...agentsArrayRef.current,
     ]);
@@ -2011,19 +2009,19 @@ function Simulation3rdGen() {
       && !isSimulationRunningRef.current
     ) {
       const point = getCanvasPointFromEvent(event, canvas);
-      const dx = point.x - lookAtAgent.x;
-      const dy = point.y - lookAtAgent.y;
+      const dx = point.x - lookAtAgent.transform.position.x;
+      const dy = point.y - lookAtAgent.transform.position.y;
 
       // The center has no direction, so keep the previous angle there.
       if (dx !== 0 || dy !== 0) {
-        const angle = getLookAtCursorAngle(lookAtAgent, point);
-        const speed = Math.hypot(lookAtAgent.dx, lookAtAgent.dy);
+        const angle = getRuntimeLookAtCursorAngle(lookAtAgent, point);
+        const speed = Math.hypot(lookAtAgent.velocity.x, lookAtAgent.velocity.y);
 
         // Keep drawing, steering, and future movement pointed the same way.
-        lookAtAgent.angle = angle;
-        lookAtAgent.steeringAngle = angle;
-        lookAtAgent.dx = Math.cos(angle) * speed;
-        lookAtAgent.dy = Math.sin(angle) * speed;
+        lookAtAgent.transform.rotation = angle;
+        lookAtAgent.runtimeState.steeringRotation = angle;
+        lookAtAgent.velocity.x = Math.cos(angle) * speed;
+        lookAtAgent.velocity.y = Math.sin(angle) * speed;
         if (isDebugging) setAgents([...agentsArrayRef.current]);
       }
     }
@@ -2038,22 +2036,19 @@ function Simulation3rdGen() {
 
     if (drag.type === 'agent') {
       const agent = drag.entity;
-      Object.assign(
+      agent.transform.position = getDraggedRuntimeEntityGeometry(
         agent,
-        getDraggedEntityGeometry(
-          agent,
-          dx,
-          dy,
-          CANVAS_WIDTH,
-          CANVAS_HEIGHT
-        )
-      );
+        dx,
+        dy,
+        CANVAS_WIDTH,
+        CANVAS_HEIGHT
+      ).position;
       setAgents([...agentsArrayRef.current]);
       return;
     }
 
     const obstacle = drag.entity;
-    const draggedGeometry = getDraggedEntityGeometry(
+    const draggedGeometry = getDraggedRuntimeEntityGeometry(
       obstacle,
       dx,
       dy,
@@ -2062,15 +2057,13 @@ function Simulation3rdGen() {
     );
 
     if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      obstacle.center = draggedGeometry.center;
-      obstacle.position = obstacle.center;
+      obstacle.transform.position = draggedGeometry.position;
     } else {
       obstacle.vertices = draggedGeometry.vertices;
       // Collision detection and labels use these derived geometry fields.
       obstacle.edges = obstacle._buildEdges(obstacle.vertices);
-      obstacle.position = obstacle._computeCentroid(obstacle.vertices);
-      obstacle.centroid = obstacle.position;
-      obstacle.radius = obstacle._computeBoundingRadius(obstacle.vertices, obstacle.position);
+      obstacle.transform.position = obstacle._computeCentroid(obstacle.vertices);
+      obstacle.radius = obstacle._computeBoundingRadius(obstacle.vertices, obstacle.transform.position);
     }
     setObstacles([...obstaclesArrayRef.current]);
   }
@@ -2090,7 +2083,7 @@ function Simulation3rdGen() {
     if (!canvas) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
-    const clickedAgent = findEntityAt(point, agentsArrayRef.current);
+    const clickedAgent = findRuntimeEntityAt(point, agentsArrayRef.current);
     if (!clickedAgent) return;
 
     // Double-click the same Agent again to turn the mode off.
@@ -2151,15 +2144,15 @@ function Simulation3rdGen() {
     if (!agent) return null;
 
     // Convert runtime vectors and radians into values people can edit directly.
-    const speed = Math.hypot(agent.dx, agent.dy);
-    const angle = (((-agent.angle * 180 / Math.PI) % 360) + 360) % 360;
+    const speed = Math.hypot(agent.velocity.x, agent.velocity.y);
+    const angle = (((-agent.transform.rotation * 180 / Math.PI) % 360) + 360) % 360;
     const roundForForm = (value) => String(Math.round(value * 100) / 100);
 
     return {
       name: agent.name,
       // Round display values only; the live Agent keeps its full precision.
-      x: roundForForm(agent.x),
-      y: roundForForm(agent.y),
+      x: roundForForm(agent.transform.position.x),
+      y: roundForForm(agent.transform.position.y),
       speed: roundForForm(speed),
       angle: roundForForm(angle),
       color: getAgentColor(agent),
@@ -2181,8 +2174,8 @@ function Simulation3rdGen() {
           : 'polygon',
       name: obstacle.name,
       color: getObstacleColor(obstacle),
-      centerX: roundForForm(obstacle.center?.x ?? 250),
-      centerY: roundForForm(obstacle.center?.y ?? 250),
+      centerX: roundForForm(obstacle.transform.position.x),
+      centerY: roundForForm(obstacle.transform.position.y),
       radius: String(obstacle.radius ?? 50),
       vertices: Array.isArray(obstacle.vertices)
         ? obstacle.vertices.map((vertex) => ({
@@ -2239,12 +2232,13 @@ function Simulation3rdGen() {
 
     // Step 3: Commit all edits together so Cancel never partially changes an Agent.
     selectedAgent.name = name;
-    selectedAgent.x = x;
-    selectedAgent.y = y;
-    selectedAgent.dx = Math.cos(angle) * speed;
-    selectedAgent.dy = Math.sin(angle) * speed;
-    selectedAgent.angle = angle;
-    selectedAgent.steeringAngle = angle;
+    selectedAgent.transform.position = { x, y };
+    selectedAgent.velocity = {
+      x: Math.cos(angle) * speed,
+      y: Math.sin(angle) * speed,
+    };
+    selectedAgent.transform.rotation = angle;
+    selectedAgent.runtimeState.steeringRotation = angle;
     selectedAgent.originalColor = values.color;
     selectedAgent.colorHex = values.color;
     selectedAgent.showFOV = values.showFOV;
@@ -2415,17 +2409,15 @@ function Simulation3rdGen() {
       selectedObstacle.color = config.color;
 
       if (currentShapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-        selectedObstacle.position = config.center;
-        selectedObstacle.center = selectedObstacle.position;
+        selectedObstacle.transform.position = config.center;
         selectedObstacle.radius = config.radius;
       } else {
         selectedObstacle.vertices = config.vertices;
         selectedObstacle.edges = selectedObstacle._buildEdges(config.vertices);
-        selectedObstacle.position = selectedObstacle._computeCentroid(config.vertices);
-        selectedObstacle.centroid = selectedObstacle.position;
+        selectedObstacle.transform.position = selectedObstacle._computeCentroid(config.vertices);
         selectedObstacle.radius = selectedObstacle._computeBoundingRadius(
           config.vertices,
-          selectedObstacle.position
+          selectedObstacle.transform.position
         );
       }
 

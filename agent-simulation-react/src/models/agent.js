@@ -22,26 +22,22 @@ class fovOffset {
 export class Agent extends Entity{
     constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, name, ctx, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + name + " has been created");
-        super(id, name, ENTITY_TYPES.AGENT);
+        const rotation = Math.atan2(Math.sin(angle), Math.cos(angle));
+        super(id, name, ENTITY_TYPES.AGENT, { x, y }, rotation, { x: dx, y: dy });
         this.isSpecial = isSpecial;
-        this.x = x;
-        this.y = y;
         this.radius = radius;
         this.hasMotion = true;
         this.hasHeading = true;
-        this.dx = dx;
-        this.dy = dy;
         // 25.2.17 FIX: ANGLE INDEPENDENT OF dy & dx
-        this.angle = Math.atan2(Math.sin(angle), Math.cos(angle)); // We have now set the angle to be independent of dy & dx
-        this.steeringAngle = this.angle;
+        this.runtimeState.steeringRotation = rotation; // We have now set the angle to be independent of dy & dx
         this.colorHex = colorHex;  // Default color
         this.originalColor = colorHex; // Store original color: won't change, java
         this.fovRadius = fovRadius; // FOV range of detection
         this.fovAngle = fovAngle;
         // Initialize an empty array to hold detected ENTITIES (6/28/2026)
-        this.detectedEntities = [];
+        this.runtimeState.detectedEntities = [];
         // The canvas monitor reads the latest calculated Behavior data directly.
-        this.activeBehaviorGroups = {};
+        this.runtimeState.activeBehaviorGroups = {};
         // 26.1.28 Context and Canvas reference for scalability (now accepts passed-in context and canvas)
         this.ctx = ctx;
         this.canvas = canvas;
@@ -81,12 +77,12 @@ export class Agent extends Entity{
     }
 
     drawVirtualCopyAtOffset(offset, drawFOV = false) {
-        const x = this.x + offset.x;
-        const y = this.y + offset.y;
+        const x = this.transform.position.x + offset.x;
+        const y = this.transform.position.y + offset.y;
 
         if (drawFOV) {
-            const startAngle = this.angle - this.fovAngle / 2;
-            const endAngle = this.angle + this.fovAngle / 2;
+            const startAngle = this.transform.rotation - this.fovAngle / 2;
+            const endAngle = this.transform.rotation + this.fovAngle / 2;
 
             this.ctx.beginPath();
             this.ctx.moveTo(x, y);
@@ -105,7 +101,7 @@ export class Agent extends Entity{
         this.ctx.closePath();
 
         // Draw movement direction segment
-        const angle = this.angle;
+        const angle = this.transform.rotation;
         const segmentLength = this.radius * 2
 
         const endX = x + Math.cos(angle) * segmentLength;
@@ -123,15 +119,15 @@ export class Agent extends Entity{
         const canvasWidth = getCanvasLogicalWidth(this.canvas);
         const canvasHeight = getCanvasLogicalHeight(this.canvas);
 
-        if (this.x + range > canvasWidth) {
+        if (this.transform.position.x + range > canvasWidth) {
             horizontalOffset = -canvasWidth;
-        } else if (this.x - range < 0) {
+        } else if (this.transform.position.x - range < 0) {
             horizontalOffset = canvasWidth;
         }
 
-        if (this.y + range > canvasHeight) {
+        if (this.transform.position.y + range > canvasHeight) {
             verticalOffset = -canvasHeight;
-        } else if (this.y - range < 0) {
+        } else if (this.transform.position.y - range < 0) {
             verticalOffset = canvasHeight;
         }
 
@@ -144,18 +140,18 @@ export class Agent extends Entity{
 
     // Phase 1: move and warp — rendering is handled separately by the simulation.
     move(maxSpeed = null) {
-        this.x += this.dx;
-        this.y += this.dy;
-        if (this.dx !== 0 || this.dy !== 0) {
-            this.angle = Math.atan2(this.dy, this.dx);
+        this.transform.position.x += this.velocity.x;
+        this.transform.position.y += this.velocity.y;
+        if (this.velocity.x !== 0 || this.velocity.y !== 0) {
+            this.transform.rotation = Math.atan2(this.velocity.y, this.velocity.x);
         }
         if (maxSpeed !== null) {
             const speedCap = parseNumberCap(maxSpeed);
-            const currentSpeed = Math.sqrt(this.dx ** 2 + this.dy ** 2);
+            const currentSpeed = Math.sqrt(this.velocity.x ** 2 + this.velocity.y ** 2);
             if (currentSpeed > speedCap) {
                 const scale = speedCap / currentSpeed;
-                this.dx *= scale;
-                this.dy *= scale;
+                this.velocity.x *= scale;
+                this.velocity.y *= scale;
             }
         }
         this.warpAgent();
@@ -165,8 +161,8 @@ export class Agent extends Entity{
     calculateDecision(allEntities, behaviorGroups, maxSpeed = null, maxAngle = null, smoothingFactor = 0.15) {
         this.detectEntities(allEntities);
         let weightedDirectionY = 0, weightedDirectionX = 0;
-        let finalAngle = this.angle;
-        let finalSteeringAngle = this.steeringAngle;
+        let finalAngle = this.transform.rotation;
+        let finalSteeringAngle = this.runtimeState.steeringRotation;
         const speedCap = parseNumberCap(maxSpeed);
         const angleCap = parseNumberCap(maxAngle) * Math.PI / 180;
         const smoothing = Math.min(
@@ -192,7 +188,7 @@ export class Agent extends Entity{
                     getActivationInputValue(
                         behavior.activation,
                         this,
-                        this.detectedEntities
+                        this.runtimeState.detectedEntities
                     );
 
                 // Calculate the raw Activation Weight.
@@ -210,7 +206,7 @@ export class Agent extends Entity{
                     actionValue = calculateBehaviorValue(
                         behavior,
                         this,
-                        this.detectedEntities
+                        this.runtimeState.detectedEntities
                     );
 
                     if (actionValue === null) continue;
@@ -247,7 +243,7 @@ export class Agent extends Entity{
             let desiredAngle = null;
 
             if (behavior.action === REFERENCE_TYPES.SELF_REFERENCE) {
-                desiredAngle = this.angle + offset * Math.PI / 180;
+                desiredAngle = this.transform.rotation + offset * Math.PI / 180;
             } else {
                 desiredAngle = activeBehavior.actionValue + offset * Math.PI / 180;
             }
@@ -263,20 +259,20 @@ export class Agent extends Entity{
             const desiredAngle = Math.atan2(weightedDirectionY, weightedDirectionX);
             // Smooth the behavior target first, then respect the turn-angle cap.
             finalSteeringAngle = smoothTowardAngle(
-                this.steeringAngle,
+                this.runtimeState.steeringRotation,
                 desiredAngle,
                 smoothing
             );
-            finalAngle = turnTowardAngle(this.angle, finalSteeringAngle, angleCap);
+            finalAngle = turnTowardAngle(this.transform.rotation, finalSteeringAngle, angleCap);
         } else {
             // Do not carry an inactive Heading Behavior's target into a later frame.
-            finalSteeringAngle = this.angle;
+            finalSteeringAngle = this.transform.rotation;
         }
 
         // ---- SPEED BEHAVIOR GROUP ----
         // Speed uses a weighted arithmetic mean within the Speed Group.
         const activeSpeedBehaviors = activeBehaviorGroups[BEHAVIOR_GROUPS.SPEED]; // returns all valid speed behaviors
-        const currentSpeed = Math.min(Math.sqrt(this.dx ** 2 + this.dy ** 2), speedCap);
+        const currentSpeed = Math.min(Math.sqrt(this.velocity.x ** 2 + this.velocity.y ** 2), speedCap);
         let finalSpeed = currentSpeed;
         let weightedSpeedSum = 0;
 
@@ -312,14 +308,14 @@ export class Agent extends Entity{
 
     applyDecision(decision) {
         // Expose this frame's actual calculation objects to the canvas monitor.
-        this.activeBehaviorGroups = decision.activeBehaviorGroups;
-        this.steeringAngle = decision.finalSteeringAngle;
-        this.angle = decision.finalAngle;
+        this.runtimeState.activeBehaviorGroups = decision.activeBehaviorGroups;
+        this.runtimeState.steeringRotation = decision.finalSteeringAngle;
+        this.transform.rotation = decision.finalAngle;
 
         // ------
         // Apply the final Heading and Speed together so one Group does not overwrite the other.
-        this.dx = Math.cos(this.angle) * decision.finalSpeed;
-        this.dy = Math.sin(this.angle) * decision.finalSpeed;
+        this.velocity.x = Math.cos(this.transform.rotation) * decision.finalSpeed;
+        this.velocity.y = Math.sin(this.transform.rotation) * decision.finalSpeed;
     }
 
     // Wrap to the other side of the canvas if out of bounds
@@ -327,16 +323,16 @@ export class Agent extends Entity{
         const canvasWidth = getCanvasLogicalWidth(this.canvas);
         const canvasHeight = getCanvasLogicalHeight(this.canvas);
 
-        if (this.x >= canvasWidth) {
-            this.x -= canvasWidth;
-        } else if (this.x < 0) {
-            this.x += canvasWidth;
+        if (this.transform.position.x >= canvasWidth) {
+            this.transform.position.x -= canvasWidth;
+        } else if (this.transform.position.x < 0) {
+            this.transform.position.x += canvasWidth;
         }
 
-        if (this.y >= canvasHeight) {
-            this.y -= canvasHeight;
-        } else if (this.y < 0) {
-            this.y += canvasHeight;
+        if (this.transform.position.y >= canvasHeight) {
+            this.transform.position.y -= canvasHeight;
+        } else if (this.transform.position.y < 0) {
+            this.transform.position.y += canvasHeight;
         }
     }
 
@@ -348,7 +344,7 @@ export class Agent extends Entity{
         entities.forEach(entity => {
             const entityCenter = getEntityCenterPoint(entity);
             if (entity !== this && entityCenter) {
-                const { diffX, diffY } = getShortestOffset(this, entityCenter, this.canvas);
+                const { diffX, diffY } = getShortestOffset(this.transform.position, entityCenter, this.canvas);
 
                 const distanceBetweenEntities = Math.sqrt(diffX * diffX + diffY * diffY);
 
@@ -359,7 +355,7 @@ export class Agent extends Entity{
                     // The center/centroid is still used above as a cheap broad-phase distance check.
                     const isVisible = detectionPoints.some((point) => {
                         const { diffX: refDiffX, diffY: refDiffY } =
-                            getShortestOffset(this, point, this.canvas);
+                            getShortestOffset(this.transform.position, point, this.canvas);
 
                         // A polygon's bounding radius is only a broad-phase check.
                         // Its closest real edge must also be inside the FOV radius.
@@ -372,7 +368,7 @@ export class Agent extends Entity{
                         }
 
                         const targetAngle = Math.atan2(refDiffY, refDiffX);
-                        const currentAgentAngle = this.angle;
+                        const currentAgentAngle = this.transform.rotation;
 
                         let angleDifference = Math.abs(currentAgentAngle - targetAngle);
                         if (angleDifference > Math.PI) {
@@ -385,7 +381,7 @@ export class Agent extends Entity{
                     if (isVisible) {
                         currentlyDetected.push(entity);
                         // Only change to red if this entity wasn't detected in the previous update
-                        // if (!this.detectedEntities.includes(entity)) {
+                        // if (!this.runtimeState.detectedEntities.includes(entity)) {
                         //     entity.colorHex = '#FF0000';
                         // }
                     }
@@ -395,14 +391,14 @@ export class Agent extends Entity{
 
         // For any entity that was previously detected but is no longer in the current list,
         // reset its color to original.
-        this.detectedEntities.forEach(entity => {
+        this.runtimeState.detectedEntities.forEach(entity => {
             if (!currentlyDetected.includes(entity)) {
                 // entity.colorHex = entity.originalColor; // Line changing color to red is in behavior.js
             }
         });
 
         // Update the detectedEntities list for the next update cycle.
-        this.detectedEntities = currentlyDetected;
+        this.runtimeState.detectedEntities = currentlyDetected;
     }
 
 }

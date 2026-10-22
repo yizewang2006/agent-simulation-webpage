@@ -20,7 +20,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 import { Agent } from "../models/agent.js";
 import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
 import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
-import { findEntityAt } from "../utils/canvasInteractionUtilities.js";
+import { findRuntimeEntityAt } from "../utils/runtimeCanvasInteractionUtilities.js";
 import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent } from "../utils/utilities.js";
 import { loadScenarioFile } from "../utils/scenarioUtilities.js";
 
@@ -37,12 +37,12 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     agents: agentsArray.map((agent) => ({
       id: agent.id,
       name: agent.name,
-      x: agent.x,
-      y: agent.y,
+      x: agent.transform.position.x,
+      y: agent.transform.position.y,
       radius: agent.radius,
-      dx: agent.dx,
-      dy: agent.dy,
-      angle: agent.angle,
+      dx: agent.velocity.x,
+      dy: agent.velocity.y,
+      angle: agent.transform.rotation,
       colorHex: agent.colorHex,
       fovRadius: agent.fovRadius,
       fovAngle: agent.fovAngle,
@@ -54,8 +54,8 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
       name: obstacle.name,
       shapeType: obstacle.shapeType,
       color: obstacle.color,
-      center: obstacle.center
-        ? { x: obstacle.center.x, y: obstacle.center.y }
+      center: obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+        ? { ...obstacle.transform.position }
         : null,
       radius: obstacle.radius,
       vertices: Array.isArray(obstacle.vertices)
@@ -690,9 +690,8 @@ function Simulation2ndGen() {
           runtimeAgents.forEach(agent => {
             // Snapshot motion before behavior so neighbor-reference rules do not
             // read speeds/headings already changed earlier in the same frame.
-            agent.behaviorDx = agent.dx;
-            agent.behaviorDy = agent.dy;
-            agent.behaviorAngle = agent.angle;
+            agent.runtimeState.behaviorVelocity = { ...agent.velocity };
+            agent.runtimeState.behaviorRotation = agent.transform.rotation;
           });
           const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
           const decisions = runtimeAgents.map((agent) =>
@@ -737,7 +736,7 @@ function Simulation2ndGen() {
     const point = getCanvasPointFromEvent(e, canvas);
 
     // Find the topmost Entity in the same order used to draw the canvas.
-    const clicked = findEntityAt(point, [
+    const clicked = findRuntimeEntityAt(point, [
       ...obstaclesArrayRef.current,
       ...agentsArrayRef.current,
     ]);
@@ -821,15 +820,13 @@ function Simulation2ndGen() {
     selectedObstacle.color = updates.color;
 
     if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      selectedObstacle.position = updates.center;
-      selectedObstacle.center = selectedObstacle.position;
+      selectedObstacle.transform.position = updates.center;
       selectedObstacle.radius = updates.radius;
     } else {
       selectedObstacle.vertices = updates.vertices;
       selectedObstacle.edges = selectedObstacle._buildEdges(updates.vertices);
-      selectedObstacle.position = selectedObstacle._computeCentroid(updates.vertices);
-      selectedObstacle.centroid = selectedObstacle.position;
-      selectedObstacle.radius = selectedObstacle._computeBoundingRadius(updates.vertices, selectedObstacle.position);
+      selectedObstacle.transform.position = selectedObstacle._computeCentroid(updates.vertices);
+      selectedObstacle.radius = selectedObstacle._computeBoundingRadius(updates.vertices, selectedObstacle.transform.position);
     }
 
     setObstacles([...obstaclesArrayRef.current]);

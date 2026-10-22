@@ -1,7 +1,7 @@
 import { Entity } from "./entity.js";
 import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
 
-function drawObstacleLabel(ctx, label, x, y) {
+function _drawObstacleLabel(ctx, label, x, y) {
   ctx.font = "600 15px Arial, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -17,15 +17,14 @@ function drawObstacleLabel(ctx, label, x, y) {
 // Supports polygon obstacles, drawing, current collision checks, and linear collision prediction.
 export class PolygonObstacle extends Entity {
   constructor(id, name, vertices, color = "#FF4444", ctx) {
-    super(id, name, ENTITY_TYPES.OBSTACLE);
+    const position = PolygonObstacle.prototype._computeCentroid(vertices);
+    super(id, name, ENTITY_TYPES.OBSTACLE, position);
     this.shapeType = OBSTACLE_SHAPE_TYPES.POLYGON;
     this.vertices = vertices;
     this.color = color;
     this.ctx = ctx;
     this.edges = this._buildEdges(vertices);
-    this.position = this._computeCentroid(vertices);
-    this.centroid = this.position;
-    this.radius = this._computeBoundingRadius(vertices, this.position);
+    this.radius = this._computeBoundingRadius(vertices, this.transform.position);
   }
 
   _buildEdges(vertices) {
@@ -66,7 +65,7 @@ export class PolygonObstacle extends Entity {
     ctx.strokeStyle = "#222";
     ctx.lineWidth = 2;
     ctx.stroke();
-    // drawObstacleLabel(ctx, this.name, this.centroid.x, this.centroid.y);
+    // _drawObstacleLabel(ctx, this.name, this.transform.position.x, this.transform.position.y);
   }
 
   // --- Prediction Math ---
@@ -74,7 +73,7 @@ export class PolygonObstacle extends Entity {
     // Turn an angle into a direction vector.
     const vx = Math.cos(angle);
     const vy = Math.sin(angle);
-    const { x: cx, y: cy } = agent;
+    const { x: cx, y: cy } = agent.transform.position;
     const r = agent.radius;
     let minT = Infinity;
 
@@ -147,7 +146,7 @@ export class PolygonObstacle extends Entity {
 
   // If that distance is less than the agent's radius, they are touching.
   isCollidingWith(agent) {
-    const { x, y } = agent;
+    const { x, y } = agent.transform.position;
     for (const e of this.edges) {
       if (this._pointToSegmentDist(x, y, e.p1, e.p2) < agent.radius) return true;
     }
@@ -193,7 +192,7 @@ export class PolygonObstacle extends Entity {
         closestPoint = pointOnEdge;
       }
     }
-    return closestPoint ?? this.position;
+    return closestPoint ?? this.transform.position;
   }
 
   // Grab a set of points for detection (closest point only for now)
@@ -214,10 +213,8 @@ export class PolygonObstacle extends Entity {
 
 export class CircleObstacle extends Entity {
   constructor(id, name, center, radius, color = "#FF4444", ctx) {
-    super(id, name, ENTITY_TYPES.OBSTACLE);
+    super(id, name, ENTITY_TYPES.OBSTACLE, center);
     this.shapeType = OBSTACLE_SHAPE_TYPES.CIRCLE;
-    this.position = center;
-    this.center = this.position;
     this.radius = radius;
     this.color = color;
     this.ctx = ctx;
@@ -226,21 +223,21 @@ export class CircleObstacle extends Entity {
   draw() {
     const ctx = this.ctx;
     ctx.beginPath();
-    ctx.arc(this.center.x, this.center.y, this.radius, 0, Math.PI * 2);
+    ctx.arc(this.transform.position.x, this.transform.position.y, this.radius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fillStyle = this.color;
     ctx.fill();
     ctx.strokeStyle = "#222";
     ctx.lineWidth = 2;
     ctx.stroke();
-    // drawObstacleLabel(ctx, this.name, this.center.x, this.center.y);
+    // _drawObstacleLabel(ctx, this.name, this.transform.position.x, this.transform.position.y);
   }
 
   getLinearCollision(agent, angle) {
     const vx = Math.cos(angle);
     const vy = Math.sin(angle);
-    const fx = agent.x - this.center.x;
-    const fy = agent.y - this.center.y;
+    const fx = agent.transform.position.x - this.transform.position.x;
+    const fy = agent.transform.position.y - this.transform.position.y;
     const combinedRadius = agent.radius + this.radius;
     const a = vx * vx + vy * vy;
     const b = 2 * (fx * vx + fy * vy);
@@ -255,31 +252,31 @@ export class CircleObstacle extends Entity {
     const t = t1 > 0 ? t1 : t2 > 0 ? t2 : null;
 
     return t === null ? null : {
-      x: agent.x + vx * t,
-      y: agent.y + vy * t,
+      x: agent.transform.position.x + vx * t,
+      y: agent.transform.position.y + vy * t,
       t,
     };
   }
 
   isCollidingWith(agent) {
-    const dx = agent.x - this.center.x;
-    const dy = agent.y - this.center.y;
+    const dx = agent.transform.position.x - this.transform.position.x;
+    const dy = agent.transform.position.y - this.transform.position.y;
     return Math.hypot(dx, dy) < agent.radius + this.radius;
   }
 
   getClosestPointTo(position) {
-    const dx = position.x - this.center.x; // center to x coordinate of position
-    const dy = position.y - this.center.y; // center to y coordinate of position
+    const dx = position.x - this.transform.position.x; // center to x coordinate of position
+    const dy = position.y - this.transform.position.y; // center to y coordinate of position
     const dist = Math.hypot(dx, dy); // the hypotenus of the triangle
 
     if (dist === 0) {
-      return { x: this.center.x + this.radius, y: this.center.y}; // If at center, pick a random point on the circle's edge
+      return { x: this.transform.position.x + this.radius, y: this.transform.position.y}; // If at center, pick a random point on the circle's edge
     }
 
     return {
       // from the center of the circle, move in the direction of "position" by radius (all lengths are equal to the radius of the circle)
-      x: this.center.x + (dx / dist) * this.radius,
-      y: this.center.y + (dy / dist) * this.radius,
+      x: this.transform.position.x + (dx / dist) * this.radius,
+      y: this.transform.position.y + (dy / dist) * this.radius,
       // dx/dist and dy/dist are unit vectors
     };
   }

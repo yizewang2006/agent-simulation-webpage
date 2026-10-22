@@ -395,13 +395,13 @@ export function normalizeFilterDrafts(filters, ownerLabel) {
 // These functions read geometry, Filter values, or Action values from Entities.
 
 function getEntitySpeed(entity) {
-  const dx = entity.behaviorDx ?? entity.dx;
-  const dy = entity.behaviorDy ?? entity.dy;
+  const velocity = entity.runtimeState.behaviorVelocity ?? entity.velocity;
+  const { x: dx, y: dy } = velocity;
   return Math.sqrt(dx ** 2 + dy ** 2);
 }
 
 function getEntityHeading(entity) {
-  return entity.behaviorAngle ?? entity.angle;
+  return entity.runtimeState.behaviorRotation ?? entity.transform.rotation;
 }
 
 // Returns the offset from one position to another, accounting for warping.
@@ -430,12 +430,7 @@ export function getHeadingDifferenceDeg(self, neighbor) {
 }
 
 export function getEntityCenterPoint(entity) {
-  if (!entity) return null;
-  if (entity.entityType === ENTITY_TYPES.AGENT) return entity;
-  if (entity.entityType !== ENTITY_TYPES.OBSTACLE) return null;
-  if (entity.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) return entity.center;
-  if (entity.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON) return entity.centroid;
-  return null;
+  return entity?.transform.position ?? null;
 }
 
 export function getEntityReferencePosition(self, entity) {
@@ -465,7 +460,7 @@ export function getEntityDetectionPoints(self, entity) {
 function getObstacleQueryPosition(self, entity) {
   const obstacleCenter = getEntityCenterPoint(entity);
 
-  const { diffX, diffY } = getShortestOffset(obstacleCenter, self, self.canvas);
+  const { diffX, diffY } = getShortestOffset(obstacleCenter, self.transform.position, self.canvas);
   return {
     x: obstacleCenter.x + diffX,
     y: obstacleCenter.y + diffY,
@@ -481,7 +476,7 @@ function getEntityMeasurementValue(measurementType, self, entity) {
       const referencePosition = getEntityReferencePosition(self, entity);
       if (!referencePosition) return null;
       // Distance-based filters should measure to the visible obstacle boundary, not obstacle center.
-      const { diffX, diffY } = getShortestOffset(self, referencePosition, self.canvas);
+      const { diffX, diffY } = getShortestOffset(self.transform.position, referencePosition, self.canvas);
       return Math.sqrt(diffX ** 2 + diffY ** 2);
     }
     case MEASUREMENT_TYPES.HEADING_DIFFERENCE: {
@@ -492,7 +487,7 @@ function getEntityMeasurementValue(measurementType, self, entity) {
       const referencePosition = getEntityReferencePosition(self, entity);
       if (!referencePosition) return null;
       // Bearing-based filters should aim at the closest obstacle boundary point.
-      const { diffX, diffY } = getShortestOffset(self, referencePosition, self.canvas);
+      const { diffX, diffY } = getShortestOffset(self.transform.position, referencePosition, self.canvas);
       const bearing = Math.atan2(diffY, diffX);
       const difference = bearing - getEntityHeading(self);
       return Math.abs(Math.atan2(Math.sin(difference), Math.cos(difference))) * 180 / Math.PI;
@@ -540,7 +535,7 @@ function getEntityActionValue(targetProperty, self, entity) {
       const referencePosition = getEntityReferencePosition(self, entity);
       if (!referencePosition) return null;
       // Position targets should steer relative to obstacle edges, not their centers.
-      const { diffX, diffY } = getShortestOffset(self, referencePosition, self.canvas);
+      const { diffX, diffY } = getShortestOffset(self.transform.position, referencePosition, self.canvas);
       return Math.atan2(diffY, diffX);
     }
 

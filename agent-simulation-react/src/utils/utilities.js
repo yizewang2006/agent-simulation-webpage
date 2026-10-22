@@ -1,6 +1,6 @@
-import { ENTITY_ID_PREFIXES, ENTITY_TYPES } from './constants.js';
+import { ENTITY_ID_PREFIXES } from './constants.js';
 
-const buildDate = new Date(import.meta.env.VITE_BUILD_DATE);
+const buildDate = new Date(import.meta.env?.VITE_BUILD_DATE);
 
 export const updatedDate = Number.isNaN(buildDate.getTime())
   ? 'not long ago'
@@ -123,18 +123,15 @@ export function storeScenarioInformation(refs = {}) {
   // Save values that can change while the simulation is playing.
   Object.entries(refs).forEach(([entityType, ref]) => {
     scenarioData[entityType] = ref.current.map((entity) => {
-      const centerPoint = entity.entityType === ENTITY_TYPES.AGENT
-        ? entity
-        : entity.position;
+      const centerPoint = entity.transform.position;
 
       return {
         entity,
         x: centerPoint.x,
         y: centerPoint.y,
-        dx: entity.dx,
-        dy: entity.dy,
-        angle: entity.angle,
-        steeringAngle: entity.steeringAngle,
+        velocity: { ...entity.velocity },
+        rotation: entity.transform.rotation,
+        steeringRotation: entity.runtimeState.steeringRotation,
       };
     });
   });
@@ -151,19 +148,11 @@ export function resetScenario(scenarioData = {}) {
     entities.forEach((savedEntity) => {
       const { entity } = savedEntity;
 
-      if (entity.entityType === ENTITY_TYPES.AGENT) {
-        entity.x = savedEntity.x;
-        entity.y = savedEntity.y;
-      } else {
-        entity.position.x = savedEntity.x;
-        entity.position.y = savedEntity.y;
-      }
-      if (savedEntity.dx !== undefined) entity.dx = savedEntity.dx;
-      if (savedEntity.dy !== undefined) entity.dy = savedEntity.dy;
-      if (savedEntity.angle !== undefined) entity.angle = savedEntity.angle;
-      if (savedEntity.steeringAngle !== undefined) {
-        entity.steeringAngle = savedEntity.steeringAngle;
-      }
+      entity.transform.position.x = savedEntity.x;
+      entity.transform.position.y = savedEntity.y;
+      entity.velocity = { ...savedEntity.velocity };
+      entity.transform.rotation = savedEntity.rotation;
+      entity.runtimeState.steeringRotation = savedEntity.steeringRotation;
     });
   });
 }

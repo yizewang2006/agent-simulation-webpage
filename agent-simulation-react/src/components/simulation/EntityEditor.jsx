@@ -69,8 +69,8 @@ export default function EntityEditor({
       setObstacleName(selectedObstacle.name);
       setObstacleColor(selectedObstacle.color ?? '#ACAD9D');
       if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-        setCircleCenterX(String(selectedObstacle.center?.x ?? 250));
-        setCircleCenterY(String(selectedObstacle.center?.y ?? 250));
+        setCircleCenterX(String(selectedObstacle.transform.position.x));
+        setCircleCenterY(String(selectedObstacle.transform.position.y));
         setCircleRadius(String(selectedObstacle.radius ?? 45));
       } else {
         setVertices(getObstacleVertices(selectedObstacle));
@@ -94,8 +94,8 @@ export default function EntityEditor({
   // Circle validation mirrors the create-obstacle form: the circle must have a
   // positive radius and stay completely inside the simulation canvas.
   function parseCircle() {
-    const centerX = numberOrFallback(circleCenterX, selectedObstacle.center.x);
-    const centerY = numberOrFallback(circleCenterY, selectedObstacle.center.y);
+    const centerX = numberOrFallback(circleCenterX, selectedObstacle.transform.position.x);
+    const centerY = numberOrFallback(circleCenterY, selectedObstacle.transform.position.y);
     const radius = numberOrFallback(circleRadius, selectedObstacle.radius);
 
     if (radius <= 0) {
