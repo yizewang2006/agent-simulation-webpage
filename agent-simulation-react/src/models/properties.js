@@ -171,7 +171,7 @@ export function assignPropertyToEntity(entity, property) {
 
     const isAssigned = typeof assignment === "boolean"
         ? assignment
-        : assignment.enabled && assignment[entity.shapeType];
+        : assignment.enabled && entity.shapes.some((shape) => assignment[shape.type]);
 
     // Report that this Entity should no longer store this Property.
     if (!isAssigned) return false;

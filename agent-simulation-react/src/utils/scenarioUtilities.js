@@ -1,4 +1,4 @@
-import { ENTITY_ID_PREFIXES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from './constants.js';
+import { ENTITY_ID_PREFIXES, ENTITY_TYPES, SHAPE_TYPES } from './constants.js';
 
 // Checks if the scenario data is an Object, and throws an error if not. Returns the value if it is an Object.
 function requireObject(value, label) {
@@ -83,8 +83,8 @@ function normalizeObstacle(obstacle, index, canvasWidth, canvasHeight) {
   if (obstacle.entityType !== ENTITY_TYPES.OBSTACLE) {
     throw new Error(`Obstacle ${index + 1} must have the Obstacle entity type.`);
   }
-  const isCircle = obstacle.shapeType === 'circle' || obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE;
-  const isPolygon = obstacle.shapeType === 'polygon' || obstacle.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON;
+  const isCircle = obstacle.shapeType === 'circle' || obstacle.shapeType === SHAPE_TYPES.CIRCLE;
+  const isPolygon = obstacle.shapeType === 'polygon' || obstacle.shapeType === SHAPE_TYPES.POLYGON;
   if (!isCircle && !isPolygon) throw new Error(`Obstacle ${index + 1} has an unsupported shape type.`);
 
   // Base properties for both circle and polygon obstacles

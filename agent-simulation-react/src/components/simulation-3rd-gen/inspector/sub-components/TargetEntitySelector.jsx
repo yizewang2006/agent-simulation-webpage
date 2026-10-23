@@ -1,7 +1,7 @@
 import {
   ENTITY_LABELS,
   ENTITY_TYPES,
-  OBSTACLE_SHAPE_LABELS,
+  SHAPE_LABELS,
 } from "../../../../utils/constants.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
@@ -10,7 +10,7 @@ const entityOptions = Object.entries(ENTITY_LABELS).map(([type, label]) => ({
   label,
 }));
 
-const obstacleShapeOptions = Object.entries(OBSTACLE_SHAPE_LABELS).map(
+const obstacleShapeOptions = Object.entries(SHAPE_LABELS).map(
   ([type, label]) => ({ type: Number(type), label })
 );
 

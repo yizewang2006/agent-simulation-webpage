@@ -2,7 +2,7 @@ import { useState } from "react";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 import { FORM_MODES } from "../formRegistry";
 import { PROPERTY_TYPE } from "../../../../models/properties.js";
-import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../../../../utils/constants.js";
+import { ENTITY_TYPES, SHAPE_TYPES } from "../../../../utils/constants.js";
 import TargetEntitySelector from "../sub-components/TargetEntitySelector.jsx";
 import { Check, CopyPlus, X } from "lucide-react";
 
@@ -19,8 +19,8 @@ export default function CustomPropertyForm({ mode, initialValues,onSubmit, onCan
             [ENTITY_TYPES.AGENT]: true,
             [ENTITY_TYPES.OBSTACLE]: {
                 enabled: true,
-                [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
-                [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
+                [SHAPE_TYPES.CIRCLE]: true,
+                [SHAPE_TYPES.POLYGON]: true,
             },
         },
     })

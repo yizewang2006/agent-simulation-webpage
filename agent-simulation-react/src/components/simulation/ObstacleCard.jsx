@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CircleObstacle, PolygonObstacle } from '../../models/obstacle.js';
-import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from '../../utils/constants.js';
+import { Obstacle } from '../../models/obstacle.js';
+import { ENTITY_TYPES, SHAPE_TYPES } from '../../utils/constants.js';
 import { createEntityID } from '../../utils/utilities.js';
 import { CirclePlus, CircleX, SquarePlus, Trash2 } from 'lucide-react';
 
@@ -11,7 +11,7 @@ const DEFAULT_POLYGON_VERTICES = [
   { x: '180', y: '260' },
 ];
 
-export default function ObstacleCard({ ctxRef, obstaclesArrayRef, obstaclePreviewRef, canvasWidth, canvasHeight, onObstaclesChanged, onClose }) {
+export default function ObstacleCard({ obstaclesArrayRef, obstaclePreviewRef, canvasWidth, canvasHeight, onObstaclesChanged, onClose }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#ACAD9D');
   const [shapeType, setShapeType] = useState('polygon');
@@ -99,13 +99,13 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, obstaclePrevie
       if (shapeType === 'circle') {
         const { center, radius } = parseCircle();
         obstaclePreviewRef.current = {
-          shapeType: OBSTACLE_SHAPE_TYPES.CIRCLE,
+          shapeType: SHAPE_TYPES.CIRCLE,
           center,
           radius,
         };
       } else {
         obstaclePreviewRef.current = {
-          shapeType: OBSTACLE_SHAPE_TYPES.POLYGON,
+          shapeType: SHAPE_TYPES.POLYGON,
           vertices: parseVertices(),
         };
       }
@@ -120,30 +120,25 @@ export default function ObstacleCard({ ctxRef, obstaclesArrayRef, obstaclePrevie
 
   function handleCreateObstacle() {
     try {
-      const ctx = ctxRef.current;
-      if (!ctx) throw new Error('Canvas context is not ready.');
-
       const obstacleName = name.trim() || `Obstacle_${obstaclesArrayRef.current.length + 1}`;
       let obstacle;
 
       if (shapeType === 'circle') {
         const { center, radius } = parseCircle();
-        obstacle = new CircleObstacle(
+        obstacle = Obstacle.createCircle(
           createEntityID(ENTITY_TYPES.OBSTACLE),
           obstacleName,
           center,
           radius,
-          color,
-          ctx
+          color
         );
       } else {
         const vertices = parseVertices();
-        obstacle = new PolygonObstacle(
+        obstacle = Obstacle.createPolygon(
           createEntityID(ENTITY_TYPES.OBSTACLE),
           obstacleName,
           vertices,
-          color,
-          ctx
+          color
         );
       }
 

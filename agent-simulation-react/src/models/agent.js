@@ -8,9 +8,10 @@ import { calculateBehaviorValue,
     smoothTowardAngle,
     turnTowardAngle,
     normalizeWeight } from "./behavior.js";
-import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
+import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, SHAPE_TYPES } from "../utils/constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNumberOrDefault } from "../utils/utilities.js";
 import { BEHAVIOR_GROUPS } from "../utils/behaviorGroups.js";
+import { CircleShape } from "./shapes.js";
 
 class fovOffset {
     constructor(x, y) {
@@ -20,12 +21,11 @@ class fovOffset {
 }
 
 export class Agent extends Entity{
-    constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, name, ctx, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
+    constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, name, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + name + " has been created");
         const rotation = Math.atan2(Math.sin(angle), Math.cos(angle));
-        super(id, name, ENTITY_TYPES.AGENT, { x, y }, rotation, { x: dx, y: dy });
+        super(id, name, ENTITY_TYPES.AGENT, { x, y }, rotation, { x: dx, y: dy }, [new CircleShape(radius)]);
         this.isSpecial = isSpecial;
-        this.radius = radius;
         this.hasMotion = true;
         this.hasHeading = true;
         // 25.2.17 FIX: ANGLE INDEPENDENT OF dy & dx
@@ -38,13 +38,57 @@ export class Agent extends Entity{
         this.runtimeState.detectedEntities = [];
         // The canvas monitor reads the latest calculated Behavior data directly.
         this.runtimeState.activeBehaviorGroups = {};
-        // 26.1.28 Context and Canvas reference for scalability (now accepts passed-in context and canvas)
-        this.ctx = ctx;
+        // 26.1.28 Canvas reference for scalability
         this.canvas = canvas;
         this.roster = roster;
         // Add this agent to the roster if provided
         if (roster != null) roster.push(this); // Add this agent to the roster if provided
     }   
+
+    draw(ctx) {
+        // showFOV is attached by Simulation.jsx as a global display setting.
+        const shouldDrawFOV = this.isSpecial && this.showFOV !== false;
+        const virtualRange = this.getBoundingRadius() + (shouldDrawFOV ? this.fovRadius : 0);
+        const offsets = [...this.getVirtualOffsets(virtualRange), { x: 0, y: 0 }];
+
+        offsets.forEach((offset) => {
+            const transform = {
+                position: {
+                    x: this.transform.position.x + offset.x,
+                    y: this.transform.position.y + offset.y,
+                },
+                rotation: this.transform.rotation,
+            };
+
+            if (shouldDrawFOV) {
+                ctx.beginPath();
+                ctx.moveTo(transform.position.x, transform.position.y);
+                ctx.arc(
+                    transform.position.x,
+                    transform.position.y,
+                    this.fovRadius,
+                    transform.rotation - this.fovAngle / 2,
+                    transform.rotation + this.fovAngle / 2
+                );
+                ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
+                ctx.fill();
+                ctx.closePath();
+            }
+
+            super.draw(ctx, transform, { fill: null, stroke: this.colorHex, lineWidth: 2 });
+
+            // Draw movement direction segment.
+            const segmentLength = this.getBoundingRadius() * 2;
+            ctx.beginPath();
+            ctx.moveTo(transform.position.x, transform.position.y);
+            ctx.lineTo(
+                transform.position.x + Math.cos(transform.rotation) * segmentLength,
+                transform.position.y + Math.sin(transform.rotation) * segmentLength
+            );
+            ctx.stroke();
+            ctx.closePath();
+        });
+    }
 
     generateRandomColor() {
         const possibleColor = [
@@ -61,57 +105,6 @@ export class Agent extends Entity{
           ];
         const randomIndex = Math.floor(Math.random() * possibleColor.length);
         this.colorHex = possibleColor[randomIndex];
-    }
-
-    // Method to draw the circle <-- not circle, AGENT
-    draw() {
-        // this.showFOV is attached by Simulation.jsx, by React, not in the Agent class itself. It is a global setting that each agent can access to determine whether to draw FOV or not.
-        const shouldDrawFOV = this.isSpecial && this.showFOV !== false;
-        const virtualRange = this.radius + (shouldDrawFOV ? this.fovRadius : 0);
-        const virtualOffsets = this.getVirtualOffsets(virtualRange);
-
-        for (const offset of virtualOffsets) {
-            this.drawVirtualCopyAtOffset(offset, shouldDrawFOV);
-        }
-        this.drawVirtualCopyAtOffset(new fovOffset(0, 0), shouldDrawFOV);
-    }
-
-    drawVirtualCopyAtOffset(offset, drawFOV = false) {
-        const x = this.transform.position.x + offset.x;
-        const y = this.transform.position.y + offset.y;
-
-        if (drawFOV) {
-            const startAngle = this.transform.rotation - this.fovAngle / 2;
-            const endAngle = this.transform.rotation + this.fovAngle / 2;
-
-            this.ctx.beginPath();
-            this.ctx.moveTo(x, y);
-            this.ctx.arc(x, y, this.fovRadius, startAngle, endAngle);
-            this.ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
-            this.ctx.fill();
-            this.ctx.closePath();
-        }
-
-        // Draw the circle itself and hollow.
-        this.ctx.beginPath();
-        this.ctx.arc(x, y, this.radius, 0, Math.PI * 2);
-        this.ctx.strokeStyle = this.colorHex;
-        this.ctx.lineWidth = 2;
-        this.ctx.stroke();
-        this.ctx.closePath();
-
-        // Draw movement direction segment
-        const angle = this.transform.rotation;
-        const segmentLength = this.radius * 2
-
-        const endX = x + Math.cos(angle) * segmentLength;
-        const endY = y + Math.sin(angle) * segmentLength;
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, y);
-        this.ctx.lineTo(endX, endY);
-        this.ctx.stroke();
-        this.ctx.closePath();
     }
 
     getVirtualOffsets(range) {
@@ -348,7 +341,7 @@ export class Agent extends Entity{
 
                 const distanceBetweenEntities = Math.sqrt(diffX * diffX + diffY * diffY);
 
-                if (distanceBetweenEntities <= this.fovRadius + entity.radius) {
+                if (distanceBetweenEntities <= this.fovRadius + entity.getBoundingRadius()) {
                     const detectionPoints = getEntityDetectionPoints(this, entity);
 
                     // Use all detection points for the FOV angle check.
@@ -361,7 +354,7 @@ export class Agent extends Entity{
                         // Its closest real edge must also be inside the FOV radius.
                         if (
                             entity.entityType === ENTITY_TYPES.OBSTACLE &&
-                            entity.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON &&
+                            entity.shapes.some((shape) => shape.type === SHAPE_TYPES.POLYGON) &&
                             Math.hypot(refDiffX, refDiffY) > this.fovRadius
                         ) {
                             return false;

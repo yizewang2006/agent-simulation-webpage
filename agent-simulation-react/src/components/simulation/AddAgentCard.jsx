@@ -6,7 +6,7 @@ import { ENTITY_TYPES } from '../../utils/constants.js';
 import AlertBox from "./AlertBox.jsx";
 
 // State variables
-export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, agentPreviewRef, canvasWidth, canvasHeight, maxAgents, onAgentAdded, onClose }) {
+export default function AddAgentCard({ canvasRef, agentsArrayRef, agentPreviewRef, canvasWidth, canvasHeight, maxAgents, onAgentAdded, onClose }) {
   const [name, setName] = useState('');
   const [color, setColor] = useState('#000000');
   const [x, setX] = useState(String(canvasWidth / 2));
@@ -61,9 +61,8 @@ export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, agentP
 
   function create() {
     const canvas = canvasRef.current;
-    const ctx = ctxRef.current;
     const roster = agentsArrayRef.current;
-    if (!canvas || !ctx) return;
+    if (!canvas) return;
     if (roster.length >= maxAgents) {
       setShowCapacityAlert(true);
       return;
@@ -86,7 +85,7 @@ export default function AddAgentCard({ canvasRef, ctxRef, agentsArrayRef, agentP
       angleRad,
       createEntityID(ENTITY_TYPES.AGENT),
       name || `Agent_${roster.length + 1}`,
-      ctx, canvas, roster
+      canvas, roster
     );
 
     roster[roster.length - 1].showFOV = showFOV;

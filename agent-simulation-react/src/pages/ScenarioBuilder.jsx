@@ -16,7 +16,7 @@ import {
   downloadScenarioFile,
   loadScenarioFile,
 } from '../utils/scenarioUtilities.js';
-import { ENTITY_LABELS, ENTITY_TYPES, OBSTACLE_SHAPE_LABELS, OBSTACLE_SHAPE_TYPES } from '../utils/constants.js';
+import { ENTITY_LABELS, ENTITY_TYPES, SHAPE_LABELS, SHAPE_TYPES } from '../utils/constants.js';
 import '../styles/simulation.css';
 
 const CANVAS_WIDTH = 500;
@@ -1428,10 +1428,10 @@ export default function ScenarioBuilder() {
     if (entityType === ENTITY_TYPES.OBSTACLE) {
       return (
         <>
-          {Object.values(OBSTACLE_SHAPE_TYPES).map((shapeType) => {
-            const isCircle = shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE;
+          {Object.values(SHAPE_TYPES).map((shapeType) => {
+            const isCircle = shapeType === SHAPE_TYPES.CIRCLE;
             const ShapeIcon = isCircle ? Circle : Square;
-            const label = `${OBSTACLE_SHAPE_LABELS[shapeType]} Obstacle`;
+            const label = `${SHAPE_LABELS[shapeType]} Obstacle`;
 
             return (
               <div className="scenario-entity-action" key={shapeType}>

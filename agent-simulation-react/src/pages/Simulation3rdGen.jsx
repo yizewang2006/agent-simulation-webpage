@@ -15,7 +15,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
-import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
+import { Obstacle } from "../models/obstacle.js";
 import {
   ACTIVATION_TYPES,
   DEFAULT_BEHAVIOR_COLOR,
@@ -23,12 +23,11 @@ import {
   normalizeActivationDraft,
   normalizeFilterDrafts,
 } from "../models/behavior.js";
-import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
+import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
 import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import {
   findRuntimeEntityAt,
   getDraggedRuntimeEntityGeometry,
-  getRuntimeLookAtCursorAngle,
 } from "../utils/runtimeCanvasInteractionUtilities.js";
 import {
   createScenarioDocument,
@@ -213,7 +212,7 @@ function normalizeObstacleFormValues(values) {
 
     return {
       ...common,
-      shapeType: OBSTACLE_SHAPE_TYPES.CIRCLE,
+      shapeType: SHAPE_TYPES.CIRCLE,
       center,
       radius,
     };
@@ -239,7 +238,7 @@ function normalizeObstacleFormValues(values) {
 
   return {
     ...common,
-    shapeType: OBSTACLE_SHAPE_TYPES.POLYGON,
+    shapeType: SHAPE_TYPES.POLYGON,
     vertices,
   };
 }
@@ -254,29 +253,32 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
       name: agent.name,
       x: agent.transform.position.x,
       y: agent.transform.position.y,
-      radius: agent.radius,
+      radius: agent.shapes[0].radius,
       dx: agent.velocity.x,
       dy: agent.velocity.y,
       angle: agent.transform.rotation,
       colorHex: agent.colorHex,
       fovRadius: agent.fovRadius,
       fovAngle: agent.fovAngle,
-      // Store the final visual FOV decision, matching Agent.draw().
+      // Store the final visual FOV decision used by Entity.draw().
       showFOV: agent.isSpecial && agent.showFOV !== false,
     })),
-    obstacles: obstaclesArray.map((obstacle) => ({
-      id: obstacle.id,
-      name: obstacle.name,
-      shapeType: obstacle.shapeType,
-      color: obstacle.color,
-      center: obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
-        ? { ...obstacle.transform.position }
-        : null,
-      radius: obstacle.radius,
-      vertices: Array.isArray(obstacle.vertices)
-        ? obstacle.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y }))
-        : [],
-    })),
+    obstacles: obstaclesArray.map((obstacle) => {
+      const shape = obstacle.shapes[0];
+      return {
+        id: obstacle.id,
+        name: obstacle.name,
+        shapeType: shape.type,
+        color: obstacle.color,
+        center: shape.type === SHAPE_TYPES.CIRCLE
+          ? shape.getWorldCenter(obstacle.transform)
+          : null,
+        radius: shape.type === SHAPE_TYPES.CIRCLE ? shape.radius : null,
+        vertices: shape.type === SHAPE_TYPES.POLYGON
+          ? shape.getWorldVertices(obstacle.transform)
+          : [],
+      };
+    }),
   };
 }
 
@@ -291,13 +293,13 @@ function drawObstaclePreview(ctx, preview) {
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 6]);
 
-  if (preview.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+  if (preview.shapeType === SHAPE_TYPES.CIRCLE) {
     ctx.beginPath();
     ctx.arc(preview.center.x, preview.center.y, preview.radius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  } else if (preview.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON && preview.vertices.length >= 3) {
+  } else if (preview.shapeType === SHAPE_TYPES.POLYGON && preview.vertices.length >= 3) {
     ctx.beginPath();
     ctx.moveTo(preview.vertices[0].x, preview.vertices[0].y);
     for (let i = 1; i < preview.vertices.length; i++) {
@@ -364,7 +366,7 @@ function drawAgentPreview(ctx, preview) {
 // Vector Drawing
 function drawDecisionVector(ctx, agent, angle, color, label, labelColor = color) { // <-- Draws any decision vector
   // Define start and end (how long)
-  const start = agent.radius;
+  const start = agent.shapes[0].radius;
   const end = start + 50;
 
   ctx.save();
@@ -691,7 +693,6 @@ function Simulation3rdGen() {
           draft.angle,
           createEntityID(ENTITY_TYPES.AGENT),
           `Agent_${roster.length + 1}`,
-          ctx,
           canvas,
           roster
         );
@@ -907,7 +908,6 @@ function Simulation3rdGen() {
           heading,
           agent.id,
           agent.name,
-          ctx,
           canvas,
           runtimeAgents
         );
@@ -916,8 +916,8 @@ function Simulation3rdGen() {
 
       const runtimeObstacles = scenario.obstacles.map((obstacle) => (
         obstacle.shapeType === 'circle'
-          ? new CircleObstacle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color, ctx)
-          : new PolygonObstacle(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color, ctx)
+          ? Obstacle.createCircle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color)
+          : Obstacle.createPolygon(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color)
       ));
       obstaclesArrayRef.current.length = 0;
       obstaclesArrayRef.current.push(...runtimeObstacles);
@@ -963,7 +963,7 @@ function Simulation3rdGen() {
         name: agent.name,
         x: agent.transform.position.x,
         y: agent.transform.position.y,
-        radius: agent.radius,
+        radius: agent.shapes[0].radius,
         angle: (((-agent.transform.rotation * 180 / Math.PI) % 360) + 360) % 360,
         speed: Math.hypot(agent.velocity.x, agent.velocity.y),
         colorHex: agent.colorHex,
@@ -972,7 +972,7 @@ function Simulation3rdGen() {
         showFOV: agent.showFOV !== false,
       })),
       obstacles: obstaclesArrayRef.current.map((obstacle) => (
-        obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+        obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE
           ? {
               entityType: ENTITY_TYPES.OBSTACLE,
               id: obstacle.id,
@@ -980,7 +980,7 @@ function Simulation3rdGen() {
               shapeType: 'circle',
               color: obstacle.color,
               center: { ...obstacle.transform.position },
-              radius: obstacle.radius,
+              radius: obstacle.shapes[0].radius,
             }
           : {
               entityType: ENTITY_TYPES.OBSTACLE,
@@ -988,7 +988,7 @@ function Simulation3rdGen() {
               name: obstacle.name,
               shapeType: 'polygon',
               color: obstacle.color,
-              vertices: obstacle.vertices.map((vertex) => ({ ...vertex })),
+              vertices: obstacle.shapes[0].getWorldVertices(obstacle.transform),
             }
       )),
     });
@@ -1388,7 +1388,7 @@ function Simulation3rdGen() {
 
     if (
       typeof obstacleTargets.enabled !== 'boolean'
-      || Object.values(OBSTACLE_SHAPE_TYPES).some(
+      || Object.values(SHAPE_TYPES).some(
         (shapeType) => typeof obstacleTargets[shapeType] !== 'boolean'
       )
     ) {
@@ -1866,7 +1866,7 @@ function Simulation3rdGen() {
           configureHighDpiCanvas(canvas, ctx, CANVAS_WIDTH, CANVAS_HEIGHT);
         }
         ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
-        obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
+        obstaclesArrayRef.current.forEach(obstacle => obstacle.draw(ctx));
         drawObstaclePreview(ctx, obstaclePreviewRef.current);
         agentPreviewRef.current.forEach((preview) => {
           drawAgentPreview(ctx, preview);
@@ -1918,7 +1918,7 @@ function Simulation3rdGen() {
 
         // Movement and frame restoration only update state. Render every Agent
         // exactly once after the canvas has been cleared.
-        runtimeAgents.forEach(agent => agent.draw());
+        runtimeAgents.forEach(agent => agent.draw(ctx));
 
         if (debugAgentRef.current) { // If selected, draw the selected agent's decision vector
           const debugDecision = debugAgentRef.current.debugDecision;
@@ -2014,7 +2014,7 @@ function Simulation3rdGen() {
 
       // The center has no direction, so keep the previous angle there.
       if (dx !== 0 || dy !== 0) {
-        const angle = getRuntimeLookAtCursorAngle(lookAtAgent, point);
+        const angle = Math.atan2(dy, dx);
         const speed = Math.hypot(lookAtAgent.velocity.x, lookAtAgent.velocity.y);
 
         // Keep drawing, steering, and future movement pointed the same way.
@@ -2056,14 +2056,17 @@ function Simulation3rdGen() {
       CANVAS_HEIGHT
     );
 
-    if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+    if (obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE) {
       obstacle.transform.position = draggedGeometry.position;
     } else {
-      obstacle.vertices = draggedGeometry.vertices;
-      // Collision detection and labels use these derived geometry fields.
-      obstacle.edges = obstacle._buildEdges(obstacle.vertices);
-      obstacle.transform.position = obstacle._computeCentroid(obstacle.vertices);
-      obstacle.radius = obstacle._computeBoundingRadius(obstacle.vertices, obstacle.transform.position);
+      const updatedObstacle = Obstacle.createPolygon(
+        obstacle.id,
+        obstacle.name,
+        draggedGeometry.vertices,
+        obstacle.color
+      );
+      obstacle.transform = updatedObstacle.transform;
+      obstacle.shapes = updatedObstacle.shapes;
     }
     setObstacles([...obstaclesArrayRef.current]);
   }
@@ -2169,16 +2172,16 @@ function Simulation3rdGen() {
     // Copy values into the form so Cancel cannot mutate the live obstacle.
     return {
       shape:
-        obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+        obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE
           ? 'circle'
           : 'polygon',
       name: obstacle.name,
       color: getObstacleColor(obstacle),
       centerX: roundForForm(obstacle.transform.position.x),
       centerY: roundForForm(obstacle.transform.position.y),
-      radius: String(obstacle.radius ?? 50),
-      vertices: Array.isArray(obstacle.vertices)
-        ? obstacle.vertices.map((vertex) => ({
+      radius: String(obstacle.shapes[0].radius ?? 50),
+      vertices: obstacle.shapes[0].type === SHAPE_TYPES.POLYGON
+        ? obstacle.shapes[0].getWorldVertices(obstacle.transform).map((vertex) => ({
             x: roundForForm(vertex.x),
             y: roundForForm(vertex.y),
           }))
@@ -2304,21 +2307,19 @@ function Simulation3rdGen() {
 
       // Step 3: Create the matching existing model.
       const obstacle =
-        config.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
-          ? new CircleObstacle(
+        config.shapeType === SHAPE_TYPES.CIRCLE
+          ? Obstacle.createCircle(
               createEntityID(ENTITY_TYPES.OBSTACLE),
               obstacleName,
               config.center,
               config.radius,
-              config.color,
-              ctx
+              config.color
             )
-          : new PolygonObstacle(
+          : Obstacle.createPolygon(
               createEntityID(ENTITY_TYPES.OBSTACLE),
               obstacleName,
               config.vertices,
-              config.color,
-              ctx
+              config.color
             );
 
       propertyList.forEach((property) => {
@@ -2396,7 +2397,7 @@ function Simulation3rdGen() {
     try {
       // Step 1: Reuse the same validation as Create and Preview.
       const config = normalizeObstacleFormValues(updates);
-      const currentShapeType = selectedObstacle.shapeType;
+      const currentShapeType = selectedObstacle.shapes[0].type;
 
       if (!config.name) {
         throw new Error('Obstacle Name cannot be empty.');
@@ -2408,17 +2409,18 @@ function Simulation3rdGen() {
       selectedObstacle.name = config.name;
       selectedObstacle.color = config.color;
 
-      if (currentShapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+      if (currentShapeType === SHAPE_TYPES.CIRCLE) {
         selectedObstacle.transform.position = config.center;
-        selectedObstacle.radius = config.radius;
+        selectedObstacle.shapes[0].radius = config.radius;
       } else {
-        selectedObstacle.vertices = config.vertices;
-        selectedObstacle.edges = selectedObstacle._buildEdges(config.vertices);
-        selectedObstacle.transform.position = selectedObstacle._computeCentroid(config.vertices);
-        selectedObstacle.radius = selectedObstacle._computeBoundingRadius(
+        const updatedObstacle = Obstacle.createPolygon(
+          selectedObstacle.id,
+          selectedObstacle.name,
           config.vertices,
-          selectedObstacle.transform.position
+          selectedObstacle.color
         );
+        selectedObstacle.transform = updatedObstacle.transform;
+        selectedObstacle.shapes = updatedObstacle.shapes;
       }
 
       // Step 3: Refresh the UI and close the editor.

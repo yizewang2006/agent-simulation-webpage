@@ -9,8 +9,8 @@ import {
   REFERENCE_LABELS,
   ENTITY_TYPES, // New
   ENTITY_LABELS,
-  OBSTACLE_SHAPE_TYPES,
-  OBSTACLE_SHAPE_LABELS,
+  SHAPE_TYPES,
+  SHAPE_LABELS,
 } from "../../utils/constants.js";
 
 function createDefaultFilterTargets() {
@@ -23,8 +23,8 @@ function createDefaultFilterTargets() {
   targets[ENTITY_TYPES.AGENT] = true;
   targets[ENTITY_TYPES.OBSTACLE] = {
     enabled: false,
-    [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
-    [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
+    [SHAPE_TYPES.CIRCLE]: true,
+    [SHAPE_TYPES.POLYGON]: true,
   };
 
   return targets;
@@ -79,8 +79,8 @@ function BehaviorCard({
       [ENTITY_TYPES.AGENT]: filter.targets?.[ENTITY_TYPES.AGENT] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.AGENT],
       [ENTITY_TYPES.OBSTACLE]: {
         enabled: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.enabled ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE].enabled,
-        [OBSTACLE_SHAPE_TYPES.CIRCLE]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.CIRCLE] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.CIRCLE],
-        [OBSTACLE_SHAPE_TYPES.POLYGON]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.POLYGON] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.POLYGON],
+        [SHAPE_TYPES.CIRCLE]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[SHAPE_TYPES.CIRCLE] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][SHAPE_TYPES.CIRCLE],
+        [SHAPE_TYPES.POLYGON]: filter.targets?.[ENTITY_TYPES.OBSTACLE]?.[SHAPE_TYPES.POLYGON] ?? DEFAULT_FILTER_TARGETS[ENTITY_TYPES.OBSTACLE][SHAPE_TYPES.POLYGON],
       },
       ...Object.fromEntries(
         Object.values(ENTITY_TYPES)
@@ -356,7 +356,7 @@ function BehaviorCard({
                                               </label>
 
                                               <div className="entity-subtype-options">
-                                                {Object.entries(OBSTACLE_SHAPE_LABELS).map(([shapeType, shapeLabel]) => {
+                                                {Object.entries(SHAPE_LABELS).map(([shapeType, shapeLabel]) => {
                                                   const numericShapeType = Number(shapeType);
 
                                                   return (

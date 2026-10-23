@@ -6,7 +6,7 @@ import Footer from '../components/shared/Footer.jsx';
 import AlertBox from '../components/simulation/AlertBox.jsx';
 import '../styles/playback.css';
 import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth } from '../utils/utilities.js';
-import { OBSTACLE_SHAPE_TYPES } from '../utils/constants.js';
+import { SHAPE_TYPES } from '../utils/constants.js';
 
 const PLAYBACK_CANVAS_WIDTH = 500;
 const PLAYBACK_CANVAS_HEIGHT = 500;
@@ -101,12 +101,12 @@ function drawSnapshotLabel(ctx, label, x, y) {
 }
 
 function drawObstacleSnapshot(ctx, obstacle) {
-  if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+  if (obstacle.shapeType === SHAPE_TYPES.CIRCLE) {
     drawCircleObstacleSnapshot(ctx, obstacle);
     return;
   }
 
-  if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON) {
+  if (obstacle.shapeType === SHAPE_TYPES.POLYGON) {
     drawPolygonObstacleSnapshot(ctx, obstacle);
   }
 }

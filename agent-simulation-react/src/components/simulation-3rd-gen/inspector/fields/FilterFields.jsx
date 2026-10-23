@@ -7,7 +7,7 @@ import {
   METHOD_LABELS,
   METHOD_LABELS_BY_PROPERTY,
   METHOD_TYPES,
-  OBSTACLE_SHAPE_TYPES,
+  SHAPE_TYPES,
 } from "../../../../utils/constants.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 import TargetEntitySelector from "../sub-components/TargetEntitySelector.jsx";
@@ -236,8 +236,8 @@ function createFilterDraft() {
       [ENTITY_TYPES.AGENT]: true,
       [ENTITY_TYPES.OBSTACLE]: {
         enabled: false,
-        [OBSTACLE_SHAPE_TYPES.CIRCLE]: false,
-        [OBSTACLE_SHAPE_TYPES.POLYGON]: false,
+        [SHAPE_TYPES.CIRCLE]: false,
+        [SHAPE_TYPES.POLYGON]: false,
       },
       [ENTITY_TYPES.LEADER]: false,
       [ENTITY_TYPES.EXIT]: false,

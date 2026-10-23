@@ -37,7 +37,7 @@ export const ENTITY_ID_PREFIXES = Object.freeze({
   [ENTITY_TYPES.SPACE]: "SPC"
 });
 
-export const OBSTACLE_SHAPE_TYPES = {
+export const SHAPE_TYPES = {
   CIRCLE: 0,
   POLYGON: 1,
 };
@@ -101,9 +101,9 @@ export const BUILDER_TABS = Object.freeze({
   ENTITIES: 'entities',
 })
 
-export const OBSTACLE_SHAPE_LABELS = {
-  [OBSTACLE_SHAPE_TYPES.CIRCLE]: 'Circle',
-  [OBSTACLE_SHAPE_TYPES.POLYGON]: 'Polygon',
+export const SHAPE_LABELS = {
+  [SHAPE_TYPES.CIRCLE]: 'Circle',
+  [SHAPE_TYPES.POLYGON]: 'Polygon',
 };
 
 export const METHOD_LABELS = {

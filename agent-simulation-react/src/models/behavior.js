@@ -2,7 +2,7 @@ import {
   ENTITY_TYPES,
   MEASUREMENT_TYPES,
   METHOD_TYPES,
-  OBSTACLE_SHAPE_TYPES,
+  SHAPE_TYPES,
   TARGET_PROPERTIES,
 } from "../utils/constants.js";
 import { getCanvasLogicalHeight, getCanvasLogicalWidth } from "../utils/utilities.js";
@@ -15,8 +15,8 @@ export {
   METHOD_LABELS,
   METHOD_LABELS_BY_PROPERTY,
   METHOD_TYPES,
-  OBSTACLE_SHAPE_LABELS,
-  OBSTACLE_SHAPE_TYPES,
+  SHAPE_LABELS,
+  SHAPE_TYPES,
   PROPERTY_LABELS,
   REFERENCE_LABELS,
   REFERENCE_TYPES,
@@ -328,8 +328,8 @@ export function normalizeFilterDrafts(filters, ownerLabel) {
     }
     if (
       obstacleTargets.enabled
-      && !obstacleTargets[OBSTACLE_SHAPE_TYPES.CIRCLE]
-      && !obstacleTargets[OBSTACLE_SHAPE_TYPES.POLYGON]
+      && !obstacleTargets[SHAPE_TYPES.CIRCLE]
+      && !obstacleTargets[SHAPE_TYPES.POLYGON]
     ) {
       throw new Error(`${label} needs at least one Obstacle shape.`);
     }
@@ -437,7 +437,7 @@ export function getEntityReferencePosition(self, entity) {
   const centerPoint = getEntityCenterPoint(entity);
   if (!centerPoint) return null;
 
-  if (typeof entity.getClosestPointTo === 'function') {
+  if (entity.entityType === ENTITY_TYPES.OBSTACLE) {
     // Obstacles use the closest boundary point, not the center/centroid, for detection and steering.
     return entity.getClosestPointTo(getObstacleQueryPosition(self, entity));
   }
@@ -448,9 +448,9 @@ export function getEntityReferencePosition(self, entity) {
 export function getEntityDetectionPoints(self, entity) {
   if (!getEntityCenterPoint(entity)) return [];
 
-  if (typeof entity.getDetectionPointsTo === 'function') { // FOR POLYGON OBSTACLES, THEY HAVE A FUNCTION called getDetectionPointsTo that returns detection points
+  if (entity.entityType === ENTITY_TYPES.OBSTACLE) { // FOR POLYGON OBSTACLES, the Entity returns Shape detection points
     // Obstacles use the closest boundary point for detection and steering.
-    return entity.getDetectionPointsTo(getObstacleQueryPosition(self, entity));
+    return [entity.getClosestPointTo(getObstacleQueryPosition(self, entity))];
   }
 
   const refPos = getEntityReferencePosition(self, entity);
@@ -567,8 +567,7 @@ function applyEntityFilter(agentFilter, self, entities) {
       const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE];
 
       if (!obstacleTargets.enabled) return false;
-      if (entity.shapeType === undefined || entity.shapeType === null) return false;
-      if (!obstacleTargets[entity.shapeType]) return false;
+      if (!entity.shapes.some((shape) => obstacleTargets[shape.type])) return false;
 
       return true;
     }
