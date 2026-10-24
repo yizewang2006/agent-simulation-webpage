@@ -27,7 +27,7 @@ import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, SHAPE_TYPES, PROPERTY
 import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import {
   findRuntimeEntityAt,
-  getDraggedRuntimeEntityGeometry,
+  getDraggedRuntimeEntityPosition,
 } from "../utils/runtimeCanvasInteractionUtilities.js";
 import {
   createScenarioDocument,
@@ -1990,7 +1990,8 @@ function Simulation3rdGen() {
     dragRef.current = {
       type: clickedAgent ? 'agent' : 'obstacle',
       entity: clickedAgent ?? clickedObstacle,
-      previous: point,
+      startPointer: point,
+      startPosition: { ...(clickedAgent ?? clickedObstacle).transform.position },
       pointerId: event.pointerId,
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -2030,43 +2031,22 @@ function Simulation3rdGen() {
     if (!drag || drag.pointerId !== event.pointerId) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
-    const dx = point.x - drag.previous.x;
-    const dy = point.y - drag.previous.y;
-    drag.previous = point;
+    const desiredPosition = {
+      x: drag.startPosition.x + point.x - drag.startPointer.x,
+      y: drag.startPosition.y + point.y - drag.startPointer.y,
+    };
 
-    if (drag.type === 'agent') {
-      const agent = drag.entity;
-      agent.transform.position = getDraggedRuntimeEntityGeometry(
-        agent,
-        dx,
-        dy,
-        CANVAS_WIDTH,
-        CANVAS_HEIGHT
-      ).position;
-      setAgents([...agentsArrayRef.current]);
-      return;
-    }
-
-    const obstacle = drag.entity;
-    const draggedGeometry = getDraggedRuntimeEntityGeometry(
-      obstacle,
-      dx,
-      dy,
+    const entity = drag.entity;
+    entity.transform.position = getDraggedRuntimeEntityPosition(
+      entity,
+      desiredPosition,
       CANVAS_WIDTH,
       CANVAS_HEIGHT
     );
 
-    if (obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE) {
-      obstacle.transform.position = draggedGeometry.position;
-    } else {
-      const updatedObstacle = Obstacle.createPolygon(
-        obstacle.id,
-        obstacle.name,
-        draggedGeometry.vertices,
-        obstacle.color
-      );
-      obstacle.transform = updatedObstacle.transform;
-      obstacle.shapes = updatedObstacle.shapes;
+    if (drag.type === 'agent') {
+      setAgents([...agentsArrayRef.current]);
+      return;
     }
     setObstacles([...obstaclesArrayRef.current]);
   }

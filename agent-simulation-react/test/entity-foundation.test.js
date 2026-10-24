@@ -7,7 +7,7 @@ import { Obstacle } from '../src/models/obstacle.js';
 import { CircleShape, PolygonShape } from '../src/models/shapes.js';
 import {
   findRuntimeEntityAt,
-  getDraggedRuntimeEntityGeometry,
+  getDraggedRuntimeEntityPosition,
 } from '../src/utils/runtimeCanvasInteractionUtilities.js';
 
 const canvas = { logicalWidth: 100, logicalHeight: 100 };
@@ -103,10 +103,39 @@ test('Agent decisions update shared rotation and velocity state together', () =>
 
 test('runtime Canvas interaction reads the shared transform', () => {
   const agent = new Agent(false, 10, 20, 5, 0, 0, '#000000', 100, Math.PI, 0, 'agent-1', 'Agent 1', canvas);
+  const polygon = Obstacle.createPolygon('obstacle-1', 'Polygon', [
+    { x: 10, y: 10 },
+    { x: 20, y: 10 },
+    { x: 20, y: 20 },
+    { x: 10, y: 20 },
+  ]);
 
   assert.equal(findRuntimeEntityAt({ x: 10, y: 20 }, [agent]), agent);
   assert.deepEqual(
-    getDraggedRuntimeEntityGeometry(agent, 15, -5, 100, 100),
-    { position: { x: 25, y: 15 } }
+    getDraggedRuntimeEntityPosition(agent, { x: 25, y: 15 }, 100, 100),
+    { x: 25, y: 15 }
+  );
+  assert.deepEqual(
+    getDraggedRuntimeEntityPosition(agent, { x: -10, y: 120 }, 100, 100),
+    { x: 5, y: 95 }
+  );
+  assert.deepEqual(
+    getDraggedRuntimeEntityPosition(polygon, { x: -15, y: -15 }, 100, 100),
+    { x: 5, y: 5 }
+  );
+
+  agent.transform.position = getDraggedRuntimeEntityPosition(
+    agent,
+    { x: 120, y: 20 },
+    100,
+    100
+  );
+  assert.deepEqual(
+    getDraggedRuntimeEntityPosition(agent, { x: 99, y: 20 }, 100, 100),
+    { x: 95, y: 20 }
+  );
+  assert.deepEqual(
+    getDraggedRuntimeEntityPosition(agent, { x: 94, y: 20 }, 100, 100),
+    { x: 94, y: 20 }
   );
 });
