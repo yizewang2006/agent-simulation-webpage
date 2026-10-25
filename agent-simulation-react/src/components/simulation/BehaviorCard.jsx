@@ -16,8 +16,8 @@ import {
 function createDefaultFilterTargets() {
   const targets = {};
 
-  Object.values(ENTITY_TYPES).forEach((entityType) => {
-    targets[entityType] = false;
+  Object.values(ENTITY_TYPES).forEach((typeId) => {
+    targets[typeId] = false;
   });
 
   targets[ENTITY_TYPES.AGENT] = true;
@@ -84,16 +84,16 @@ function BehaviorCard({
       },
       ...Object.fromEntries(
         Object.values(ENTITY_TYPES)
-          .filter((entityType) => entityType !== ENTITY_TYPES.AGENT && entityType !== ENTITY_TYPES.OBSTACLE)
-          .map((entityType) => [entityType, filter.targets?.[entityType] ?? DEFAULT_FILTER_TARGETS[entityType]])
+          .filter((typeId) => typeId !== ENTITY_TYPES.AGENT && typeId !== ENTITY_TYPES.OBSTACLE)
+          .map((typeId) => [typeId, filter.targets?.[typeId] ?? DEFAULT_FILTER_TARGETS[typeId]])
       ),
     };
   }
 
-  function handleEntityTargetChange(behaviorId, filter, entityType, checked) {
+  function handleEntityTargetChange(behaviorId, filter, typeId, checked) {
     const targets = getFilterTargets(filter);
 
-    if (entityType === ENTITY_TYPES.OBSTACLE) {
+    if (typeId === ENTITY_TYPES.OBSTACLE) {
       onUpdateFilter(behaviorId, filter.id, {
         targets: {
           ...targets,
@@ -109,7 +109,7 @@ function BehaviorCard({
     onUpdateFilter(behaviorId, filter.id, {
       targets: {
         ...targets,
-        [entityType]: checked,
+        [typeId]: checked,
       },
     });
   }
@@ -338,19 +338,17 @@ function BehaviorCard({
                                     <label>Target Entity Types</label>
                                     <div className="entity-target-group">
                                       {/* Generate a checkbox for every entity type, special treatment for Obstacle*/}
-                                      {Object.entries(ENTITY_LABELS).map(([entityType, label]) => {
-                                        const numericEntityType = Number(entityType);
-
-                                        if (numericEntityType === ENTITY_TYPES.OBSTACLE) {
+                                      {Object.entries(ENTITY_LABELS).map(([typeId, label]) => {
+                                        if (typeId === ENTITY_TYPES.OBSTACLE) {
                                           const obstacleTargets = getFilterTargets(filter)[ENTITY_TYPES.OBSTACLE];
 
                                           return (
-                                            <div key={numericEntityType}>
+                                            <div key={typeId}>
                                               <label className="entity-target-option">
                                                 <input
                                                   type="checkbox"
                                                   checked={obstacleTargets.enabled}
-                                                  onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
+                                                  onChange={(e) => handleEntityTargetChange(behavior.id, filter, typeId, e.target.checked)}
                                                 />
                                                 {label}
                                               </label>
@@ -377,11 +375,11 @@ function BehaviorCard({
                                         }
 
                                         return (
-                                          <label key={numericEntityType} className="entity-target-option">
+                                          <label key={typeId} className="entity-target-option">
                                             <input
                                               type="checkbox"
-                                              checked={getFilterTargets(filter)[numericEntityType]}
-                                              onChange={(e) => handleEntityTargetChange(behavior.id, filter, numericEntityType, e.target.checked)}
+                                              checked={getFilterTargets(filter)[typeId]}
+                                              onChange={(e) => handleEntityTargetChange(behavior.id, filter, typeId, e.target.checked)}
                                             />
                                             {label}
                                           </label>

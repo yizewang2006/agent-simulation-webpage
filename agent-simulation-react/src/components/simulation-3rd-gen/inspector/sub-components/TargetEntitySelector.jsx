@@ -1,14 +1,8 @@
 import {
-  ENTITY_LABELS,
   ENTITY_TYPES,
   SHAPE_LABELS,
 } from "../../../../utils/constants.js";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
-
-const entityOptions = Object.entries(ENTITY_LABELS).map(([type, label]) => ({
-  type: Number(type),
-  label,
-}));
 
 const obstacleShapeOptions = Object.entries(SHAPE_LABELS).map(
   ([type, label]) => ({ type: Number(type), label })
@@ -18,10 +12,15 @@ export default function TargetEntitySelector({
   value: targets,
   onChange,
   idPrefix,
-  entityTypes = Object.values(ENTITY_TYPES),
+  entityTypeDefinitions,
+  entityTypes,
 }) {
-  const availableEntityOptions = entityOptions.filter(({ type }) =>
-    entityTypes.includes(type)
+  const entityOptions = entityTypeDefinitions.map(({ id, name }) => ({
+    type: id,
+    label: name,
+  }));
+  const availableEntityOptions = entityOptions.filter(
+    ({ type }) => !entityTypes || entityTypes.includes(type)
   );
   const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE] ?? {};
 
@@ -64,10 +63,10 @@ export default function TargetEntitySelector({
     onChange(nextTargets);
   }
 
-  function handleCheckboxChange(entityType, checked, shapeType = null) {
+  function handleCheckboxChange(typeId, checked, shapeType = null) {
     // Regular entity checkbox: update that one value only.
-    if (entityType !== ENTITY_TYPES.OBSTACLE) {
-      onChange({ ...targets, [entityType]: checked });
+    if (typeId !== ENTITY_TYPES.OBSTACLE) {
+      onChange({ ...targets, [typeId]: checked });
       return;
     }
 
@@ -93,7 +92,7 @@ export default function TargetEntitySelector({
     });
   }
 
-  function handleOnly(entityType, shapeType = null) {
+  function handleOnly(typeId, shapeType = null) {
     // Start with a completely cleared target object, then enable only the
     // requested entity or obstacle shape.
     const nextTargets = { ...targets };
@@ -110,7 +109,7 @@ export default function TargetEntitySelector({
       }
     });
 
-    if (entityType === ENTITY_TYPES.OBSTACLE) {
+    if (typeId === ENTITY_TYPES.OBSTACLE) {
       const nextObstacleTargets = nextTargets[ENTITY_TYPES.OBSTACLE];
 
       if (shapeType === null) {
@@ -124,7 +123,7 @@ export default function TargetEntitySelector({
 
       nextObstacleTargets.enabled = true;
     } else {
-      nextTargets[entityType] = true;
+      nextTargets[typeId] = true;
     }
 
     onChange(nextTargets);
@@ -147,18 +146,18 @@ export default function TargetEntitySelector({
 
       <div className={styles.targetSelectorDivider} />
 
-      {availableEntityOptions.map(({ type: entityType, label }) => {
-        const isObstacle = entityType === ENTITY_TYPES.OBSTACLE;
+      {availableEntityOptions.map(({ type: typeId, label }) => {
+        const isObstacle = typeId === ENTITY_TYPES.OBSTACLE;
         const checked = isObstacle
           ? allObstacleShapesSelected
-          : targets[entityType] === true;
+          : targets[typeId] === true;
 
         return (
-          <div className={styles.targetSelectorGroup} key={entityType}>
+          <div className={styles.targetSelectorGroup} key={typeId}>
             <div className={styles.targetSelectorRow}>
               <label className={styles.formCheckbox}>
                 <input
-                  id={`${idPrefix}-target-${entityType}`}
+                  id={`${idPrefix}-target-${typeId}`}
                   type="checkbox"
                   checked={checked}
                   ref={(input) => {
@@ -171,7 +170,7 @@ export default function TargetEntitySelector({
                     }
                   }}
                   onChange={(event) =>
-                    handleCheckboxChange(entityType, event.target.checked)
+                    handleCheckboxChange(typeId, event.target.checked)
                   }
                 />
                 {label}
@@ -179,7 +178,7 @@ export default function TargetEntitySelector({
               <button
                 className={styles.targetSelectorOnly}
                 type="button"
-                onClick={() => handleOnly(entityType)}
+                onClick={() => handleOnly(typeId)}
               >
                 Only
               </button>

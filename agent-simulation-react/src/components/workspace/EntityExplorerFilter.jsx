@@ -18,8 +18,8 @@ export default function EntityExplorerFilter({ value: filters, onChange }) {
   }
 
   // This function updates one top-level Entity filter.
-  function handleEntityChange(entityType, checked) {
-    if (entityType === 'agent') {
+  function handleEntityChange(typeId, checked) {
+    if (typeId === 'agent') {
       onChange({ ...filters, agent: checked });
       return;
     }
@@ -45,13 +45,13 @@ export default function EntityExplorerFilter({ value: filters, onChange }) {
   }
 
   // This function keeps only the requested Entity type or Obstacle shape.
-  function handleOnly(entityType, shapeType = null) {
+  function handleOnly(typeId, shapeType = null) {
     onChange({
-      agent: entityType === 'agent',
+      agent: typeId === 'agent',
       obstacle: {
-        circle: entityType === 'obstacle'
+        circle: typeId === 'obstacle'
           && (shapeType === null || shapeType === 'circle'),
-        polygon: entityType === 'obstacle'
+        polygon: typeId === 'obstacle'
           && (shapeType === null || shapeType === 'polygon'),
       },
     });

@@ -497,8 +497,8 @@ function Simulation2ndGen() {
   function createDefaultFilterTargets() { // Default: select agent, deselect everyone else
     const targets = {};
 
-    Object.values(ENTITY_TYPES).forEach((entityType) => {
-      targets[entityType] = false;
+    Object.values(ENTITY_TYPES).forEach((typeId) => {
+      targets[typeId] = false;
     });
 
     targets[ENTITY_TYPES.AGENT] = true;
@@ -525,8 +525,8 @@ function Simulation2ndGen() {
       },
       ...Object.fromEntries(
         Object.values(ENTITY_TYPES)
-          .filter((entityType) => entityType !== ENTITY_TYPES.AGENT && entityType !== ENTITY_TYPES.OBSTACLE)
-          .map((entityType) => [entityType, targets[entityType] ?? defaults[entityType]])
+          .filter((typeId) => typeId !== ENTITY_TYPES.AGENT && typeId !== ENTITY_TYPES.OBSTACLE)
+          .map((typeId) => [typeId, targets[typeId] ?? defaults[typeId]])
       ),
     };
   }
@@ -743,7 +743,7 @@ function Simulation2ndGen() {
       ...agentsArrayRef.current,
     ]);
 
-    if (clicked?.entityType === ENTITY_TYPES.AGENT) {
+    if (clicked?.typeId === ENTITY_TYPES.AGENT) {
       setSelectedAgent(clicked);
       setSelectedObstacle(null);
       return;
@@ -751,7 +751,7 @@ function Simulation2ndGen() {
 
     // Obstacle clicks use the same selection state as the Obstacle List edit button.
     // This only selects for editing; live simulation intentionally does not support dragging.
-    if (clicked?.entityType === ENTITY_TYPES.OBSTACLE) {
+    if (clicked?.typeId === ENTITY_TYPES.OBSTACLE) {
       selectObstacleForEditing(clicked);
     }
   }

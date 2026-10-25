@@ -1,12 +1,76 @@
 import { parseNumberCap } from "../utils/utilities.js";
+import { ENTITY_ID_PREFIXES, ENTITY_LABELS, ENTITY_TYPES, SHAPE_TYPES } from "../utils/constants.js";
+
+// Each runtime starts with independent built-in definitions.
+export const BUILT_IN_ENTITY_TYPE_DEFINITIONS = Object.freeze(
+    Object.values(ENTITY_TYPES).map((id) => Object.freeze({
+        id,
+        name: ENTITY_LABELS[id],
+        idPrefix: ENTITY_ID_PREFIXES[id],
+        builtIn: true,
+        propertyDefinitions: [],
+        behaviors: [],
+        geometryTemplate: id === ENTITY_TYPES.AGENT
+            ? [{ type: SHAPE_TYPES.CIRCLE, radius: 5 }]
+            : id === ENTITY_TYPES.OBSTACLE
+                ? [{ type: SHAPE_TYPES.CIRCLE, radius: 50 }]
+                : [],
+    }))
+);
+
+// Centralizes Entity Type CRUD rules without owning React state.
+export const EntityTypeManager = Object.freeze({
+    // Creates Scenario-owned copies of the built-in definitions.
+    createBuiltIns() {
+        return structuredClone(BUILT_IN_ENTITY_TYPE_DEFINITIONS);
+    },
+
+    get(definitions, typeId) {
+        return definitions.find((definition) => definition.id === typeId) ?? null;
+    },
+
+    add(definitions, definition) {
+        if (!definition.id?.trim() || !definition.name?.trim()) {
+            throw new Error("Entity Type ID and name are required.");
+        }
+        if (this.get(definitions, definition.id)) {
+            throw new Error(`Entity Type ${definition.id} already exists.`);
+        }
+        return [...definitions, structuredClone(definition)];
+    },
+
+    update(definitions, typeId, changes) {
+        const current = this.get(definitions, typeId);
+        if (!current) throw new Error(`Entity Type ${typeId} does not exist.`);
+        if (changes.id !== undefined && changes.id !== typeId) {
+            throw new Error("Entity Type IDs cannot be changed.");
+        }
+        if (changes.name !== undefined && !changes.name.trim()) {
+            throw new Error("Entity Type name is required.");
+        }
+        return definitions.map((definition) =>
+            definition.id === typeId ? { ...definition, ...structuredClone(changes) } : definition
+        );
+    },
+
+    remove(definitions, typeId, entities) {
+        const definition = this.get(definitions, typeId);
+        if (!definition) throw new Error(`Entity Type ${typeId} does not exist.`);
+        if (definition.builtIn) throw new Error("Built-in Entity Types cannot be deleted.");
+        if (entities.some((entity) => entity.typeId === typeId)) {
+            throw new Error("Entity Type is still used by an Entity.");
+        }
+        return definitions.filter((item) => item.id !== typeId);
+    },
+});
 
 export class Entity {
-    constructor(id, name, entityType, position, rotation = 0, velocity = { x: 0, y: 0 }, shapes = []) {
+    constructor(id, name, typeId, position, rotation = 0, velocity = { x: 0, y: 0 }, shapes = []) {
         // Who am I?
         this.id = id;
         this.name = name; // NEW: name is different from id; id is a string created from UUID
         // What am I?
-        this.entityType = entityType; // A number defined in constants.js
+        this.typeId = typeId;
 
         // State owned by this Entity instance.
         this.transform = {

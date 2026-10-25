@@ -234,9 +234,9 @@ export default function SimulationExplorer({
 
   function formatFilterTargets(targets) {
     const selectedTargets = Object.values(ENTITY_TYPES)
-      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
-      .filter((entityType) => targets[entityType] === true)
-      .map((entityType) => ENTITY_LABELS[entityType]);
+      .filter((typeId) => typeId !== ENTITY_TYPES.OBSTACLE)
+      .filter((typeId) => targets[typeId] === true)
+      .map((typeId) => ENTITY_LABELS[typeId]);
     const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE];
 
     if (obstacleTargets.enabled) {

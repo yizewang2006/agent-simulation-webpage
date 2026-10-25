@@ -90,7 +90,7 @@ test('Entity owns movement, static motion, and virtual offsets', () => {
   const movingEntity = new Entity(
     'entity-1',
     'Moving Entity',
-    99,
+    'test-entity',
     { x: 95, y: 20 },
     Math.PI / 4,
     { x: 8, y: 0 },
@@ -105,7 +105,7 @@ test('Entity owns movement, static motion, and virtual offsets', () => {
   const staticEntity = new Entity(
     'entity-2',
     'Static Entity',
-    99,
+    'test-entity',
     { x: 30, y: 40 },
     0,
     { x: 0, y: 0 },

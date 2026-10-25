@@ -30,6 +30,7 @@ export default function AgentBehaviorForm({
   mode = FORM_MODES.CREATE,
   initialValues,
   properties,
+  entityTypeDefinitions,
   onSubmit,
   onCancel,
 }) {
@@ -276,6 +277,7 @@ export default function AgentBehaviorForm({
               <FilterFields
                 filterKind="Action"
                 filters={filters}
+                entityTypeDefinitions={entityTypeDefinitions}
                 onChange={setFilters}
                 idPrefix="action"
                 emptyDescription="Without filters, this behavior uses the average value from all neighbors currently in view."
@@ -330,6 +332,7 @@ export default function AgentBehaviorForm({
               <ActivationFields
                 value={activation}
                 onChange={setActivation}
+                entityTypeDefinitions={entityTypeDefinitions}
                 idPrefix="behavior-activation"
               />
             </div>

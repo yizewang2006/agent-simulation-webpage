@@ -25,11 +25,11 @@ export function parseNumberOrDefault(value, fallback) {
 // ENTITIES
 
 // Creates a unique ID for each entity
-export function createEntityID(entityType) {
-  const prefix = ENTITY_ID_PREFIXES[entityType];
+export function createEntityID(typeId) {
+  const prefix = ENTITY_ID_PREFIXES[typeId];
 
   if (!prefix) {
-    throw new Error(`Unsupported entity type: ${entityType}`);
+    throw new Error(`Unsupported entity type: ${typeId}`);
   }
 
   return `${prefix}-${crypto.randomUUID().toUpperCase()}`;
@@ -121,8 +121,8 @@ export function storeScenarioInformation(refs = {}) {
   const scenarioData = {};
 
   // Save values that can change while the simulation is playing.
-  Object.entries(refs).forEach(([entityType, ref]) => {
-    scenarioData[entityType] = ref.current.map((entity) => {
+  Object.entries(refs).forEach(([typeId, ref]) => {
+    scenarioData[typeId] = ref.current.map((entity) => {
       const centerPoint = entity.transform.position;
 
       return {

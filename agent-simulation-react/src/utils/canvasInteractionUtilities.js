@@ -10,13 +10,13 @@ export function findEntityAt(point, entities) {
     const entity = entities[index];
 
     if (
-      entity.entityType === ENTITY_TYPES.AGENT
+      entity.typeId === ENTITY_TYPES.AGENT
       && Math.hypot(point.x - entity.x, point.y - entity.y) <= entity.radius + 4
     ) {
       return entity;
     }
 
-    if (entity.entityType === ENTITY_TYPES.OBSTACLE) {
+    if (entity.typeId === ENTITY_TYPES.OBSTACLE) {
       if (
         entity.center
         && Math.hypot(
@@ -50,7 +50,7 @@ export function getDraggedEntityGeometry(
   canvasWidth,
   canvasHeight
 ) {
-  if (entity.entityType === ENTITY_TYPES.AGENT) {
+  if (entity.typeId === ENTITY_TYPES.AGENT) {
     return {
       x: Math.min(canvasWidth, Math.max(0, entity.x + dx)),
       y: Math.min(canvasHeight, Math.max(0, entity.y + dy)),

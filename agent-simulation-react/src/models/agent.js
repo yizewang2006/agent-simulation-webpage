@@ -293,7 +293,7 @@ export class Agent extends Entity{
                         // A polygon's bounding radius is only a broad-phase check.
                         // Its closest real edge must also be inside the FOV radius.
                         if (
-                            entity.entityType === ENTITY_TYPES.OBSTACLE &&
+                            entity.typeId === ENTITY_TYPES.OBSTACLE &&
                             entity.shapes.some((shape) => shape.type === SHAPE_TYPES.POLYGON) &&
                             Math.hypot(refDiffX, refDiffY) > this.fovRadius
                         ) {

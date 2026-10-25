@@ -18,12 +18,13 @@ export default function FilterFields({
   onChange,
   emptyDescription,
   idPrefix,
+  entityTypeDefinitions,
 }) {
   const [collapsedFilterIds, setCollapsedFilterIds] = useState(new Set());
 
   // Action and Activation pass different arrays into this shared editor.
   function addFilter() {
-    onChange([...filters, createFilterDraft()]);
+    onChange([...filters, createFilterDraft(entityTypeDefinitions)]);
   }
 
   function updateFilter(filterId, updates) {
@@ -119,6 +120,7 @@ export default function FilterFields({
                       <TargetEntitySelector
                         value={filter.targets}
                         idPrefix={`${idPrefix}-filter-${filter.id}`}
+                        entityTypeDefinitions={entityTypeDefinitions}
                         onChange={(targets) => updateFilter(filter.id, { targets })}
                       />
                     </div>
@@ -229,20 +231,19 @@ export default function FilterFields({
   );
 }
 
-function createFilterDraft() {
+function createFilterDraft(entityTypeDefinitions) {
+  const targets = Object.fromEntries(
+    entityTypeDefinitions.map(({ id }) => [id, id === ENTITY_TYPES.AGENT])
+  );
+  targets[ENTITY_TYPES.OBSTACLE] = {
+    enabled: false,
+    [SHAPE_TYPES.CIRCLE]: false,
+    [SHAPE_TYPES.POLYGON]: false,
+  };
+
   return {
     id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-    targets: {
-      [ENTITY_TYPES.AGENT]: true,
-      [ENTITY_TYPES.OBSTACLE]: {
-        enabled: false,
-        [SHAPE_TYPES.CIRCLE]: false,
-        [SHAPE_TYPES.POLYGON]: false,
-      },
-      [ENTITY_TYPES.LEADER]: false,
-      [ENTITY_TYPES.EXIT]: false,
-      [ENTITY_TYPES.SPACE]: false,
-    },
+    targets,
     filterType: "method",
     propertyType: MEASUREMENT_TYPES.DISTANCE,
     methodType: METHOD_TYPES.CLOSEST,

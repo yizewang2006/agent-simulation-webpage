@@ -72,13 +72,13 @@ function areScenarioEntitiesEqual(firstEntity, secondEntity) {
 
 function getSelectedEntityLabel(entity) {
   if (!entity) return '';
-  return ENTITY_LABELS[entity.entityType];
+  return ENTITY_LABELS[entity.typeId];
 }
 
 function createAgent(count, config = {}) {
   return {
     _scenarioBuilderKey: createScenarioEntityKey('agent'),
-    entityType: ENTITY_TYPES.AGENT,
+    typeId: ENTITY_TYPES.AGENT,
     id: createEntityID(ENTITY_TYPES.AGENT),
     name: createId('Agent', count),
     x: config.x ?? 250,
@@ -96,7 +96,7 @@ function createAgent(count, config = {}) {
 function createCircleObstacle(count, config = {}) {
   return {
     _scenarioBuilderKey: createScenarioEntityKey('obstacle'),
-    entityType: ENTITY_TYPES.OBSTACLE,
+    typeId: ENTITY_TYPES.OBSTACLE,
     shapeType: 'circle',
     id: createEntityID(ENTITY_TYPES.OBSTACLE),
     name: config.name || createId('Circle_Obstacle', count),
@@ -109,7 +109,7 @@ function createCircleObstacle(count, config = {}) {
 function createPolygonObstacle(count, config = {}) {
   return {
     _scenarioBuilderKey: createScenarioEntityKey('obstacle'),
-    entityType: ENTITY_TYPES.OBSTACLE,
+    typeId: ENTITY_TYPES.OBSTACLE,
     shapeType: 'polygon',
     id: createEntityID(ENTITY_TYPES.OBSTACLE),
     name: config.name || createId('Polygon_Obstacle', count),
@@ -750,9 +750,9 @@ export default function ScenarioBuilder() {
 
     const hitEntity = findEntityAt(point, [...obstacles, ...agents]);
     let hit = null;
-    if (hitEntity?.entityType === ENTITY_TYPES.AGENT) {
+    if (hitEntity?.typeId === ENTITY_TYPES.AGENT) {
       hit = { type: 'agent', id: hitEntity.id };
-    } else if (hitEntity?.entityType === ENTITY_TYPES.OBSTACLE) {
+    } else if (hitEntity?.typeId === ENTITY_TYPES.OBSTACLE) {
       hit = { type: 'obstacle', id: hitEntity.id };
     }
     setSelected(hit);
@@ -1411,8 +1411,8 @@ export default function ScenarioBuilder() {
     );
   }
 
-  function renderEntityCreationControls(entityType) {
-    if (entityType === ENTITY_TYPES.AGENT) {
+  function renderEntityCreationControls(typeId) {
+    if (typeId === ENTITY_TYPES.AGENT) {
       return (
         <>
           <button className="btn-primary icon-button" onClick={openAgentConfiguration}>
@@ -1425,7 +1425,7 @@ export default function ScenarioBuilder() {
       );
     }
 
-    if (entityType === ENTITY_TYPES.OBSTACLE) {
+    if (typeId === ENTITY_TYPES.OBSTACLE) {
       return (
         <>
           {Object.values(SHAPE_TYPES).map((shapeType) => {
@@ -1458,7 +1458,7 @@ export default function ScenarioBuilder() {
       <>
         <button className="btn-secondary icon-button" disabled>
           <Plus className="button-icon" size={16} aria-hidden="true" />
-          Create {ENTITY_LABELS[entityType]}
+          Create {ENTITY_LABELS[typeId]}
         </button>
       </>
     );
@@ -1590,16 +1590,16 @@ export default function ScenarioBuilder() {
             <div className="scenario-entity-list">
               {/* Entity buttons are generated from ENTITY_TYPES so new entity
                   types appear here automatically when constants.js grows. */}
-              {Object.values(ENTITY_TYPES).map((entityType) => {
-                const EntityIcon = ENTITY_ICONS[entityType] ?? Square;
+              {Object.values(ENTITY_TYPES).map((typeId) => {
+                const EntityIcon = ENTITY_ICONS[typeId] ?? Square;
 
                 return (
-                  <section className="scenario-entity-section" key={entityType}>
+                  <section className="scenario-entity-section" key={typeId}>
                     <h3 className="scenario-entity-heading">
                       <EntityIcon className="section-title-icon" size={16} aria-hidden="true" />
-                      {ENTITY_LABELS[entityType]}
+                      {ENTITY_LABELS[typeId]}
                     </h3>
-                    {renderEntityCreationControls(entityType)}
+                    {renderEntityCreationControls(typeId)}
                   </section>
                 );
               })}
@@ -1617,7 +1617,7 @@ export default function ScenarioBuilder() {
             </h2>
             {!selectedEntity && <p className="scenario-empty-state">Select or drag an item on the canvas.</p>}
 
-            {selectedEntity?.entityType === ENTITY_TYPES.AGENT && (
+            {selectedEntity?.typeId === ENTITY_TYPES.AGENT && (
               <>
                 <div className="input-group">
                   <label>Name</label>
@@ -1650,7 +1650,7 @@ export default function ScenarioBuilder() {
               </>
             )}
 
-            {selectedEntity?.entityType === ENTITY_TYPES.OBSTACLE && (
+            {selectedEntity?.typeId === ENTITY_TYPES.OBSTACLE && (
               <>
                 <div className="input-group">
                   <label>Name</label>

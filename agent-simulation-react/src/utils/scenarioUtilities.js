@@ -44,7 +44,7 @@ function requirePoint(value, label, canvasWidth, canvasHeight) {
 // Converts the agent data to a standard format.
 function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
   requireObject(agent, `Agent ${index + 1}`);
-  if (agent.entityType !== ENTITY_TYPES.AGENT) {
+  if (agent.typeId !== ENTITY_TYPES.AGENT) {
     throw new Error(`Agent ${index + 1} must have the Agent entity type.`);
   }
   const x = requireFiniteNumber(agent.x, `Agent ${index + 1} X`);
@@ -58,7 +58,7 @@ function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
   }
 
   return {
-    entityType: ENTITY_TYPES.AGENT,
+    typeId: ENTITY_TYPES.AGENT,
     id: requireEntityId(
       agent.id,
       `Agent ${index + 1} ID`,
@@ -80,7 +80,7 @@ function normalizeAgent(agent, index, canvasWidth, canvasHeight) {
 // Does the same thing for obstacles, but also checks the shape type and validates the properties accordingly.
 function normalizeObstacle(obstacle, index, canvasWidth, canvasHeight) {
   requireObject(obstacle, `Obstacle ${index + 1}`);
-  if (obstacle.entityType !== ENTITY_TYPES.OBSTACLE) {
+  if (obstacle.typeId !== ENTITY_TYPES.OBSTACLE) {
     throw new Error(`Obstacle ${index + 1} must have the Obstacle entity type.`);
   }
   const isCircle = obstacle.shapeType === 'circle' || obstacle.shapeType === SHAPE_TYPES.CIRCLE;
@@ -89,7 +89,7 @@ function normalizeObstacle(obstacle, index, canvasWidth, canvasHeight) {
 
   // Base properties for both circle and polygon obstacles
   const base = {
-    entityType: ENTITY_TYPES.OBSTACLE,
+    typeId: ENTITY_TYPES.OBSTACLE,
     id: requireEntityId(
       obstacle.id,
       `Obstacle ${index + 1} ID`,

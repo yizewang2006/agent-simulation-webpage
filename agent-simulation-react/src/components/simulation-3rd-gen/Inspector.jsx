@@ -29,6 +29,7 @@ export default function Inspector({
   onCreateBehavior,
   behaviors,
   properties,
+  entityTypeDefinitions,
   selectedBehavior,
   behaviorEditValues,
   onApplyBehaviorEdits,
@@ -159,6 +160,7 @@ export default function Inspector({
           <FormComponent
             mode={FORM_MODES.CREATE}
             properties={properties}
+            entityTypeDefinitions={entityTypeDefinitions}
             onSubmit={onCreateBehavior}
             onCancel={() =>
               onChangeView({ mode: INSPECTOR_MODES.EMPTY })
@@ -180,6 +182,7 @@ export default function Inspector({
         return (
           <FormComponent
             mode={FORM_MODES.CREATE}
+            entityTypeDefinitions={entityTypeDefinitions}
             onSubmit={onCreateCustomProperty}
             onCancel={() =>
               onChangeView({ mode: INSPECTOR_MODES.EMPTY })
@@ -202,6 +205,7 @@ export default function Inspector({
             key={selectedProperty.id}
             mode={FORM_MODES.EDIT}
             initialValues={propertyEditValues}
+            entityTypeDefinitions={entityTypeDefinitions}
             onSubmit={onApplyCustomPropertyEdits}
             onCancel={onCancelCustomPropertyEdit}
           />
@@ -212,6 +216,7 @@ export default function Inspector({
           <FormComponent
             mode={FORM_MODES.CREATE}
             behaviors={behaviors}
+            entityTypeDefinitions={entityTypeDefinitions}
             onApply={onApplyActivation}
             onCancel={() =>
               onChangeView({ mode: INSPECTOR_MODES.EMPTY })
@@ -234,6 +239,7 @@ export default function Inspector({
             key={selectedBehavior.id}
             mode={FORM_MODES.EDIT}
             properties={properties}
+            entityTypeDefinitions={entityTypeDefinitions}
             initialValues={behaviorEditValues}
             onSubmit={onApplyBehaviorEdits}
             onCancel={onCancelBehaviorEdit}

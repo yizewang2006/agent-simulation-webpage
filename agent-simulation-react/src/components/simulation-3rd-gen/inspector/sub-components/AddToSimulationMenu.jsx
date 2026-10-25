@@ -45,7 +45,7 @@ export default function AddToSimulationMenu({
     const [isExpanded, setIsExpanded] = useState(false);
     const menuId = useId();
     const availableEntityTypes = entityTypes.filter(
-        (entityType) => hasFormComponent(ENTITY_CREATE_MODES[entityType])
+        (typeId) => hasFormComponent(ENTITY_CREATE_MODES[typeId])
     );
     const hasAgentBehaviorForm = showBehaviors
         && hasFormComponent(INSPECTOR_MODES.CREATE_AGENT_BEHAVIOR);
@@ -102,14 +102,14 @@ export default function AddToSimulationMenu({
                         <h4 className={styles.addMenuSectionTitle}>Entities</h4>
 
                         {/* Hide entity types until their creation form is registered. */}
-                        {availableEntityTypes.map((entityType) => {
-                            const createMode = ENTITY_CREATE_MODES[entityType];
-                            const details = ENTITY_MENU_DETAILS[entityType] ?? {};
+                        {availableEntityTypes.map((typeId) => {
+                            const createMode = ENTITY_CREATE_MODES[typeId];
+                            const details = ENTITY_MENU_DETAILS[typeId] ?? {};
                             const EntityIcon = details.Icon ?? Shapes;
 
                             return (
                                 <button
-                                    key={entityType}
+                                    key={typeId}
                                     type="button"
                                     className={styles.listEntry}
                                     onClick={() => selectMode(createMode)}
@@ -121,7 +121,7 @@ export default function AddToSimulationMenu({
                                     />
                                     <span className={styles.listEntryText}>
                                         <span className={styles.listEntryName}>
-                                            {ENTITY_LABELS[entityType] ?? `Entity ${entityType}`}
+                                            {ENTITY_LABELS[typeId] ?? `Entity ${typeId}`}
                                         </span>
                                         <span className={styles.listEntryDescription}>
                                             {getFormDescription(createMode)}

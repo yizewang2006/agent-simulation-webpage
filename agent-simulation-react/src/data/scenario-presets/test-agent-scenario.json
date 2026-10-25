@@ -6,7 +6,7 @@
   },
   "agents": [
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-57D5187D-11B7-40E3-BDEF-37C9A202A999",
       "x": 68.19556085795442,
       "y": 424.9695202263044,
@@ -20,7 +20,7 @@
       "name": "Agent_1"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-8433EA06-AA04-47ED-921C-4D9A592C30D8",
       "x": 304.75840981945316,
       "y": 209.44674710321866,
@@ -34,7 +34,7 @@
       "name": "Agent_2"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-A0B56544-DA38-40A6-BAAD-F851489C8EA9",
       "x": 239.97378830230105,
       "y": 446.4195171823464,
@@ -48,7 +48,7 @@
       "name": "Agent_3"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-1DB04E0A-C08C-4886-A215-E55E41785D17",
       "x": 184.16699842363093,
       "y": 318.98339119523973,
@@ -62,7 +62,7 @@
       "name": "Agent_4"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-49BED14C-37DE-496A-BD76-D51666FF2325",
       "x": 375.3916023365033,
       "y": 180.20336927246694,
@@ -76,7 +76,7 @@
       "name": "Agent_5"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-20BD1A61-752C-4A9E-A580-F7CA391F18EA",
       "x": 307.2966872400332,
       "y": 296.3476756532838,
@@ -90,7 +90,7 @@
       "name": "Agent_6"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-5FD3BC5E-218B-456A-991B-24BC66D4C64E",
       "x": 16.617426346729026,
       "y": 207.9329072844673,
@@ -104,7 +104,7 @@
       "name": "Agent_7"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-773BD39A-A5B8-4BE9-98CA-C4575086B778",
       "x": 271.97348291297516,
       "y": 480.9319114537575,
@@ -118,7 +118,7 @@
       "name": "Agent_8"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-35494B19-5D82-444C-AEC1-EFDAD08E5AC5",
       "x": 149.37159545421363,
       "y": 136.54941986919616,
@@ -132,7 +132,7 @@
       "name": "Agent_9"
     },
     {
-      "entityType": 0,
+      "typeId": "agent",
       "id": "AGT-84513948-927F-4505-8D59-3F71CAAC2906",
       "x": 267.6465049002373,
       "y": 121.20742024796783,
@@ -148,7 +148,7 @@
   ],
   "obstacles": [
     {
-      "entityType": 1,
+      "typeId": "obstacle",
       "shapeType": "polygon",
       "id": "OBS-AE353CE3-2CAF-46DB-A514-8651955629AF",
       "color": "#ACAD9D",

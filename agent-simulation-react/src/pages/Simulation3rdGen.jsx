@@ -16,6 +16,7 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
 import { Obstacle } from "../models/obstacle.js";
+import { EntityTypeManager } from "../models/entity.js";
 import {
   ACTIVATION_TYPES,
   DEFAULT_BEHAVIOR_COLOR,
@@ -485,8 +486,25 @@ function Simulation3rdGen() {
   const [obstacles, setObstacles] = useState([]); // State to hold obstacles for display in the control panel
   const [obstaclesListExpanded, setObstaclesListExpanded] = useState(false); // State to toggle obstacles list visibility
 
-  // Property List
-  const [propertyList, setPropertyList] = useState([]); // initializes an empty array of properties
+  // Entity Type Definitions own their Behaviors and Property Definitions.
+  const [entityTypeDefinitions, setEntityTypeDefinitions] = useState(
+    () => EntityTypeManager.createBuiltIns() // initialize built in ones (agent, obstacles, ...)
+  );
+  const agentTypeDefinition = EntityTypeManager.get(
+    entityTypeDefinitions,
+    ENTITY_TYPES.AGENT
+  );
+  const obstacleTypeDefinition = EntityTypeManager.get(
+    entityTypeDefinitions,
+    ENTITY_TYPES.OBSTACLE
+  );
+  const behaviorList = agentTypeDefinition.behaviors;
+  const propertyList = Array.from(new Map(
+    entityTypeDefinitions
+      .flatMap((definition) => definition.propertyDefinitions)
+      .map((property) => [property.id, property])
+  ).values());
+
   const [selectedProperty, setSelectedProperty] = useState(null); // currently selected property
 
   // Debug State
@@ -512,9 +530,8 @@ function Simulation3rdGen() {
   const [showAddObstacle, setShowAddObstacle] = useState(false);
 
   // Behavior & Filter settings state & Ref
-  const [behaviorList, setBehaviorList] = useState([]); // Behavior
   const [collapsedBehaviorIds, setCollapsedBehaviorIds] = useState(new Set());
-  const behaviorGroupsRef = useRef(groupBehaviors([], true));
+  const behaviorGroupsByTypeRef = useRef(new Map());
 
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
@@ -698,7 +715,7 @@ function Simulation3rdGen() {
 
         agent.showFOV = draft.showFOV;
 
-        propertyList.forEach((property) => {
+        agentTypeDefinition.propertyDefinitions.forEach((property) => {
           assignPropertyToEntity(agent, property);
         });
       });
@@ -957,7 +974,7 @@ function Simulation3rdGen() {
       name: scenarioName,
       canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
       agents: agentsArrayRef.current.map((agent) => ({
-        entityType: ENTITY_TYPES.AGENT,
+        typeId: ENTITY_TYPES.AGENT,
         id: agent.id,
         name: agent.name,
         x: agent.transform.position.x,
@@ -973,7 +990,7 @@ function Simulation3rdGen() {
       obstacles: obstaclesArrayRef.current.map((obstacle) => (
         obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE
           ? {
-              entityType: ENTITY_TYPES.OBSTACLE,
+              typeId: ENTITY_TYPES.OBSTACLE,
               id: obstacle.id,
               name: obstacle.name,
               shapeType: 'circle',
@@ -982,7 +999,7 @@ function Simulation3rdGen() {
               radius: obstacle.shapes[0].radius,
             }
           : {
-              entityType: ENTITY_TYPES.OBSTACLE,
+              typeId: ENTITY_TYPES.OBSTACLE,
               id: obstacle.id,
               name: obstacle.name,
               shapeType: 'polygon',
@@ -1055,7 +1072,11 @@ function Simulation3rdGen() {
         ...config,
       };
 
-      setBehaviorList((currentList) => [...currentList, behavior]);
+      setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+        definitions,
+        ENTITY_TYPES.AGENT,
+        { behaviors: [...EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors, behavior] }
+      ));
       // Show the behavior as soon as creation succeeds.
       setExplorerTab(EXPLORER_TABS.BEHAVIORS);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
@@ -1110,13 +1131,15 @@ function Simulation3rdGen() {
       const config = normalizeBehaviorDraft(values, selectedBehavior);
 
       // Keep the stable ID while replacing the complete saved draft.
-      setBehaviorList((currentList) =>
-        currentList.map((behavior) =>
+      setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+        definitions,
+        ENTITY_TYPES.AGENT,
+        { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) =>
           behavior.id === selectedBehavior.id
             ? { id: behavior.id, ...config }
             : behavior
-        )
-      );
+        ) }
+      ));
       setSelectedBehavior(null);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -1132,11 +1155,13 @@ function Simulation3rdGen() {
 
   function handleSetBehaviorEnabled(behaviorId, enabled) {
     // Keep enabled as an explicit boolean for later runtime checks.
-    setBehaviorList((currentList) =>
-      currentList.map((behavior) =>
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) =>
         behavior.id === behaviorId ? { ...behavior, enabled } : behavior
-      )
-    );
+      ) }
+    ));
     setSelectedBehavior((currentBehavior) =>
       currentBehavior?.id === behaviorId
         ? { ...currentBehavior, enabled }
@@ -1159,11 +1184,13 @@ function Simulation3rdGen() {
       }
 
       // Activation configuration does not replace the Behavior's Action data.
-      setBehaviorList((currentList) =>
-        currentList.map((behavior) =>
+      setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+        definitions,
+        ENTITY_TYPES.AGENT,
+        { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) =>
           behavior.id === behaviorId ? { ...behavior, activation } : behavior
-        )
-      );
+        ) }
+      ));
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
     } catch (error) {
@@ -1173,9 +1200,13 @@ function Simulation3rdGen() {
 
   function handleUpdateBehavior(behaviorId, updates) {
     // Update the behavior with the matching behaviorId.
-    setBehaviorList((currentList) => currentList.map((behavior) => (
-      behavior.id === behaviorId ? { ...behavior, ...updates } : behavior
-    )));
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) => (
+        behavior.id === behaviorId ? { ...behavior, ...updates } : behavior
+      )) }
+    ));
   }
 
   function handleRenameBehavior(behaviorId, name) {
@@ -1184,7 +1215,13 @@ function Simulation3rdGen() {
 
   function handleDeleteBehavior(behaviorId) {
     // Delete the behavior with the matching behaviorId from the behavior list.
-    setBehaviorList((currentList) => currentList.filter((behavior) => behavior.id !== behaviorId));
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.filter(
+        (behavior) => behavior.id !== behaviorId
+      ) }
+    ));
     // Also remove that behavior from the collapsed card set, so deleted IDs do not stay in UI state.
     setCollapsedBehaviorIds((currentIds) => {
       const nextIds = new Set(currentIds);
@@ -1228,9 +1265,13 @@ function Simulation3rdGen() {
         .map((behavior) => behavior.id)
     );
 
-    setBehaviorList((currentList) =>
-      currentList.filter((behavior) => getBehaviorGroupKey(behavior.targetProperty) !== groupKey)
-    );
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.filter(
+        (behavior) => getBehaviorGroupKey(behavior.targetProperty) !== groupKey
+      ) }
+    ));
     setCollapsedBehaviorIds((currentIds) => {
       const nextIds = new Set(currentIds);
       deletedIds.forEach((behaviorId) => nextIds.delete(behaviorId));
@@ -1255,7 +1296,11 @@ function Simulation3rdGen() {
       loadedBehaviorIds.push(loadedBehavior.id);
     });
 
-    setBehaviorList(nextList);
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: nextList }
+    ));
     setExplorerTab(EXPLORER_TABS.BEHAVIORS);
     // Collapse imported behaviors by default so large presets stay easy to scan.
     setCollapsedBehaviorIds((currentIds) => {
@@ -1378,9 +1423,9 @@ function Simulation3rdGen() {
     }
 
     Object.values(ENTITY_TYPES)
-      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
-      .forEach((entityType) => {
-        if (typeof filter.targets[entityType] !== 'boolean') {
+      .filter((typeId) => typeId !== ENTITY_TYPES.OBSTACLE)
+      .forEach((typeId) => {
+        if (typeof filter.targets[typeId] !== 'boolean') {
           throw new Error(`${label} must include every entity target as a boolean.`);
         }
       });
@@ -1509,10 +1554,16 @@ function Simulation3rdGen() {
         assignPropertyToEntity(entity, property);
       });
 
-      setPropertyList((currentList) => [
-        ...currentList,
-        property,
-      ]);
+      setEntityTypeDefinitions((definitions) => definitions.map((definition) => {
+        const isAssigned = definition.id === ENTITY_TYPES.OBSTACLE
+          ? property.assignments[definition.id]?.enabled === true
+          : property.assignments[definition.id] === true;
+        if (!isAssigned) return definition;
+        return {
+          ...definition,
+          propertyDefinitions: [...definition.propertyDefinitions, property],
+        };
+      }));
 
       setInspectorMode({
         mode: INSPECTOR_MODES.EMPTY,
@@ -1580,11 +1631,20 @@ function Simulation3rdGen() {
         }
       });
 
-      setPropertyList((currentList) =>
-        currentList.map((property) =>
-          property.id === selectedProperty.id ? updatedProperty : property
-        )
-      );
+      setEntityTypeDefinitions((definitions) => definitions.map((definition) => {
+        const isAssigned = definition.id === ENTITY_TYPES.OBSTACLE
+          ? updatedProperty.assignments[definition.id]?.enabled === true
+          : updatedProperty.assignments[definition.id] === true;
+        const remainingProperties = definition.propertyDefinitions.filter(
+          (property) => property.id !== updatedProperty.id
+        );
+        return {
+          ...definition,
+          propertyDefinitions: isAssigned
+            ? [...remainingProperties, updatedProperty]
+            : remainingProperties,
+        };
+      }));
       setSelectedProperty(null);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -1599,13 +1659,12 @@ function Simulation3rdGen() {
   }
 
   function handleRenameCustomProperty(propertyId, name) {
-    setPropertyList((currentList) =>
-      currentList.map((property) =>
-        property.id === propertyId
-          ? { ...property, name }
-          : property
-      )
-    );
+    setEntityTypeDefinitions((definitions) => definitions.map((definition) => ({
+      ...definition,
+      propertyDefinitions: definition.propertyDefinitions.map((property) =>
+        property.id === propertyId ? { ...property, name } : property
+      ),
+    })));
   }
 
   // TODO: Add Property deletion after Behavior, Filter, and Activation store
@@ -1677,15 +1736,20 @@ function Simulation3rdGen() {
     );
   }
 
-  // Behavior List Ref Sync (ensuring the latest behavior list is available)
+  // Keep each Entity Type's runtime Behavior groups current.
   useEffect(() => {
-    behaviorGroupsRef.current = groupBehaviors(behaviorList, true);
+    behaviorGroupsByTypeRef.current = new Map(
+      entityTypeDefinitions.map((definition) => [
+        definition.id,
+        groupBehaviors(definition.behaviors, true),
+      ])
+    );
 
     // A changed Behavior configuration must not reuse the previous steering target.
     agentsArrayRef.current.forEach((agent) => {
       agent.runtimeState.steeringRotation = agent.transform.rotation;
     });
-  }, [behaviorList]);
+  }, [entityTypeDefinitions]);
 
   // Debug Session
   // When the scenario changes in Debug Mode, refresh every Agent's decision vectors by calling calculateDecision() again.
@@ -1701,7 +1765,7 @@ function Simulation3rdGen() {
     runtimeAgents.forEach((agent) => {
       agent.debugDecision = agent.calculateDecision(
         allEntities,
-        behaviorGroupsRef.current,
+        behaviorGroupsByTypeRef.current.get(agent.typeId),
         maxSpeedRef.current,
         maxAngleRef.current,
         smoothingFactorRef.current
@@ -1891,7 +1955,7 @@ function Simulation3rdGen() {
           const decisions = runtimeAgents.map((agent) =>
             agent.calculateDecision(
               allEntities,
-              behaviorGroupsRef.current,
+              behaviorGroupsByTypeRef.current.get(agent.typeId),
               maxSpeedRef.current,
               maxAngleRef.current,
               smoothingFactorRef.current
@@ -1956,10 +2020,10 @@ function Simulation3rdGen() {
       ...obstaclesArrayRef.current,
       ...agentsArrayRef.current,
     ]);
-    const clickedAgent = clickedEntity?.entityType === ENTITY_TYPES.AGENT
+    const clickedAgent = clickedEntity?.typeId === ENTITY_TYPES.AGENT
       ? clickedEntity
       : null;
-    const clickedObstacle = clickedEntity?.entityType === ENTITY_TYPES.OBSTACLE
+    const clickedObstacle = clickedEntity?.typeId === ENTITY_TYPES.OBSTACLE
       ? clickedEntity
       : null;
 
@@ -2301,7 +2365,7 @@ function Simulation3rdGen() {
               config.color
             );
 
-      propertyList.forEach((property) => {
+      obstacleTypeDefinition.propertyDefinitions.forEach((property) => {
         assignPropertyToEntity(obstacle, property);
       });
 
@@ -2848,6 +2912,7 @@ function Simulation3rdGen() {
           onCreateBehavior={handleCreateBehavior}
           behaviors={behaviorList}
           properties={propertyList}
+          entityTypeDefinitions={entityTypeDefinitions}
           selectedBehavior={selectedBehavior}
           behaviorEditValues={getBehaviorEditValues(selectedBehavior)}
           onApplyBehaviorEdits={handleApplyBehaviorEdits}

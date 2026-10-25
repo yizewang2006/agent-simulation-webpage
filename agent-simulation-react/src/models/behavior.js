@@ -319,8 +319,8 @@ export function normalizeFilterDrafts(filters, ownerLabel) {
     const label = `${ownerLabel} ${index + 1}`;
     const obstacleTargets = filter.targets[ENTITY_TYPES.OBSTACLE];
     const hasTarget = Object.values(ENTITY_TYPES)
-      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
-      .some((entityType) => filter.targets[entityType] === true)
+      .filter((typeId) => typeId !== ENTITY_TYPES.OBSTACLE)
+      .some((typeId) => filter.targets[typeId] === true)
       || obstacleTargets.enabled === true;
 
     if (!hasTarget) {
@@ -437,7 +437,7 @@ export function getEntityReferencePosition(self, entity) {
   const centerPoint = getEntityCenterPoint(entity);
   if (!centerPoint) return null;
 
-  if (entity.entityType === ENTITY_TYPES.OBSTACLE) {
+  if (entity.typeId === ENTITY_TYPES.OBSTACLE) {
     // Obstacles use the closest boundary point, not the center/centroid, for detection and steering.
     return entity.getClosestPointTo(getObstacleQueryPosition(self, entity));
   }
@@ -448,7 +448,7 @@ export function getEntityReferencePosition(self, entity) {
 export function getEntityDetectionPoints(self, entity) {
   if (!getEntityCenterPoint(entity)) return [];
 
-  if (entity.entityType === ENTITY_TYPES.OBSTACLE) { // FOR POLYGON OBSTACLES, the Entity returns Shape detection points
+  if (entity.typeId === ENTITY_TYPES.OBSTACLE) { // FOR POLYGON OBSTACLES, the Entity returns Shape detection points
     // Obstacles use the closest boundary point for detection and steering.
     return [entity.getClosestPointTo(getObstacleQueryPosition(self, entity))];
   }
@@ -556,14 +556,14 @@ function getEntityActionValue(targetProperty, self, entity) {
 // Apply entity targets first, then the selected Ranged or Method algorithm.
 function applyEntityFilter(agentFilter, self, entities) {
   if (!agentFilter) {
-    return entities.filter((entity) => entity.entityType === ENTITY_TYPES.AGENT);
+    return entities.filter((entity) => entity.typeId === ENTITY_TYPES.AGENT);
   }
 
   const targets = agentFilter.targets;
   const targetedEntities = entities.filter((entity) => {
     if (!entity) return false;
 
-    if (entity.entityType === ENTITY_TYPES.OBSTACLE) {
+    if (entity.typeId === ENTITY_TYPES.OBSTACLE) {
       const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE];
 
       if (!obstacleTargets.enabled) return false;
@@ -574,7 +574,7 @@ function applyEntityFilter(agentFilter, self, entities) {
 
     // More entity-specific conditional statement coming soon
 
-    return Boolean(targets[entity.entityType]);
+    return Boolean(targets[entity.typeId]);
   });
 
   if (agentFilter.filterType === 'ranged')

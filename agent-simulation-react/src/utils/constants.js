@@ -1,4 +1,4 @@
-// ─── Constants (numeric identifiers used in computation & UI) ────────────────
+// Stable identifiers used in computation and UI.
 
 export const TARGET_PROPERTIES = {
   POSITION: 0,
@@ -22,11 +22,11 @@ export const MEASUREMENT_TYPES = {
 };
 
 export const ENTITY_TYPES = {
-  AGENT: 0,
-  OBSTACLE: 1,
-  LEADER: 2,
-  EXIT: 3,
-  SPACE: 4,
+  AGENT: 'agent',
+  OBSTACLE: 'obstacle',
+  LEADER: 'leader',
+  EXIT: 'exit',
+  SPACE: 'space',
 };
 
 export const ENTITY_ID_PREFIXES = Object.freeze({
