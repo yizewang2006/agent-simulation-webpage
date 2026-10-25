@@ -18,9 +18,9 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
-import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
-import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../utils/constants.js";
-import { findEntityAt } from "../utils/canvasInteractionUtilities.js";
+import { Obstacle } from "../models/obstacle.js";
+import { TARGET_PROPERTIES, METHOD_TYPES, MEASUREMENT_TYPES, REFERENCE_TYPES, ENTITY_TYPES, SHAPE_TYPES } from "../utils/constants.js";
+import { findRuntimeEntityAt } from "../utils/runtimeCanvasInteractionUtilities.js";
 import { configureHighDpiCanvas, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent } from "../utils/utilities.js";
 import { loadScenarioFile } from "../utils/scenarioUtilities.js";
 
@@ -37,31 +37,34 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     agents: agentsArray.map((agent) => ({
       id: agent.id,
       name: agent.name,
-      x: agent.x,
-      y: agent.y,
-      radius: agent.radius,
-      dx: agent.dx,
-      dy: agent.dy,
-      angle: agent.angle,
+      x: agent.transform.position.x,
+      y: agent.transform.position.y,
+      radius: agent.shapes[0].radius,
+      dx: agent.velocity.x,
+      dy: agent.velocity.y,
+      angle: agent.transform.rotation,
       colorHex: agent.colorHex,
       fovRadius: agent.fovRadius,
       fovAngle: agent.fovAngle,
-      // Store the final visual FOV decision, matching Agent.draw().
+      // Store the final visual FOV decision used by Entity.draw().
       showFOV: agent.isSpecial && agent.showFOV !== false,
     })),
-    obstacles: obstaclesArray.map((obstacle) => ({
-      id: obstacle.id,
-      name: obstacle.name,
-      shapeType: obstacle.shapeType,
-      color: obstacle.color,
-      center: obstacle.center
-        ? { x: obstacle.center.x, y: obstacle.center.y }
-        : null,
-      radius: obstacle.radius,
-      vertices: Array.isArray(obstacle.vertices)
-        ? obstacle.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y }))
-        : [],
-    })),
+    obstacles: obstaclesArray.map((obstacle) => {
+      const shape = obstacle.shapes[0];
+      return {
+        id: obstacle.id,
+        name: obstacle.name,
+        shapeType: shape.type,
+        color: obstacle.color,
+        center: shape.type === SHAPE_TYPES.CIRCLE
+          ? shape.getWorldCenter(obstacle.transform)
+          : null,
+        radius: shape.type === SHAPE_TYPES.CIRCLE ? shape.radius : null,
+        vertices: shape.type === SHAPE_TYPES.POLYGON
+          ? shape.getWorldVertices(obstacle.transform)
+          : [],
+      };
+    }),
   };
 }
 
@@ -76,13 +79,13 @@ function drawObstaclePreview(ctx, preview) {
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 6]);
 
-  if (preview.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+  if (preview.shapeType === SHAPE_TYPES.CIRCLE) {
     ctx.beginPath();
     ctx.arc(preview.center.x, preview.center.y, preview.radius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  } else if (preview.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON && preview.vertices.length >= 3) {
+  } else if (preview.shapeType === SHAPE_TYPES.POLYGON && preview.vertices.length >= 3) {
     ctx.beginPath();
     ctx.moveTo(preview.vertices[0].x, preview.vertices[0].y);
     for (let i = 1; i < preview.vertices.length; i++) {
@@ -162,8 +165,8 @@ function Simulation2ndGen() {
   const obstaclePreviewRef = useRef(null); // Draft obstacle preview drawn over the canvas while creating
   const scenarioFileInputRef = useRef(null);
 
-  const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
-  const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
+  const [targetFPS, setTargetFPS] = useState('30'); // Runtime frame-rate target, carried forward from the previous Simulation.
+  const [simulationScale, setSimulationScale] = useState('large'); // Small and large modes control which creation UI is shown.
   const fpsRef = useRef(targetFPS); // Ref to hold the current FPS value, reference this value without the need of rendering
   const [maxSpeed, setMaxSpeed] = useState('3');
   const [maxAngle, setMaxAngle] = useState('45');
@@ -343,7 +346,6 @@ function Simulation2ndGen() {
           heading,
           agent.id,
           agent.name,
-          ctx,
           canvas,
           runtimeAgents
         );
@@ -352,8 +354,8 @@ function Simulation2ndGen() {
 
       const runtimeObstacles = scenario.obstacles.map((obstacle) => (
         obstacle.shapeType === 'circle'
-          ? new CircleObstacle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color, ctx)
-          : new PolygonObstacle(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color, ctx)
+          ? Obstacle.createCircle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color)
+          : Obstacle.createPolygon(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color)
       ));
       obstaclesArrayRef.current.length = 0;
       obstaclesArrayRef.current.push(...runtimeObstacles);
@@ -495,15 +497,15 @@ function Simulation2ndGen() {
   function createDefaultFilterTargets() { // Default: select agent, deselect everyone else
     const targets = {};
 
-    Object.values(ENTITY_TYPES).forEach((entityType) => {
-      targets[entityType] = false;
+    Object.values(ENTITY_TYPES).forEach((typeId) => {
+      targets[typeId] = false;
     });
 
     targets[ENTITY_TYPES.AGENT] = true;
     targets[ENTITY_TYPES.OBSTACLE] = {
       enabled: false,
-      [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
-      [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
+      [SHAPE_TYPES.CIRCLE]: true,
+      [SHAPE_TYPES.POLYGON]: true,
     };
 
     return targets;
@@ -518,13 +520,13 @@ function Simulation2ndGen() {
       [ENTITY_TYPES.AGENT]: targets[ENTITY_TYPES.AGENT] ?? defaults[ENTITY_TYPES.AGENT], // If n
       [ENTITY_TYPES.OBSTACLE]: {
         enabled: targets[ENTITY_TYPES.OBSTACLE]?.enabled ?? defaults[ENTITY_TYPES.OBSTACLE].enabled,
-        [OBSTACLE_SHAPE_TYPES.CIRCLE]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.CIRCLE] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.CIRCLE],
-        [OBSTACLE_SHAPE_TYPES.POLYGON]: targets[ENTITY_TYPES.OBSTACLE]?.[OBSTACLE_SHAPE_TYPES.POLYGON] ?? defaults[ENTITY_TYPES.OBSTACLE][OBSTACLE_SHAPE_TYPES.POLYGON],
+        [SHAPE_TYPES.CIRCLE]: targets[ENTITY_TYPES.OBSTACLE]?.[SHAPE_TYPES.CIRCLE] ?? defaults[ENTITY_TYPES.OBSTACLE][SHAPE_TYPES.CIRCLE],
+        [SHAPE_TYPES.POLYGON]: targets[ENTITY_TYPES.OBSTACLE]?.[SHAPE_TYPES.POLYGON] ?? defaults[ENTITY_TYPES.OBSTACLE][SHAPE_TYPES.POLYGON],
       },
       ...Object.fromEntries(
         Object.values(ENTITY_TYPES)
-          .filter((entityType) => entityType !== ENTITY_TYPES.AGENT && entityType !== ENTITY_TYPES.OBSTACLE)
-          .map((entityType) => [entityType, targets[entityType] ?? defaults[entityType]])
+          .filter((typeId) => typeId !== ENTITY_TYPES.AGENT && typeId !== ENTITY_TYPES.OBSTACLE)
+          .map((typeId) => [typeId, targets[typeId] ?? defaults[typeId]])
       ),
     };
   }
@@ -662,7 +664,7 @@ function Simulation2ndGen() {
     agentsArrayRef.current = agentsArray; // Store in ref for access outside useEffect
 
     // Update state with agents for the control panel
-    setAgents(agentsArray); // explained by Claude: ",,," implies a shallow copy of the array, but not required here
+    setAgents(agentsArray);
 
     // Animation loop - borrowed from legacy simulation
     let animationId;
@@ -675,7 +677,7 @@ function Simulation2ndGen() {
       if (elapsed >= frameInterval) {
         lastFrameTime = currentTime - (elapsed % frameInterval);
         ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
-        obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
+        obstaclesArrayRef.current.forEach(obstacle => obstacle.draw(ctx));
         drawObstaclePreview(ctx, obstaclePreviewRef.current);
         drawAgentPreview(ctx, agentPreviewRef.current);
 
@@ -686,15 +688,14 @@ function Simulation2ndGen() {
 
         if (isSimulationRunningRef.current) {
           // Only advance positions and behaviors while the simulation is playing.
-          runtimeAgents.forEach(agent => agent.move(maxSpeedRef.current));
+          const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
+          allEntities.forEach(entity => entity.move(CANVAS_WIDTH, CANVAS_HEIGHT, maxSpeedRef.current));
           runtimeAgents.forEach(agent => {
             // Snapshot motion before behavior so neighbor-reference rules do not
             // read speeds/headings already changed earlier in the same frame.
-            agent.behaviorDx = agent.dx;
-            agent.behaviorDy = agent.dy;
-            agent.behaviorAngle = agent.angle;
+            agent.runtimeState.behaviorVelocity = { ...agent.velocity };
+            agent.runtimeState.behaviorRotation = agent.transform.rotation;
           });
-          const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
           const decisions = runtimeAgents.map((agent) =>
             agent.calculateDecision(
               allEntities,
@@ -721,7 +722,7 @@ function Simulation2ndGen() {
           }
         }
 
-        runtimeAgents.forEach(agent => agent.draw());
+        runtimeAgents.forEach(agent => agent.draw(ctx));
       }
     }
     animate(0);
@@ -737,12 +738,12 @@ function Simulation2ndGen() {
     const point = getCanvasPointFromEvent(e, canvas);
 
     // Find the topmost Entity in the same order used to draw the canvas.
-    const clicked = findEntityAt(point, [
+    const clicked = findRuntimeEntityAt(point, [
       ...obstaclesArrayRef.current,
       ...agentsArrayRef.current,
     ]);
 
-    if (clicked?.entityType === ENTITY_TYPES.AGENT) {
+    if (clicked?.typeId === ENTITY_TYPES.AGENT) {
       setSelectedAgent(clicked);
       setSelectedObstacle(null);
       return;
@@ -750,7 +751,7 @@ function Simulation2ndGen() {
 
     // Obstacle clicks use the same selection state as the Obstacle List edit button.
     // This only selects for editing; live simulation intentionally does not support dragging.
-    if (clicked?.entityType === ENTITY_TYPES.OBSTACLE) {
+    if (clicked?.typeId === ENTITY_TYPES.OBSTACLE) {
       selectObstacleForEditing(clicked);
     }
   }
@@ -820,16 +821,18 @@ function Simulation2ndGen() {
     selectedObstacle.name = updates.name;
     selectedObstacle.color = updates.color;
 
-    if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      selectedObstacle.position = updates.center;
-      selectedObstacle.center = selectedObstacle.position;
-      selectedObstacle.radius = updates.radius;
+    if (selectedObstacle.shapes[0].type === SHAPE_TYPES.CIRCLE) {
+      selectedObstacle.transform.position = updates.center;
+      selectedObstacle.shapes[0].radius = updates.radius;
     } else {
-      selectedObstacle.vertices = updates.vertices;
-      selectedObstacle.edges = selectedObstacle._buildEdges(updates.vertices);
-      selectedObstacle.position = selectedObstacle._computeCentroid(updates.vertices);
-      selectedObstacle.centroid = selectedObstacle.position;
-      selectedObstacle.radius = selectedObstacle._computeBoundingRadius(updates.vertices, selectedObstacle.position);
+      const updatedObstacle = Obstacle.createPolygon(
+        selectedObstacle.id,
+        selectedObstacle.name,
+        updates.vertices,
+        selectedObstacle.color
+      );
+      selectedObstacle.transform = updatedObstacle.transform;
+      selectedObstacle.shapes = updatedObstacle.shapes;
     }
 
     setObstacles([...obstaclesArrayRef.current]);
@@ -1118,7 +1121,6 @@ function Simulation2ndGen() {
             {simulationScale == "small" && showAddAgent && (
               <AddAgentCard
                 canvasRef={canvasRef}
-                ctxRef={ctxRef}
                 agentsArrayRef={agentsArrayRef}
                 agentPreviewRef={agentPreviewRef}
                 canvasWidth={CANVAS_WIDTH}
@@ -1186,7 +1188,7 @@ function Simulation2ndGen() {
                       <li key={`${obstacle.id}-${index}`} className="agent-item">
                         <span className="agent-color" style={{ backgroundColor: getObstacleColor(obstacle) }}></span>
                         <span className="agent-item-label">
-                          {obstacle.name} ({obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE ? 'Circle' : 'Polygon'})
+                          {obstacle.name} ({obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE ? 'Circle' : 'Polygon'})
                         </span>
                         <button className="btn-primary agent-list-edit-button" onClick={() => selectObstacleForEditing(obstacle)}>
                           Edit
@@ -1217,7 +1219,6 @@ function Simulation2ndGen() {
 
             {showAddObstacle && (
               <ObstacleCard
-                ctxRef={ctxRef}
                 obstaclesArrayRef={obstaclesArrayRef}
                 obstaclePreviewRef={obstaclePreviewRef}
                 canvasWidth={CANVAS_WIDTH}

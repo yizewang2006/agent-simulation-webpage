@@ -2,27 +2,35 @@ import { useState } from "react";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 import { FORM_MODES } from "../formRegistry";
 import { PROPERTY_TYPE } from "../../../../models/properties.js";
-import { ENTITY_TYPES, OBSTACLE_SHAPE_TYPES } from "../../../../utils/constants.js";
+import { ENTITY_TYPES, SHAPE_TYPES } from "../../../../utils/constants.js";
 import TargetEntitySelector from "../sub-components/TargetEntitySelector.jsx";
 import { Check, CopyPlus, X } from "lucide-react";
 
 export const CUSTOM_PROPERTY_FORM_DESCRIPTION = "Add a property of your own."
 
-export default function CustomPropertyForm({ mode, initialValues,onSubmit, onCancel }) {
+export default function CustomPropertyForm({
+    mode,
+    initialValues,
+    entityTypeDefinitions,
+    onSubmit,
+    onCancel,
+}) {
+    const defaultAssignments = Object.fromEntries(
+        entityTypeDefinitions.map(({ id }) => [id, id === ENTITY_TYPES.AGENT])
+    );
+    defaultAssignments[ENTITY_TYPES.OBSTACLE] = {
+        enabled: true,
+        [SHAPE_TYPES.CIRCLE]: true,
+        [SHAPE_TYPES.POLYGON]: true,
+    };
+
     const [propertyDraft, setPropertyDraft] = useState(initialValues ?? {
         name: "",
         type: PROPERTY_TYPE.NUMERICAL,
         lower: "",
         upper: "",
         vinit: "",
-        assignments: {
-            [ENTITY_TYPES.AGENT]: true,
-            [ENTITY_TYPES.OBSTACLE]: {
-                enabled: true,
-                [OBSTACLE_SHAPE_TYPES.CIRCLE]: true,
-                [OBSTACLE_SHAPE_TYPES.POLYGON]: true,
-            },
-        },
+        assignments: defaultAssignments,
     })
 
     const [formError, setFormError] = useState("");
@@ -191,7 +199,7 @@ export default function CustomPropertyForm({ mode, initialValues,onSubmit, onCan
                         </p>
                         <TargetEntitySelector
                             idPrefix="property-assignment"
-                            entityTypes={[ENTITY_TYPES.AGENT, ENTITY_TYPES.OBSTACLE]}
+                            entityTypeDefinitions={entityTypeDefinitions}
                             value={propertyDraft.assignments}
                             onChange={(assignments) => setPropertyDraft({
                                 ...propertyDraft,

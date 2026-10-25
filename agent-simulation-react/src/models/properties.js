@@ -77,11 +77,12 @@ export function validatePropertyDefinition(property) {
         throw new Error("Property name cannot be empty.");
     }
 
-    const obstacleAssignments = property.assignments[ENTITY_TYPES.OBSTACLE];
-    if (
-        property.assignments[ENTITY_TYPES.AGENT] !== true
-        && obstacleAssignments.enabled !== true
-    ) {
+    const hasAssignment = Object.entries(property.assignments).some(
+        ([typeId, assignment]) => typeId === ENTITY_TYPES.OBSTACLE
+            ? assignment.enabled === true
+            : assignment === true
+    );
+    if (!hasAssignment) {
         throw new Error("Select at least one entity assignment.");
     }
 
@@ -167,11 +168,11 @@ export function supportsProperty(entity, property) {
 }
 
 export function assignPropertyToEntity(entity, property) {
-    const assignment = property.assignments[entity.entityType];
+    const assignment = property.assignments[entity.typeId];
 
     const isAssigned = typeof assignment === "boolean"
         ? assignment
-        : assignment.enabled && assignment[entity.shapeType];
+        : assignment.enabled && entity.shapes.some((shape) => assignment[shape.type]);
 
     // Report that this Entity should no longer store this Property.
     if (!isAssigned) return false;

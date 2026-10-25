@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CirclePlus, Trash2, UserPen } from 'lucide-react';
-import { OBSTACLE_SHAPE_TYPES } from '../../utils/constants.js';
+import { SHAPE_TYPES } from '../../utils/constants.js';
 
 function getAgentColor(agent) {
   return agent?.colorHex ?? agent?.originalColor ?? agent?.color ?? '#000000';
@@ -12,10 +12,11 @@ function numberOrFallback(value, fallback) {
 }
 
 function getObstacleVertices(obstacle) {
-  return obstacle?.vertices?.map((vertex) => ({
+  if (obstacle?.shapes[0].type !== SHAPE_TYPES.POLYGON) return [];
+  return obstacle.shapes[0].getWorldVertices(obstacle.transform).map((vertex) => ({
     x: String(vertex.x),
     y: String(vertex.y),
-  })) ?? [];
+  }));
 }
 
 // Combined editor for live simulation entities.
@@ -68,10 +69,10 @@ export default function EntityEditor({
     if (selectedObstacle) {
       setObstacleName(selectedObstacle.name);
       setObstacleColor(selectedObstacle.color ?? '#ACAD9D');
-      if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-        setCircleCenterX(String(selectedObstacle.center?.x ?? 250));
-        setCircleCenterY(String(selectedObstacle.center?.y ?? 250));
-        setCircleRadius(String(selectedObstacle.radius ?? 45));
+      if (selectedObstacle.shapes[0].type === SHAPE_TYPES.CIRCLE) {
+        setCircleCenterX(String(selectedObstacle.transform.position.x));
+        setCircleCenterY(String(selectedObstacle.transform.position.y));
+        setCircleRadius(String(selectedObstacle.shapes[0].radius));
       } else {
         setVertices(getObstacleVertices(selectedObstacle));
       }
@@ -94,9 +95,9 @@ export default function EntityEditor({
   // Circle validation mirrors the create-obstacle form: the circle must have a
   // positive radius and stay completely inside the simulation canvas.
   function parseCircle() {
-    const centerX = numberOrFallback(circleCenterX, selectedObstacle.center.x);
-    const centerY = numberOrFallback(circleCenterY, selectedObstacle.center.y);
-    const radius = numberOrFallback(circleRadius, selectedObstacle.radius);
+    const centerX = numberOrFallback(circleCenterX, selectedObstacle.transform.position.x);
+    const centerY = numberOrFallback(circleCenterY, selectedObstacle.transform.position.y);
+    const radius = numberOrFallback(circleRadius, selectedObstacle.shapes[0].radius);
 
     if (radius <= 0) {
       throw new Error('Circle radius must be a positive number.');
@@ -135,7 +136,7 @@ export default function EntityEditor({
 
   // Obstacle apply workflow:
   // The Apply button builds one updates object. Simulation.jsx then writes that
-  // data back onto the live CircleObstacle or PolygonObstacle instance.
+  // data back onto the live Obstacle instance and its current Shape.
   function applyObstacle() {
     try {
       const updates = {
@@ -143,7 +144,7 @@ export default function EntityEditor({
         color: obstacleColor,
       };
 
-      if (selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+      if (selectedObstacle.shapes[0].type === SHAPE_TYPES.CIRCLE) {
         Object.assign(updates, parseCircle());
       } else {
         updates.vertices = parseVertices();
@@ -240,7 +241,7 @@ export default function EntityEditor({
         <>
           <div className="input-group">
             <label>Entity Type</label>
-            <input value={selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE ? 'Circle Obstacle' : 'Polygon Obstacle'} disabled />
+            <input value={selectedObstacle.shapes[0].type === SHAPE_TYPES.CIRCLE ? 'Circle Obstacle' : 'Polygon Obstacle'} disabled />
           </div>
           <div className="input-group">
             <label>Name</label>
@@ -251,7 +252,7 @@ export default function EntityEditor({
             <input type="color" value={obstacleColor} onChange={(event) => setObstacleColor(event.target.value)} />
           </div>
 
-          {selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE && (
+          {selectedObstacle.shapes[0].type === SHAPE_TYPES.CIRCLE && (
             <>
               <div className="input-row">
                 <div className="input-group">
@@ -270,7 +271,7 @@ export default function EntityEditor({
             </>
           )}
 
-          {selectedObstacle.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON && (
+          {selectedObstacle.shapes[0].type === SHAPE_TYPES.POLYGON && (
             <div className="obstacle-vertices-editor">
               {vertices.map((vertex, index) => (
                 <div className="obstacle-vertex-row" key={`${selectedObstacle.id}-vertex-${index}`}>

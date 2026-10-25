@@ -6,7 +6,13 @@ import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
 export const ACTIVATION_FORM_DESCRIPTION = "Configure how a behavior calculates its weight. Each behavior must have one and only one activation function.";
 
-export default function ActivationForm({ behaviors = [], initialValues, onApply, onCancel }) {
+export default function ActivationForm({
+  behaviors = [],
+  initialValues,
+  entityTypeDefinitions,
+  onApply,
+  onCancel,
+}) {
   const [behaviorId, setBehaviorId] = useState(initialValues?.behaviorId ?? "");
   const [activation, setActivation] = useState(() =>
     createActivationDraft(initialValues?.activation)
@@ -69,7 +75,11 @@ export default function ActivationForm({ behaviors = [], initialValues, onApply,
         </fieldset>
         
         {behaviors.length > 0 && behaviorId && (
-          <ActivationFields value={activation} onChange={setActivation} />
+          <ActivationFields
+            value={activation}
+            onChange={setActivation}
+            entityTypeDefinitions={entityTypeDefinitions}
+          />
         )}
 
         {formError && (

@@ -34,8 +34,8 @@ import {
   EXPLORER_TABS,
   MEASUREMENT_LABELS,
   METHOD_LABELS_BY_PROPERTY,
-  OBSTACLE_SHAPE_LABELS,
-  OBSTACLE_SHAPE_TYPES,
+  SHAPE_LABELS,
+  SHAPE_TYPES,
   PROPERTY_LABELS,
   REFERENCE_LABELS,
 } from '../../utils/constants.js';
@@ -181,7 +181,7 @@ export default function SimulationExplorer({
     }
     if (entry.type === 'Agent') return entityFilters.agent;
 
-    const shapeFilter = entry.target.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+    const shapeFilter = entry.target.shapes.some((shape) => shape.type === SHAPE_TYPES.CIRCLE)
       ? 'circle'
       : 'polygon';
     return entityFilters.obstacle[shapeFilter];
@@ -234,20 +234,20 @@ export default function SimulationExplorer({
 
   function formatFilterTargets(targets) {
     const selectedTargets = Object.values(ENTITY_TYPES)
-      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
-      .filter((entityType) => targets[entityType] === true)
-      .map((entityType) => ENTITY_LABELS[entityType]);
+      .filter((typeId) => typeId !== ENTITY_TYPES.OBSTACLE)
+      .filter((typeId) => targets[typeId] === true)
+      .map((typeId) => ENTITY_LABELS[typeId]);
     const obstacleTargets = targets[ENTITY_TYPES.OBSTACLE];
 
     if (obstacleTargets.enabled) {
-      const selectedShapes = Object.values(OBSTACLE_SHAPE_TYPES)
+      const selectedShapes = Object.values(SHAPE_TYPES)
         .filter((shapeType) => obstacleTargets[shapeType] === true);
 
-      if (selectedShapes.length === Object.keys(OBSTACLE_SHAPE_LABELS).length) {
+      if (selectedShapes.length === Object.keys(SHAPE_LABELS).length) {
         selectedTargets.push(ENTITY_LABELS[ENTITY_TYPES.OBSTACLE]);
       } else {
         selectedTargets.push(...selectedShapes.map(
-          (shapeType) => `${OBSTACLE_SHAPE_LABELS[shapeType]} Obstacle`
+          (shapeType) => `${SHAPE_LABELS[shapeType]} Obstacle`
         ));
       }
     }

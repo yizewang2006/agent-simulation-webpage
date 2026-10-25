@@ -106,10 +106,10 @@ export default function ScenarioBuilder3rdGen() {
   }
 
   // This function expands or collapses one Entity section.
-  function toggleGroup(entityType) {
+  function toggleGroup(typeId) {
     setCollapsedGroups((currentGroups) => ({
       ...currentGroups,
-      [entityType]: !currentGroups[entityType],
+      [typeId]: !currentGroups[typeId],
     }));
   }
 
@@ -190,26 +190,26 @@ export default function ScenarioBuilder3rdGen() {
   }
 
   // This function stores an Entity before a Canvas edit begins.
-  function beginCanvasEdit(entityType, id) {
-    const entities = entityType === ENTITY_TYPES.AGENT
+  function beginCanvasEdit(typeId, id) {
+    const entities = typeId === ENTITY_TYPES.AGENT
       ? agentsRef.current
       : obstaclesRef.current;
     const entity = entities.find((item) => item.id === id);
     if (!entity) return;
 
     canvasEditRef.current = {
-      entityType,
+      typeId,
       id,
       before: structuredClone(entity),
     };
   }
 
   // This function records one Canvas edit after the interaction ends.
-  function endCanvasEdit(entityType, id) {
+  function endCanvasEdit(typeId, id) {
     const edit = canvasEditRef.current;
-    if (!edit || edit.entityType !== entityType || edit.id !== id) return;
+    if (!edit || edit.typeId !== typeId || edit.id !== id) return;
 
-    const entities = entityType === ENTITY_TYPES.AGENT
+    const entities = typeId === ENTITY_TYPES.AGENT
       ? agentsRef.current
       : obstaclesRef.current;
     const entity = entities.find((item) => item.id === id);
@@ -218,7 +218,7 @@ export default function ScenarioBuilder3rdGen() {
 
     recordHistoryAction({
       action: 'update',
-      entityType,
+      typeId,
       before: edit.before,
       after: structuredClone(entity),
     });
@@ -297,7 +297,7 @@ export default function ScenarioBuilder3rdGen() {
       setAgents(nextAgents);
       recordHistoryAction({
         action: 'create',
-        entityType: ENTITY_TYPES.AGENT,
+        typeId: ENTITY_TYPES.AGENT,
         entities: structuredClone(createdAgents),
       });
       clearAgentPreview();
@@ -350,7 +350,7 @@ export default function ScenarioBuilder3rdGen() {
       setObstacles(nextObstacles);
       recordHistoryAction({
         action: 'create',
-        entityType: ENTITY_TYPES.OBSTACLE,
+        typeId: ENTITY_TYPES.OBSTACLE,
         entities: [structuredClone(obstacle)],
       });
       clearObstaclePreview();
@@ -373,9 +373,9 @@ export default function ScenarioBuilder3rdGen() {
     clearAgentPreview();
     clearObstaclePreview();
 
-    if (nextSelection?.entityType === ENTITY_TYPES.AGENT) {
+    if (nextSelection?.typeId === ENTITY_TYPES.AGENT) {
       setInspectorMode(INSPECTOR_MODES.EDIT_AGENT);
-    } else if (nextSelection?.entityType === ENTITY_TYPES.OBSTACLE) {
+    } else if (nextSelection?.typeId === ENTITY_TYPES.OBSTACLE) {
       setInspectorMode(INSPECTOR_MODES.EDIT_OBSTACLE);
     } else {
       setInspectorMode(INSPECTOR_MODES.EMPTY);
@@ -383,8 +383,8 @@ export default function ScenarioBuilder3rdGen() {
   }
 
   // This function renames one Builder Entity as an undoable action.
-  function renameEntity(entityType, id, name) {
-    const entities = entityType === ENTITY_TYPES.AGENT
+  function renameEntity(typeId, id, name) {
+    const entities = typeId === ENTITY_TYPES.AGENT
       ? agentsRef.current
       : obstaclesRef.current;
     const entity = entities.find((item) => item.id === id);
@@ -395,7 +395,7 @@ export default function ScenarioBuilder3rdGen() {
       item.id === id ? renamedEntity : item
     ));
 
-    if (entityType === ENTITY_TYPES.AGENT) {
+    if (typeId === ENTITY_TYPES.AGENT) {
       agentsRef.current = nextEntities;
       setAgents(nextEntities);
     } else {
@@ -405,7 +405,7 @@ export default function ScenarioBuilder3rdGen() {
 
     recordHistoryAction({
       action: 'update',
-      entityType,
+      typeId,
       before: structuredClone(entity),
       after: structuredClone(renamedEntity),
     });
@@ -463,7 +463,7 @@ export default function ScenarioBuilder3rdGen() {
     setAgents(nextAgents);
     recordHistoryAction({
       action: 'update',
-      entityType: ENTITY_TYPES.AGENT,
+      typeId: ENTITY_TYPES.AGENT,
       before: structuredClone(agent),
       after: structuredClone(updatedAgent),
     });
@@ -491,7 +491,7 @@ export default function ScenarioBuilder3rdGen() {
       setObstacles(nextObstacles);
       recordHistoryAction({
         action: 'update',
-        entityType: ENTITY_TYPES.OBSTACLE,
+        typeId: ENTITY_TYPES.OBSTACLE,
         before: structuredClone(obstacle),
         after: structuredClone(updatedObstacle),
       });
@@ -504,8 +504,8 @@ export default function ScenarioBuilder3rdGen() {
 
   // This function deletes one Entity as an undoable action.
   function deleteEntity(entitySelection) {
-    const entityType = entitySelection.entityType;
-    const entities = entityType === ENTITY_TYPES.AGENT
+    const typeId = entitySelection.typeId;
+    const entities = typeId === ENTITY_TYPES.AGENT
       ? agentsRef.current
       : obstaclesRef.current;
     const entity = entities.find((item) => item.id === entitySelection.id);
@@ -513,10 +513,10 @@ export default function ScenarioBuilder3rdGen() {
 
     recordHistoryAction({
       action: 'delete',
-      entityType,
+      typeId,
       entity: structuredClone(entity),
     });
-    if (entityType === ENTITY_TYPES.AGENT) {
+    if (typeId === ENTITY_TYPES.AGENT) {
       const nextAgents = agentsRef.current.filter((item) => item.id !== entity.id);
       agentsRef.current = nextAgents;
       setAgents(nextAgents);
@@ -532,7 +532,7 @@ export default function ScenarioBuilder3rdGen() {
   function copySelectedEntity() {
     if (isCreatingEntity || !selection) return false;
 
-    const entities = selection.entityType === ENTITY_TYPES.AGENT
+    const entities = selection.typeId === ENTITY_TYPES.AGENT
       ? agentsRef.current
       : obstaclesRef.current;
     const entity = entities.find((item) => item.id === selection.id);
@@ -556,7 +556,7 @@ export default function ScenarioBuilder3rdGen() {
     const clipboard = entityClipboardRef.current;
     if (isCreatingEntity || !clipboard) return;
     if (
-      clipboard.entity.entityType === ENTITY_TYPES.AGENT
+      clipboard.entity.typeId === ENTITY_TYPES.AGENT
       && agentsRef.current.length >= MAX_SCENARIO_AGENTS
     ) {
       setScenarioFileAlert({
@@ -570,7 +570,7 @@ export default function ScenarioBuilder3rdGen() {
 
     clipboard.pasteCount += 1;
     const offset = clipboard.pasteCount * 10;
-    const existingEntities = clipboard.entity.entityType === ENTITY_TYPES.AGENT
+    const existingEntities = clipboard.entity.typeId === ENTITY_TYPES.AGENT
       ? agentsRef.current
       : obstaclesRef.current;
     const baseName = `${clipboard.entity.name} Copy`;
@@ -590,11 +590,11 @@ export default function ScenarioBuilder3rdGen() {
         SCENARIO_CANVAS_WIDTH,
         SCENARIO_CANVAS_HEIGHT
       ),
-      id: createEntityID(clipboard.entity.entityType),
+      id: createEntityID(clipboard.entity.typeId),
       name: pastedName,
     };
 
-    if (pastedEntity.entityType === ENTITY_TYPES.AGENT) {
+    if (pastedEntity.typeId === ENTITY_TYPES.AGENT) {
       const nextAgents = [...agentsRef.current, pastedEntity];
       agentsRef.current = nextAgents;
       setAgents(nextAgents);
@@ -606,18 +606,18 @@ export default function ScenarioBuilder3rdGen() {
 
     recordHistoryAction({
       action: 'create',
-      entityType: pastedEntity.entityType,
+      typeId: pastedEntity.typeId,
       entities: [structuredClone(pastedEntity)],
     });
     selectEntity({
-      entityType: pastedEntity.entityType,
+      typeId: pastedEntity.typeId,
       id: pastedEntity.id,
     });
   }
 
   // This function updates an entire Entity while it is dragged on the canvas.
-  function moveEntity(entityType, id, dx, dy) {
-    if (entityType === ENTITY_TYPES.AGENT) {
+  function moveEntity(typeId, id, dx, dy) {
+    if (typeId === ENTITY_TYPES.AGENT) {
       setAgents((currentAgents) => {
         const nextAgents = currentAgents.map((agent) => (
         agent.id === id
@@ -733,7 +733,7 @@ export default function ScenarioBuilder3rdGen() {
 
     if (historyItem.action === 'create') {
       const createdIds = new Set(historyItem.entities.map((entity) => entity.id));
-      if (historyItem.entityType === ENTITY_TYPES.AGENT) {
+      if (historyItem.typeId === ENTITY_TYPES.AGENT) {
         const nextAgents = agentsRef.current.filter((agent) => !createdIds.has(agent.id));
         agentsRef.current = nextAgents;
         setAgents(nextAgents);
@@ -748,7 +748,7 @@ export default function ScenarioBuilder3rdGen() {
           : currentSelection
       ));
     } else if (historyItem.action === 'delete') {
-      if (historyItem.entityType === ENTITY_TYPES.AGENT) {
+      if (historyItem.typeId === ENTITY_TYPES.AGENT) {
         const nextAgents = [
           ...agentsRef.current,
           structuredClone(historyItem.entity),
@@ -764,16 +764,16 @@ export default function ScenarioBuilder3rdGen() {
         setObstacles(nextObstacles);
       }
       setSelection({
-        entityType: historyItem.entityType,
+        typeId: historyItem.typeId,
         id: historyItem.entity.id,
       });
       setInspectorMode(
-        historyItem.entityType === ENTITY_TYPES.AGENT
+        historyItem.typeId === ENTITY_TYPES.AGENT
           ? INSPECTOR_MODES.EDIT_AGENT
           : INSPECTOR_MODES.EDIT_OBSTACLE
       );
     } else if (historyItem.action === 'update') {
-      if (historyItem.entityType === ENTITY_TYPES.AGENT) {
+      if (historyItem.typeId === ENTITY_TYPES.AGENT) {
         const nextAgents = agentsRef.current.map((agent) => (
           agent.id === historyItem.before.id
             ? structuredClone(historyItem.before)
@@ -791,11 +791,11 @@ export default function ScenarioBuilder3rdGen() {
         setObstacles(nextObstacles);
       }
       setSelection({
-        entityType: historyItem.entityType,
+        typeId: historyItem.typeId,
         id: historyItem.before.id,
       });
       setInspectorMode(
-        historyItem.entityType === ENTITY_TYPES.AGENT
+        historyItem.typeId === ENTITY_TYPES.AGENT
           ? INSPECTOR_MODES.EDIT_AGENT
           : INSPECTOR_MODES.EDIT_OBSTACLE
       );
@@ -820,7 +820,7 @@ export default function ScenarioBuilder3rdGen() {
     if (!historyItem) return;
 
     if (historyItem.action === 'create') {
-      if (historyItem.entityType === ENTITY_TYPES.AGENT) {
+      if (historyItem.typeId === ENTITY_TYPES.AGENT) {
         const nextAgents = [
           ...agentsRef.current,
           ...structuredClone(historyItem.entities),
@@ -836,7 +836,7 @@ export default function ScenarioBuilder3rdGen() {
         setObstacles(nextObstacles);
       }
     } else if (historyItem.action === 'delete') {
-      if (historyItem.entityType === ENTITY_TYPES.AGENT) {
+      if (historyItem.typeId === ENTITY_TYPES.AGENT) {
         const nextAgents = agentsRef.current.filter((agent) => (
           agent.id !== historyItem.entity.id
         ));
@@ -852,7 +852,7 @@ export default function ScenarioBuilder3rdGen() {
       setSelection(null);
       setInspectorMode(INSPECTOR_MODES.EMPTY);
     } else if (historyItem.action === 'update') {
-      if (historyItem.entityType === ENTITY_TYPES.AGENT) {
+      if (historyItem.typeId === ENTITY_TYPES.AGENT) {
         const nextAgents = agentsRef.current.map((agent) => (
           agent.id === historyItem.after.id
             ? structuredClone(historyItem.after)
@@ -870,11 +870,11 @@ export default function ScenarioBuilder3rdGen() {
         setObstacles(nextObstacles);
       }
       setSelection({
-        entityType: historyItem.entityType,
+        typeId: historyItem.typeId,
         id: historyItem.after.id,
       });
       setInspectorMode(
-        historyItem.entityType === ENTITY_TYPES.AGENT
+        historyItem.typeId === ENTITY_TYPES.AGENT
           ? INSPECTOR_MODES.EDIT_AGENT
           : INSPECTOR_MODES.EDIT_OBSTACLE
       );
@@ -1227,7 +1227,7 @@ export default function ScenarioBuilder3rdGen() {
                                 name
                               )}
                               onSelect={() => selectEntity({
-                                entityType: ENTITY_TYPES.AGENT,
+                                typeId: ENTITY_TYPES.AGENT,
                                 id: agent.id,
                               })}
                             >
@@ -1239,7 +1239,7 @@ export default function ScenarioBuilder3rdGen() {
                                   title="Edit Agent"
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    selectEntity({ entityType: ENTITY_TYPES.AGENT, id: agent.id });
+                                    selectEntity({ typeId: ENTITY_TYPES.AGENT, id: agent.id });
                                   }}
                                 >
                                   <UserRoundPen size={16} aria-hidden="true" />
@@ -1251,7 +1251,7 @@ export default function ScenarioBuilder3rdGen() {
                                   title="Delete Agent"
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    deleteEntity({ entityType: ENTITY_TYPES.AGENT, id: agent.id });
+                                    deleteEntity({ typeId: ENTITY_TYPES.AGENT, id: agent.id });
                                   }}
                                 >
                                   <Trash2 size={16} aria-hidden="true" />
@@ -1302,7 +1302,7 @@ export default function ScenarioBuilder3rdGen() {
                                 name
                               )}
                               onSelect={() => selectEntity({
-                                entityType: ENTITY_TYPES.OBSTACLE,
+                                typeId: ENTITY_TYPES.OBSTACLE,
                                 id: obstacle.id,
                               })}
                             >
@@ -1314,7 +1314,7 @@ export default function ScenarioBuilder3rdGen() {
                                   title="Edit Obstacle"
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    selectEntity({ entityType: ENTITY_TYPES.OBSTACLE, id: obstacle.id });
+                                    selectEntity({ typeId: ENTITY_TYPES.OBSTACLE, id: obstacle.id });
                                   }}
                                 >
                                   <PenLine size={16} aria-hidden="true" />
@@ -1326,7 +1326,7 @@ export default function ScenarioBuilder3rdGen() {
                                   title="Delete Obstacle"
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    deleteEntity({ entityType: ENTITY_TYPES.OBSTACLE, id: obstacle.id });
+                                    deleteEntity({ typeId: ENTITY_TYPES.OBSTACLE, id: obstacle.id });
                                   }}
                                 >
                                   <Trash2 size={16} aria-hidden="true" />
@@ -1457,10 +1457,10 @@ export default function ScenarioBuilder3rdGen() {
 
   function renderScenarioInspector() {
     const FormComponent = getFormComponent(inspectorMode);
-    const selectedAgent = selection?.entityType === ENTITY_TYPES.AGENT
+    const selectedAgent = selection?.typeId === ENTITY_TYPES.AGENT
       ? agents.find((agent) => agent.id === selection.id)
       : null;
-    const selectedObstacle = selection?.entityType === ENTITY_TYPES.OBSTACLE
+    const selectedObstacle = selection?.typeId === ENTITY_TYPES.OBSTACLE
       ? obstacles.find((obstacle) => obstacle.id === selection.id)
       : null;
     const agentEditValues = getAgentEditValues(selectedAgent);

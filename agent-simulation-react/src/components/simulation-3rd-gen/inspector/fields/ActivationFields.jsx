@@ -9,7 +9,12 @@ import {
 import FilterFields from "./FilterFields.jsx";
 import styles from "../../../../styles/3rd-gen/simulation.module.css";
 
-export default function ActivationFields({ value, onChange, idPrefix = "activation" }) {
+export default function ActivationFields({
+  value,
+  onChange,
+  entityTypeDefinitions,
+  idPrefix = "activation",
+}) {
   const draft = createActivationDraft(value);
 
   function update(updates) {
@@ -67,6 +72,7 @@ export default function ActivationFields({ value, onChange, idPrefix = "activati
         <FilterFields
           filterKind="Activation"
           filters={draft.filters}
+          entityTypeDefinitions={entityTypeDefinitions}
           // Only this Activation draft receives these filter changes.
           onChange={(filters) => update({ filters })}
           idPrefix={`${idPrefix}-activation`}

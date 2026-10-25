@@ -58,12 +58,12 @@ export default function AddMultipleAgentsCard({ canvasRef, ctxRef, agentsArrayRe
         0,
         createEntityID(ENTITY_TYPES.AGENT),
         `Agent_${roster.length + 1}`,
-        ctx, canvas, roster
+        canvas, roster
       );
 
       agent.showFOV = showFOV;
-      agent.move();
-      agent.draw();
+      agent.move(canvasWidth, canvasHeight);
+      agent.draw(ctx);
     }
 
     onAgentsAdded([...roster]);

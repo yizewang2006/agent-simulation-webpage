@@ -79,7 +79,7 @@ export function parseAgentCreationValues(values) {
 // This function creates randomized Agent drafts for preview and creation.
 export function createAgentDrafts(config) {
   return Array.from({ length: config.count }, () => ({
-    entityType: ENTITY_TYPES.AGENT,
+    typeId: ENTITY_TYPES.AGENT,
     x: config.xMin + Math.random() * (config.xMax - config.xMin),
     y: config.yMin + Math.random() * (config.yMax - config.yMin),
     radius: 5,
@@ -105,7 +105,7 @@ export function getAgentPreviewRange(config) {
 // This function parses and validates the Obstacle creation form.
 export function parseObstacleCreationValues(values) {
   const common = {
-    entityType: ENTITY_TYPES.OBSTACLE,
+    typeId: ENTITY_TYPES.OBSTACLE,
     shapeType: values.shape,
     name: values.name.trim(),
     color: values.color,

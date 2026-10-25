@@ -132,12 +132,12 @@ function drawScenario(
 
   obstacles.forEach((obstacle) => drawObstacle(ctx, obstacle, {
     isSelected:
-      selection?.entityType === ENTITY_TYPES.OBSTACLE
+      selection?.typeId === ENTITY_TYPES.OBSTACLE
       && selection.id === obstacle.id,
   }));
   agents.forEach((agent) => drawAgent(ctx, agent, {
     isSelected:
-      selection?.entityType === ENTITY_TYPES.AGENT
+      selection?.typeId === ENTITY_TYPES.AGENT
       && selection.id === agent.id,
   }));
 
@@ -220,7 +220,7 @@ export default function ScenarioBuilderCanvas({
     if (!canvas) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
-    const selectedObstacle = selection?.entityType === ENTITY_TYPES.OBSTACLE
+    const selectedObstacle = selection?.typeId === ENTITY_TYPES.OBSTACLE
       ? obstacles.find((obstacle) => obstacle.id === selection.id)
       : null;
     const editHandle = selectedObstacle
@@ -255,15 +255,15 @@ export default function ScenarioBuilderCanvas({
       return;
     }
 
-    onSelectEntity({ entityType: entity.entityType, id: entity.id });
+    onSelectEntity({ typeId: entity.typeId, id: entity.id });
     if (entity.id === lookAtAgentId) {
       dragRef.current = null;
       return;
     }
 
-    onBeginEntityEdit(entity.entityType, entity.id);
+    onBeginEntityEdit(entity.typeId, entity.id);
     dragRef.current = {
-      entityType: entity.entityType,
+      typeId: entity.typeId,
       id: entity.id,
       previous: point,
       pointerId: event.pointerId,
@@ -295,7 +295,7 @@ export default function ScenarioBuilderCanvas({
     const dx = point.x - drag.previous.x;
     const dy = point.y - drag.previous.y;
     drag.previous = point;
-    onMoveEntity(drag.entityType, drag.id, dx, dy);
+    onMoveEntity(drag.typeId, drag.id, dx, dy);
     event.preventDefault();
   }
 
@@ -305,7 +305,7 @@ export default function ScenarioBuilderCanvas({
     if (drag?.pointerId !== event.pointerId) return;
 
     onEndEntityEdit(
-      drag.mode ? ENTITY_TYPES.OBSTACLE : drag.entityType,
+      drag.mode ? ENTITY_TYPES.OBSTACLE : drag.typeId,
       drag.mode ? drag.obstacleId : drag.id
     );
     dragRef.current = null;

@@ -15,7 +15,8 @@ import { useRef, useEffect, useState } from 'react'; /* To interact with the can
 
 // Import Agent Class from agent.js (make them talk to each other)
 import { Agent } from "../models/agent.js";
-import { CircleObstacle, PolygonObstacle } from "../models/obstacle.js";
+import { Obstacle } from "../models/obstacle.js";
+import { EntityTypeManager } from "../models/entity.js";
 import {
   ACTIVATION_TYPES,
   DEFAULT_BEHAVIOR_COLOR,
@@ -23,13 +24,12 @@ import {
   normalizeActivationDraft,
   normalizeFilterDrafts,
 } from "../models/behavior.js";
-import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, OBSTACLE_SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
+import { TARGET_PROPERTIES, REFERENCE_TYPES, ENTITY_TYPES, SHAPE_TYPES, PROPERTY_LABELS, EXPLORER_TABS } from "../utils/constants.js";
 import { configureHighDpiCanvas, createEntityID, getCanvasLogicalHeight, getCanvasLogicalWidth, getCanvasPointFromEvent, resetScenario, storeScenarioInformation } from "../utils/utilities.js";
 import {
-  findEntityAt,
-  getDraggedEntityGeometry,
-  getLookAtCursorAngle,
-} from "../utils/canvasInteractionUtilities.js";
+  findRuntimeEntityAt,
+  getDraggedRuntimeEntityPosition,
+} from "../utils/runtimeCanvasInteractionUtilities.js";
 import {
   createScenarioDocument,
   downloadScenarioFile,
@@ -137,7 +137,7 @@ function generateRandomizedAgentDrafts(config, obstacles) {
       };
 
       // Keep a legal position immediately; only blocked positions are rerolled.
-      if (!findEntityAt(candidate, obstacles)) {
+      if (!findRuntimeEntityAt(candidate, obstacles)) {
         position = candidate;
         break;
       }
@@ -213,7 +213,7 @@ function normalizeObstacleFormValues(values) {
 
     return {
       ...common,
-      shapeType: OBSTACLE_SHAPE_TYPES.CIRCLE,
+      shapeType: SHAPE_TYPES.CIRCLE,
       center,
       radius,
     };
@@ -239,7 +239,7 @@ function normalizeObstacleFormValues(values) {
 
   return {
     ...common,
-    shapeType: OBSTACLE_SHAPE_TYPES.POLYGON,
+    shapeType: SHAPE_TYPES.POLYGON,
     vertices,
   };
 }
@@ -252,31 +252,34 @@ function createFrameSnapshot(agentsArray, obstaclesArray, frameIndex, recordingS
     agents: agentsArray.map((agent) => ({
       id: agent.id,
       name: agent.name,
-      x: agent.x,
-      y: agent.y,
-      radius: agent.radius,
-      dx: agent.dx,
-      dy: agent.dy,
-      angle: agent.angle,
+      x: agent.transform.position.x,
+      y: agent.transform.position.y,
+      radius: agent.shapes[0].radius,
+      dx: agent.velocity.x,
+      dy: agent.velocity.y,
+      angle: agent.transform.rotation,
       colorHex: agent.colorHex,
       fovRadius: agent.fovRadius,
       fovAngle: agent.fovAngle,
-      // Store the final visual FOV decision, matching Agent.draw().
+      // Store the final visual FOV decision used by Entity.draw().
       showFOV: agent.isSpecial && agent.showFOV !== false,
     })),
-    obstacles: obstaclesArray.map((obstacle) => ({
-      id: obstacle.id,
-      name: obstacle.name,
-      shapeType: obstacle.shapeType,
-      color: obstacle.color,
-      center: obstacle.center
-        ? { x: obstacle.center.x, y: obstacle.center.y }
-        : null,
-      radius: obstacle.radius,
-      vertices: Array.isArray(obstacle.vertices)
-        ? obstacle.vertices.map((vertex) => ({ x: vertex.x, y: vertex.y }))
-        : [],
-    })),
+    obstacles: obstaclesArray.map((obstacle) => {
+      const shape = obstacle.shapes[0];
+      return {
+        id: obstacle.id,
+        name: obstacle.name,
+        shapeType: shape.type,
+        color: obstacle.color,
+        center: shape.type === SHAPE_TYPES.CIRCLE
+          ? shape.getWorldCenter(obstacle.transform)
+          : null,
+        radius: shape.type === SHAPE_TYPES.CIRCLE ? shape.radius : null,
+        vertices: shape.type === SHAPE_TYPES.POLYGON
+          ? shape.getWorldVertices(obstacle.transform)
+          : [],
+      };
+    }),
   };
 }
 
@@ -291,13 +294,13 @@ function drawObstaclePreview(ctx, preview) {
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 6]);
 
-  if (preview.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
+  if (preview.shapeType === SHAPE_TYPES.CIRCLE) {
     ctx.beginPath();
     ctx.arc(preview.center.x, preview.center.y, preview.radius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-  } else if (preview.shapeType === OBSTACLE_SHAPE_TYPES.POLYGON && preview.vertices.length >= 3) {
+  } else if (preview.shapeType === SHAPE_TYPES.POLYGON && preview.vertices.length >= 3) {
     ctx.beginPath();
     ctx.moveTo(preview.vertices[0].x, preview.vertices[0].y);
     for (let i = 1; i < preview.vertices.length; i++) {
@@ -364,11 +367,11 @@ function drawAgentPreview(ctx, preview) {
 // Vector Drawing
 function drawDecisionVector(ctx, agent, angle, color, label, labelColor = color) { // <-- Draws any decision vector
   // Define start and end (how long)
-  const start = agent.radius;
+  const start = agent.shapes[0].radius;
   const end = start + 50;
 
   ctx.save();
-  ctx.translate(agent.x, agent.y);
+  ctx.translate(agent.transform.position.x, agent.transform.position.y);
   ctx.rotate(angle);
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
@@ -389,8 +392,8 @@ function drawDecisionVector(ctx, agent, angle, color, label, labelColor = color)
 
   // Text
   // Calculate the arrow endpoint in Canvas coordinates.
-  const labelX = agent.x + Math.cos(angle) * end;
-  const labelY = agent.y + Math.sin(angle) * end;
+  const labelX = agent.transform.position.x + Math.cos(angle) * end;
+  const labelY = agent.transform.position.y + Math.sin(angle) * end;
 
   // Text Position Correction
   const labelOffsetX = Math.cos(angle) >= 0 ? 6 : -6;
@@ -465,8 +468,7 @@ function Simulation3rdGen() {
   const dragRef = useRef(null); // Ref to hold the current drag state (null if not dragging)
   const lookAtAgentRef = useRef(null); // Double-clicked Agent that currently follows the cursor.
 
-  const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
-  const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
+  const [targetFPS, setTargetFPS] = useState('30'); // Runtime frame-rate target, carried forward from the previous Simulation.
   const fpsRef = useRef(targetFPS); // Ref to hold the current FPS value, reference this value without the need of rendering
   const [maxSpeed, setMaxSpeed] = useState('3');
   const [maxAngle, setMaxAngle] = useState('45');
@@ -484,8 +486,25 @@ function Simulation3rdGen() {
   const [obstacles, setObstacles] = useState([]); // State to hold obstacles for display in the control panel
   const [obstaclesListExpanded, setObstaclesListExpanded] = useState(false); // State to toggle obstacles list visibility
 
-  // Property List
-  const [propertyList, setPropertyList] = useState([]); // initializes an empty array of properties
+  // Entity Type Definitions own their Behaviors and Property Definitions.
+  const [entityTypeDefinitions, setEntityTypeDefinitions] = useState(
+    () => EntityTypeManager.createBuiltIns() // initialize built in ones (agent, obstacles, ...)
+  );
+  const agentTypeDefinition = EntityTypeManager.get(
+    entityTypeDefinitions,
+    ENTITY_TYPES.AGENT
+  );
+  const obstacleTypeDefinition = EntityTypeManager.get(
+    entityTypeDefinitions,
+    ENTITY_TYPES.OBSTACLE
+  );
+  const behaviorList = agentTypeDefinition.behaviors;
+  const propertyList = Array.from(new Map(
+    entityTypeDefinitions
+      .flatMap((definition) => definition.propertyDefinitions)
+      .map((property) => [property.id, property])
+  ).values());
+
   const [selectedProperty, setSelectedProperty] = useState(null); // currently selected property
 
   // Debug State
@@ -511,9 +530,8 @@ function Simulation3rdGen() {
   const [showAddObstacle, setShowAddObstacle] = useState(false);
 
   // Behavior & Filter settings state & Ref
-  const [behaviorList, setBehaviorList] = useState([]); // Behavior
   const [collapsedBehaviorIds, setCollapsedBehaviorIds] = useState(new Set());
-  const behaviorGroupsRef = useRef(groupBehaviors([], true));
+  const behaviorGroupsByTypeRef = useRef(new Map());
 
   // Agent editor state
   const [selectedAgent, setSelectedAgent] = useState(null); // the live Agent object
@@ -691,14 +709,13 @@ function Simulation3rdGen() {
           draft.angle,
           createEntityID(ENTITY_TYPES.AGENT),
           `Agent_${roster.length + 1}`,
-          ctx,
           canvas,
           roster
         );
 
         agent.showFOV = draft.showFOV;
 
-        propertyList.forEach((property) => {
+        agentTypeDefinition.propertyDefinitions.forEach((property) => {
           assignPropertyToEntity(agent, property);
         });
       });
@@ -907,7 +924,6 @@ function Simulation3rdGen() {
           heading,
           agent.id,
           agent.name,
-          ctx,
           canvas,
           runtimeAgents
         );
@@ -916,8 +932,8 @@ function Simulation3rdGen() {
 
       const runtimeObstacles = scenario.obstacles.map((obstacle) => (
         obstacle.shapeType === 'circle'
-          ? new CircleObstacle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color, ctx)
-          : new PolygonObstacle(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color, ctx)
+          ? Obstacle.createCircle(obstacle.id, obstacle.name, obstacle.center, obstacle.radius, obstacle.color)
+          : Obstacle.createPolygon(obstacle.id, obstacle.name, obstacle.vertices, obstacle.color)
       ));
       obstaclesArrayRef.current.length = 0;
       obstaclesArrayRef.current.push(...runtimeObstacles);
@@ -958,37 +974,37 @@ function Simulation3rdGen() {
       name: scenarioName,
       canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
       agents: agentsArrayRef.current.map((agent) => ({
-        entityType: ENTITY_TYPES.AGENT,
+        typeId: ENTITY_TYPES.AGENT,
         id: agent.id,
         name: agent.name,
-        x: agent.x,
-        y: agent.y,
-        radius: agent.radius,
-        angle: (((-agent.angle * 180 / Math.PI) % 360) + 360) % 360,
-        speed: Math.hypot(agent.dx, agent.dy),
+        x: agent.transform.position.x,
+        y: agent.transform.position.y,
+        radius: agent.shapes[0].radius,
+        angle: (((-agent.transform.rotation * 180 / Math.PI) % 360) + 360) % 360,
+        speed: Math.hypot(agent.velocity.x, agent.velocity.y),
         colorHex: agent.colorHex,
         fovRadius: agent.fovRadius,
         fovAngle: agent.fovAngle * 180 / Math.PI,
         showFOV: agent.showFOV !== false,
       })),
       obstacles: obstaclesArrayRef.current.map((obstacle) => (
-        obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+        obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE
           ? {
-              entityType: ENTITY_TYPES.OBSTACLE,
+              typeId: ENTITY_TYPES.OBSTACLE,
               id: obstacle.id,
               name: obstacle.name,
               shapeType: 'circle',
               color: obstacle.color,
-              center: { ...obstacle.center },
-              radius: obstacle.radius,
+              center: { ...obstacle.transform.position },
+              radius: obstacle.shapes[0].radius,
             }
           : {
-              entityType: ENTITY_TYPES.OBSTACLE,
+              typeId: ENTITY_TYPES.OBSTACLE,
               id: obstacle.id,
               name: obstacle.name,
               shapeType: 'polygon',
               color: obstacle.color,
-              vertices: obstacle.vertices.map((vertex) => ({ ...vertex })),
+              vertices: obstacle.shapes[0].getWorldVertices(obstacle.transform),
             }
       )),
     });
@@ -1056,7 +1072,11 @@ function Simulation3rdGen() {
         ...config,
       };
 
-      setBehaviorList((currentList) => [...currentList, behavior]);
+      setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+        definitions,
+        ENTITY_TYPES.AGENT,
+        { behaviors: [...EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors, behavior] }
+      ));
       // Show the behavior as soon as creation succeeds.
       setExplorerTab(EXPLORER_TABS.BEHAVIORS);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
@@ -1111,13 +1131,15 @@ function Simulation3rdGen() {
       const config = normalizeBehaviorDraft(values, selectedBehavior);
 
       // Keep the stable ID while replacing the complete saved draft.
-      setBehaviorList((currentList) =>
-        currentList.map((behavior) =>
+      setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+        definitions,
+        ENTITY_TYPES.AGENT,
+        { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) =>
           behavior.id === selectedBehavior.id
             ? { id: behavior.id, ...config }
             : behavior
-        )
-      );
+        ) }
+      ));
       setSelectedBehavior(null);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -1133,11 +1155,13 @@ function Simulation3rdGen() {
 
   function handleSetBehaviorEnabled(behaviorId, enabled) {
     // Keep enabled as an explicit boolean for later runtime checks.
-    setBehaviorList((currentList) =>
-      currentList.map((behavior) =>
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) =>
         behavior.id === behaviorId ? { ...behavior, enabled } : behavior
-      )
-    );
+      ) }
+    ));
     setSelectedBehavior((currentBehavior) =>
       currentBehavior?.id === behaviorId
         ? { ...currentBehavior, enabled }
@@ -1160,11 +1184,13 @@ function Simulation3rdGen() {
       }
 
       // Activation configuration does not replace the Behavior's Action data.
-      setBehaviorList((currentList) =>
-        currentList.map((behavior) =>
+      setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+        definitions,
+        ENTITY_TYPES.AGENT,
+        { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) =>
           behavior.id === behaviorId ? { ...behavior, activation } : behavior
-        )
-      );
+        ) }
+      ));
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
     } catch (error) {
@@ -1174,9 +1200,13 @@ function Simulation3rdGen() {
 
   function handleUpdateBehavior(behaviorId, updates) {
     // Update the behavior with the matching behaviorId.
-    setBehaviorList((currentList) => currentList.map((behavior) => (
-      behavior.id === behaviorId ? { ...behavior, ...updates } : behavior
-    )));
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.map((behavior) => (
+        behavior.id === behaviorId ? { ...behavior, ...updates } : behavior
+      )) }
+    ));
   }
 
   function handleRenameBehavior(behaviorId, name) {
@@ -1185,7 +1215,13 @@ function Simulation3rdGen() {
 
   function handleDeleteBehavior(behaviorId) {
     // Delete the behavior with the matching behaviorId from the behavior list.
-    setBehaviorList((currentList) => currentList.filter((behavior) => behavior.id !== behaviorId));
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.filter(
+        (behavior) => behavior.id !== behaviorId
+      ) }
+    ));
     // Also remove that behavior from the collapsed card set, so deleted IDs do not stay in UI state.
     setCollapsedBehaviorIds((currentIds) => {
       const nextIds = new Set(currentIds);
@@ -1229,9 +1265,13 @@ function Simulation3rdGen() {
         .map((behavior) => behavior.id)
     );
 
-    setBehaviorList((currentList) =>
-      currentList.filter((behavior) => getBehaviorGroupKey(behavior.targetProperty) !== groupKey)
-    );
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: EntityTypeManager.get(definitions, ENTITY_TYPES.AGENT).behaviors.filter(
+        (behavior) => getBehaviorGroupKey(behavior.targetProperty) !== groupKey
+      ) }
+    ));
     setCollapsedBehaviorIds((currentIds) => {
       const nextIds = new Set(currentIds);
       deletedIds.forEach((behaviorId) => nextIds.delete(behaviorId));
@@ -1256,7 +1296,11 @@ function Simulation3rdGen() {
       loadedBehaviorIds.push(loadedBehavior.id);
     });
 
-    setBehaviorList(nextList);
+    setEntityTypeDefinitions((definitions) => EntityTypeManager.update(
+      definitions,
+      ENTITY_TYPES.AGENT,
+      { behaviors: nextList }
+    ));
     setExplorerTab(EXPLORER_TABS.BEHAVIORS);
     // Collapse imported behaviors by default so large presets stay easy to scan.
     setCollapsedBehaviorIds((currentIds) => {
@@ -1379,16 +1423,16 @@ function Simulation3rdGen() {
     }
 
     Object.values(ENTITY_TYPES)
-      .filter((entityType) => entityType !== ENTITY_TYPES.OBSTACLE)
-      .forEach((entityType) => {
-        if (typeof filter.targets[entityType] !== 'boolean') {
+      .filter((typeId) => typeId !== ENTITY_TYPES.OBSTACLE)
+      .forEach((typeId) => {
+        if (typeof filter.targets[typeId] !== 'boolean') {
           throw new Error(`${label} must include every entity target as a boolean.`);
         }
       });
 
     if (
       typeof obstacleTargets.enabled !== 'boolean'
-      || Object.values(OBSTACLE_SHAPE_TYPES).some(
+      || Object.values(SHAPE_TYPES).some(
         (shapeType) => typeof obstacleTargets[shapeType] !== 'boolean'
       )
     ) {
@@ -1510,10 +1554,16 @@ function Simulation3rdGen() {
         assignPropertyToEntity(entity, property);
       });
 
-      setPropertyList((currentList) => [
-        ...currentList,
-        property,
-      ]);
+      setEntityTypeDefinitions((definitions) => definitions.map((definition) => {
+        const isAssigned = definition.id === ENTITY_TYPES.OBSTACLE
+          ? property.assignments[definition.id]?.enabled === true
+          : property.assignments[definition.id] === true;
+        if (!isAssigned) return definition;
+        return {
+          ...definition,
+          propertyDefinitions: [...definition.propertyDefinitions, property],
+        };
+      }));
 
       setInspectorMode({
         mode: INSPECTOR_MODES.EMPTY,
@@ -1581,11 +1631,20 @@ function Simulation3rdGen() {
         }
       });
 
-      setPropertyList((currentList) =>
-        currentList.map((property) =>
-          property.id === selectedProperty.id ? updatedProperty : property
-        )
-      );
+      setEntityTypeDefinitions((definitions) => definitions.map((definition) => {
+        const isAssigned = definition.id === ENTITY_TYPES.OBSTACLE
+          ? updatedProperty.assignments[definition.id]?.enabled === true
+          : updatedProperty.assignments[definition.id] === true;
+        const remainingProperties = definition.propertyDefinitions.filter(
+          (property) => property.id !== updatedProperty.id
+        );
+        return {
+          ...definition,
+          propertyDefinitions: isAssigned
+            ? [...remainingProperties, updatedProperty]
+            : remainingProperties,
+        };
+      }));
       setSelectedProperty(null);
       setInspectorMode({ mode: INSPECTOR_MODES.EMPTY });
       return { ok: true };
@@ -1600,13 +1659,12 @@ function Simulation3rdGen() {
   }
 
   function handleRenameCustomProperty(propertyId, name) {
-    setPropertyList((currentList) =>
-      currentList.map((property) =>
-        property.id === propertyId
-          ? { ...property, name }
-          : property
-      )
-    );
+    setEntityTypeDefinitions((definitions) => definitions.map((definition) => ({
+      ...definition,
+      propertyDefinitions: definition.propertyDefinitions.map((property) =>
+        property.id === propertyId ? { ...property, name } : property
+      ),
+    })));
   }
 
   // TODO: Add Property deletion after Behavior, Filter, and Activation store
@@ -1678,15 +1736,20 @@ function Simulation3rdGen() {
     );
   }
 
-  // Behavior List Ref Sync (ensuring the latest behavior list is available)
+  // Keep each Entity Type's runtime Behavior groups current.
   useEffect(() => {
-    behaviorGroupsRef.current = groupBehaviors(behaviorList, true);
+    behaviorGroupsByTypeRef.current = new Map(
+      entityTypeDefinitions.map((definition) => [
+        definition.id,
+        groupBehaviors(definition.behaviors, true),
+      ])
+    );
 
     // A changed Behavior configuration must not reuse the previous steering target.
     agentsArrayRef.current.forEach((agent) => {
-      agent.steeringAngle = agent.angle;
+      agent.runtimeState.steeringRotation = agent.transform.rotation;
     });
-  }, [behaviorList]);
+  }, [entityTypeDefinitions]);
 
   // Debug Session
   // When the scenario changes in Debug Mode, refresh every Agent's decision vectors by calling calculateDecision() again.
@@ -1695,15 +1758,14 @@ function Simulation3rdGen() {
     const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
 
     runtimeAgents.forEach((agent) => {
-      agent.behaviorDx = agent.dx;
-      agent.behaviorDy = agent.dy;
-      agent.behaviorAngle = agent.angle;
+      agent.runtimeState.behaviorVelocity = { ...agent.velocity };
+      agent.runtimeState.behaviorRotation = agent.transform.rotation;
     });
 
     runtimeAgents.forEach((agent) => {
       agent.debugDecision = agent.calculateDecision(
         allEntities,
-        behaviorGroupsRef.current,
+        behaviorGroupsByTypeRef.current.get(agent.typeId),
         maxSpeedRef.current,
         maxAngleRef.current,
         smoothingFactorRef.current
@@ -1771,8 +1833,8 @@ function Simulation3rdGen() {
       agentsArrayRef.current.forEach((agent) => {
         agent.applyDecision(agent.debugDecision);
       });
-      agentsArrayRef.current.forEach((agent) => {
-        agent.move(maxSpeedRef.current);
+      [...agentsArrayRef.current, ...obstaclesArrayRef.current].forEach((entity) => {
+        entity.move(CANVAS_WIDTH, CANVAS_HEIGHT, maxSpeedRef.current);
       });
 
       refreshDebugDecisions();
@@ -1848,7 +1910,7 @@ function Simulation3rdGen() {
     agentsArrayRef.current = agentsArray; // Store in ref for access outside useEffect
 
     // Update state with agents for the control panel
-    setAgents(agentsArray); // explained by Claude: ",,," implies a shallow copy of the array, but not required here
+    setAgents(agentsArray);
 
     // Animation loop - borrowed from legacy simulation
     let animationId;
@@ -1867,7 +1929,7 @@ function Simulation3rdGen() {
           configureHighDpiCanvas(canvas, ctx, CANVAS_WIDTH, CANVAS_HEIGHT);
         }
         ctx.clearRect(0, 0, getCanvasLogicalWidth(canvas), getCanvasLogicalHeight(canvas));
-        obstaclesArrayRef.current.forEach(obstacle => obstacle.draw());
+        obstaclesArrayRef.current.forEach(obstacle => obstacle.draw(ctx));
         drawObstaclePreview(ctx, obstaclePreviewRef.current);
         agentPreviewRef.current.forEach((preview) => {
           drawAgentPreview(ctx, preview);
@@ -1882,19 +1944,18 @@ function Simulation3rdGen() {
           stepDebugForward();
         } else if (isSimulationRunningRef.current) {
           // Only advance positions and behaviors while the simulation is playing.
-          runtimeAgents.forEach(agent => agent.move(maxSpeedRef.current));
+          const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
+          allEntities.forEach(entity => entity.move(CANVAS_WIDTH, CANVAS_HEIGHT, maxSpeedRef.current));
           runtimeAgents.forEach(agent => {
             // Snapshot motion before behavior so neighbor-reference rules do not
             // read speeds/headings already changed earlier in the same frame.
-            agent.behaviorDx = agent.dx;
-            agent.behaviorDy = agent.dy;
-            agent.behaviorAngle = agent.angle;
+            agent.runtimeState.behaviorVelocity = { ...agent.velocity };
+            agent.runtimeState.behaviorRotation = agent.transform.rotation;
           });
-          const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
           const decisions = runtimeAgents.map((agent) =>
             agent.calculateDecision(
               allEntities,
-              behaviorGroupsRef.current,
+              behaviorGroupsByTypeRef.current.get(agent.typeId),
               maxSpeedRef.current,
               maxAngleRef.current,
               smoothingFactorRef.current
@@ -1920,7 +1981,7 @@ function Simulation3rdGen() {
 
         // Movement and frame restoration only update state. Render every Agent
         // exactly once after the canvas has been cleared.
-        runtimeAgents.forEach(agent => agent.draw());
+        runtimeAgents.forEach(agent => agent.draw(ctx));
 
         if (debugAgentRef.current) { // If selected, draw the selected agent's decision vector
           const debugDecision = debugAgentRef.current.debugDecision;
@@ -1955,14 +2016,14 @@ function Simulation3rdGen() {
     const point = getCanvasPointFromEvent(event, canvas);
 
     // Find the topmost Entity in the same order used to draw the canvas.
-    const clickedEntity = findEntityAt(point, [
+    const clickedEntity = findRuntimeEntityAt(point, [
       ...obstaclesArrayRef.current,
       ...agentsArrayRef.current,
     ]);
-    const clickedAgent = clickedEntity?.entityType === ENTITY_TYPES.AGENT
+    const clickedAgent = clickedEntity?.typeId === ENTITY_TYPES.AGENT
       ? clickedEntity
       : null;
-    const clickedObstacle = clickedEntity?.entityType === ENTITY_TYPES.OBSTACLE
+    const clickedObstacle = clickedEntity?.typeId === ENTITY_TYPES.OBSTACLE
       ? clickedEntity
       : null;
 
@@ -1992,7 +2053,8 @@ function Simulation3rdGen() {
     dragRef.current = {
       type: clickedAgent ? 'agent' : 'obstacle',
       entity: clickedAgent ?? clickedObstacle,
-      previous: point,
+      startPointer: point,
+      startPosition: { ...(clickedAgent ?? clickedObstacle).transform.position },
       pointerId: event.pointerId,
     };
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -2011,19 +2073,19 @@ function Simulation3rdGen() {
       && !isSimulationRunningRef.current
     ) {
       const point = getCanvasPointFromEvent(event, canvas);
-      const dx = point.x - lookAtAgent.x;
-      const dy = point.y - lookAtAgent.y;
+      const dx = point.x - lookAtAgent.transform.position.x;
+      const dy = point.y - lookAtAgent.transform.position.y;
 
       // The center has no direction, so keep the previous angle there.
       if (dx !== 0 || dy !== 0) {
-        const angle = getLookAtCursorAngle(lookAtAgent, point);
-        const speed = Math.hypot(lookAtAgent.dx, lookAtAgent.dy);
+        const angle = Math.atan2(dy, dx);
+        const speed = Math.hypot(lookAtAgent.velocity.x, lookAtAgent.velocity.y);
 
         // Keep drawing, steering, and future movement pointed the same way.
-        lookAtAgent.angle = angle;
-        lookAtAgent.steeringAngle = angle;
-        lookAtAgent.dx = Math.cos(angle) * speed;
-        lookAtAgent.dy = Math.sin(angle) * speed;
+        lookAtAgent.transform.rotation = angle;
+        lookAtAgent.runtimeState.steeringRotation = angle;
+        lookAtAgent.velocity.x = Math.cos(angle) * speed;
+        lookAtAgent.velocity.y = Math.sin(angle) * speed;
         if (isDebugging) setAgents([...agentsArrayRef.current]);
       }
     }
@@ -2032,45 +2094,22 @@ function Simulation3rdGen() {
     if (!drag || drag.pointerId !== event.pointerId) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
-    const dx = point.x - drag.previous.x;
-    const dy = point.y - drag.previous.y;
-    drag.previous = point;
+    const desiredPosition = {
+      x: drag.startPosition.x + point.x - drag.startPointer.x,
+      y: drag.startPosition.y + point.y - drag.startPointer.y,
+    };
 
-    if (drag.type === 'agent') {
-      const agent = drag.entity;
-      Object.assign(
-        agent,
-        getDraggedEntityGeometry(
-          agent,
-          dx,
-          dy,
-          CANVAS_WIDTH,
-          CANVAS_HEIGHT
-        )
-      );
-      setAgents([...agentsArrayRef.current]);
-      return;
-    }
-
-    const obstacle = drag.entity;
-    const draggedGeometry = getDraggedEntityGeometry(
-      obstacle,
-      dx,
-      dy,
+    const entity = drag.entity;
+    entity.transform.position = getDraggedRuntimeEntityPosition(
+      entity,
+      desiredPosition,
       CANVAS_WIDTH,
       CANVAS_HEIGHT
     );
 
-    if (obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-      obstacle.center = draggedGeometry.center;
-      obstacle.position = obstacle.center;
-    } else {
-      obstacle.vertices = draggedGeometry.vertices;
-      // Collision detection and labels use these derived geometry fields.
-      obstacle.edges = obstacle._buildEdges(obstacle.vertices);
-      obstacle.position = obstacle._computeCentroid(obstacle.vertices);
-      obstacle.centroid = obstacle.position;
-      obstacle.radius = obstacle._computeBoundingRadius(obstacle.vertices, obstacle.position);
+    if (drag.type === 'agent') {
+      setAgents([...agentsArrayRef.current]);
+      return;
     }
     setObstacles([...obstaclesArrayRef.current]);
   }
@@ -2090,7 +2129,7 @@ function Simulation3rdGen() {
     if (!canvas) return;
 
     const point = getCanvasPointFromEvent(event, canvas);
-    const clickedAgent = findEntityAt(point, agentsArrayRef.current);
+    const clickedAgent = findRuntimeEntityAt(point, agentsArrayRef.current);
     if (!clickedAgent) return;
 
     // Double-click the same Agent again to turn the mode off.
@@ -2151,15 +2190,15 @@ function Simulation3rdGen() {
     if (!agent) return null;
 
     // Convert runtime vectors and radians into values people can edit directly.
-    const speed = Math.hypot(agent.dx, agent.dy);
-    const angle = (((-agent.angle * 180 / Math.PI) % 360) + 360) % 360;
+    const speed = Math.hypot(agent.velocity.x, agent.velocity.y);
+    const angle = (((-agent.transform.rotation * 180 / Math.PI) % 360) + 360) % 360;
     const roundForForm = (value) => String(Math.round(value * 100) / 100);
 
     return {
       name: agent.name,
       // Round display values only; the live Agent keeps its full precision.
-      x: roundForForm(agent.x),
-      y: roundForForm(agent.y),
+      x: roundForForm(agent.transform.position.x),
+      y: roundForForm(agent.transform.position.y),
       speed: roundForForm(speed),
       angle: roundForForm(angle),
       color: getAgentColor(agent),
@@ -2176,16 +2215,16 @@ function Simulation3rdGen() {
     // Copy values into the form so Cancel cannot mutate the live obstacle.
     return {
       shape:
-        obstacle.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
+        obstacle.shapes[0].type === SHAPE_TYPES.CIRCLE
           ? 'circle'
           : 'polygon',
       name: obstacle.name,
       color: getObstacleColor(obstacle),
-      centerX: roundForForm(obstacle.center?.x ?? 250),
-      centerY: roundForForm(obstacle.center?.y ?? 250),
-      radius: String(obstacle.radius ?? 50),
-      vertices: Array.isArray(obstacle.vertices)
-        ? obstacle.vertices.map((vertex) => ({
+      centerX: roundForForm(obstacle.transform.position.x),
+      centerY: roundForForm(obstacle.transform.position.y),
+      radius: String(obstacle.shapes[0].radius ?? 50),
+      vertices: obstacle.shapes[0].type === SHAPE_TYPES.POLYGON
+        ? obstacle.shapes[0].getWorldVertices(obstacle.transform).map((vertex) => ({
             x: roundForForm(vertex.x),
             y: roundForForm(vertex.y),
           }))
@@ -2239,12 +2278,13 @@ function Simulation3rdGen() {
 
     // Step 3: Commit all edits together so Cancel never partially changes an Agent.
     selectedAgent.name = name;
-    selectedAgent.x = x;
-    selectedAgent.y = y;
-    selectedAgent.dx = Math.cos(angle) * speed;
-    selectedAgent.dy = Math.sin(angle) * speed;
-    selectedAgent.angle = angle;
-    selectedAgent.steeringAngle = angle;
+    selectedAgent.transform.position = { x, y };
+    selectedAgent.velocity = {
+      x: Math.cos(angle) * speed,
+      y: Math.sin(angle) * speed,
+    };
+    selectedAgent.transform.rotation = angle;
+    selectedAgent.runtimeState.steeringRotation = angle;
     selectedAgent.originalColor = values.color;
     selectedAgent.colorHex = values.color;
     selectedAgent.showFOV = values.showFOV;
@@ -2310,24 +2350,22 @@ function Simulation3rdGen() {
 
       // Step 3: Create the matching existing model.
       const obstacle =
-        config.shapeType === OBSTACLE_SHAPE_TYPES.CIRCLE
-          ? new CircleObstacle(
+        config.shapeType === SHAPE_TYPES.CIRCLE
+          ? Obstacle.createCircle(
               createEntityID(ENTITY_TYPES.OBSTACLE),
               obstacleName,
               config.center,
               config.radius,
-              config.color,
-              ctx
+              config.color
             )
-          : new PolygonObstacle(
+          : Obstacle.createPolygon(
               createEntityID(ENTITY_TYPES.OBSTACLE),
               obstacleName,
               config.vertices,
-              config.color,
-              ctx
+              config.color
             );
 
-      propertyList.forEach((property) => {
+      obstacleTypeDefinition.propertyDefinitions.forEach((property) => {
         assignPropertyToEntity(obstacle, property);
       });
 
@@ -2402,7 +2440,7 @@ function Simulation3rdGen() {
     try {
       // Step 1: Reuse the same validation as Create and Preview.
       const config = normalizeObstacleFormValues(updates);
-      const currentShapeType = selectedObstacle.shapeType;
+      const currentShapeType = selectedObstacle.shapes[0].type;
 
       if (!config.name) {
         throw new Error('Obstacle Name cannot be empty.');
@@ -2414,19 +2452,18 @@ function Simulation3rdGen() {
       selectedObstacle.name = config.name;
       selectedObstacle.color = config.color;
 
-      if (currentShapeType === OBSTACLE_SHAPE_TYPES.CIRCLE) {
-        selectedObstacle.position = config.center;
-        selectedObstacle.center = selectedObstacle.position;
-        selectedObstacle.radius = config.radius;
+      if (currentShapeType === SHAPE_TYPES.CIRCLE) {
+        selectedObstacle.transform.position = config.center;
+        selectedObstacle.shapes[0].radius = config.radius;
       } else {
-        selectedObstacle.vertices = config.vertices;
-        selectedObstacle.edges = selectedObstacle._buildEdges(config.vertices);
-        selectedObstacle.position = selectedObstacle._computeCentroid(config.vertices);
-        selectedObstacle.centroid = selectedObstacle.position;
-        selectedObstacle.radius = selectedObstacle._computeBoundingRadius(
+        const updatedObstacle = Obstacle.createPolygon(
+          selectedObstacle.id,
+          selectedObstacle.name,
           config.vertices,
-          selectedObstacle.position
+          selectedObstacle.color
         );
+        selectedObstacle.transform = updatedObstacle.transform;
+        selectedObstacle.shapes = updatedObstacle.shapes;
       }
 
       // Step 3: Refresh the UI and close the editor.
@@ -2875,6 +2912,7 @@ function Simulation3rdGen() {
           onCreateBehavior={handleCreateBehavior}
           behaviors={behaviorList}
           properties={propertyList}
+          entityTypeDefinitions={entityTypeDefinitions}
           selectedBehavior={selectedBehavior}
           behaviorEditValues={getBehaviorEditValues(selectedBehavior)}
           onApplyBehaviorEdits={handleApplyBehaviorEdits}
