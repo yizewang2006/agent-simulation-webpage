@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { Agent } from '../src/models/agent.js';
 import { getEntityCenterPoint } from '../src/models/behavior.js';
+import { Entity } from '../src/models/entity.js';
 import { Obstacle } from '../src/models/obstacle.js';
 import { CircleShape, PolygonShape } from '../src/models/shapes.js';
 import {
@@ -78,11 +79,41 @@ test('Entity calculations include every Shape', () => {
 test('Agent movement updates shared transform and velocity state', () => {
   const agent = new Agent(false, 99, 98, 5, 3, 4, '#000000', 100, Math.PI, 0, 'agent-1', 'Agent 1', canvas);
 
-  agent.move();
+  agent.move(100, 100);
 
   assert.deepEqual(agent.transform.position, { x: 2, y: 2 });
   assert.deepEqual(agent.velocity, { x: 3, y: 4 });
   assert.equal(agent.transform.rotation, Math.atan2(4, 3));
+});
+
+test('Entity owns movement, static motion, and virtual offsets', () => {
+  const movingEntity = new Entity(
+    'entity-1',
+    'Moving Entity',
+    99,
+    { x: 95, y: 20 },
+    Math.PI / 4,
+    { x: 8, y: 0 },
+    [new CircleShape(5)]
+  );
+  movingEntity.move(100, 100);
+
+  assert.deepEqual(movingEntity.transform.position, { x: 3, y: 20 });
+  assert.equal(movingEntity.transform.rotation, Math.PI / 4);
+  assert.deepEqual(movingEntity.getVirtualOffsets(100, 100), [{ x: 100, y: 0 }]);
+
+  const staticEntity = new Entity(
+    'entity-2',
+    'Static Entity',
+    99,
+    { x: 30, y: 40 },
+    0,
+    { x: 0, y: 0 },
+    [new CircleShape(5)]
+  );
+  staticEntity.move(100, 100);
+
+  assert.deepEqual(staticEntity.transform.position, { x: 30, y: 40 });
 });
 
 test('Agent decisions update shared rotation and velocity state together', () => {

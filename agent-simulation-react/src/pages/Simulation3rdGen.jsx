@@ -467,8 +467,7 @@ function Simulation3rdGen() {
   const dragRef = useRef(null); // Ref to hold the current drag state (null if not dragging)
   const lookAtAgentRef = useRef(null); // Double-clicked Agent that currently follows the cursor.
 
-  const [targetFPS, setTargetFPS] = useState('30'); // State to hold the target FPS, initially set to 24
-  const [simulationScale, setSimulationScale] = useState('large'); // State to hold the simulation scale (small or large), default to small
+  const [targetFPS, setTargetFPS] = useState('30'); // Runtime frame-rate target, carried forward from the previous Simulation.
   const fpsRef = useRef(targetFPS); // Ref to hold the current FPS value, reference this value without the need of rendering
   const [maxSpeed, setMaxSpeed] = useState('3');
   const [maxAngle, setMaxAngle] = useState('45');
@@ -1770,8 +1769,8 @@ function Simulation3rdGen() {
       agentsArrayRef.current.forEach((agent) => {
         agent.applyDecision(agent.debugDecision);
       });
-      agentsArrayRef.current.forEach((agent) => {
-        agent.move(maxSpeedRef.current);
+      [...agentsArrayRef.current, ...obstaclesArrayRef.current].forEach((entity) => {
+        entity.move(CANVAS_WIDTH, CANVAS_HEIGHT, maxSpeedRef.current);
       });
 
       refreshDebugDecisions();
@@ -1847,7 +1846,7 @@ function Simulation3rdGen() {
     agentsArrayRef.current = agentsArray; // Store in ref for access outside useEffect
 
     // Update state with agents for the control panel
-    setAgents(agentsArray); // explained by Claude: ",,," implies a shallow copy of the array, but not required here
+    setAgents(agentsArray);
 
     // Animation loop - borrowed from legacy simulation
     let animationId;
@@ -1881,14 +1880,14 @@ function Simulation3rdGen() {
           stepDebugForward();
         } else if (isSimulationRunningRef.current) {
           // Only advance positions and behaviors while the simulation is playing.
-          runtimeAgents.forEach(agent => agent.move(maxSpeedRef.current));
+          const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
+          allEntities.forEach(entity => entity.move(CANVAS_WIDTH, CANVAS_HEIGHT, maxSpeedRef.current));
           runtimeAgents.forEach(agent => {
             // Snapshot motion before behavior so neighbor-reference rules do not
             // read speeds/headings already changed earlier in the same frame.
             agent.runtimeState.behaviorVelocity = { ...agent.velocity };
             agent.runtimeState.behaviorRotation = agent.transform.rotation;
           });
-          const allEntities = [...runtimeAgents, ...obstaclesArrayRef.current];
           const decisions = runtimeAgents.map((agent) =>
             agent.calculateDecision(
               allEntities,

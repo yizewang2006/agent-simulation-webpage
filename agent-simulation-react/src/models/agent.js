@@ -13,13 +13,6 @@ import { getCanvasLogicalHeight, getCanvasLogicalWidth, parseNumberCap, parseNum
 import { BEHAVIOR_GROUPS } from "../utils/behaviorGroups.js";
 import { CircleShape } from "./shapes.js";
 
-class fovOffset {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-    }
-}
-
 export class Agent extends Entity{
     constructor(isSpecial, x, y, radius, dx, dy, colorHex = '#000000', fovRadius = 100, fovAngle = 5 * Math.PI / 6, angle=0, id, name, canvas, roster) { // Standard FOV = 150 degrees OR 5π/6
         console.log("A new agent called " + name + " has been created");
@@ -38,7 +31,7 @@ export class Agent extends Entity{
         this.runtimeState.detectedEntities = [];
         // The canvas monitor reads the latest calculated Behavior data directly.
         this.runtimeState.activeBehaviorGroups = {};
-        // 26.1.28 Canvas reference for scalability
+        // Canvas dimensions are used for wrapped drawing and FOV distance calculations.
         this.canvas = canvas;
         this.roster = roster;
         // Add this agent to the roster if provided
@@ -48,8 +41,16 @@ export class Agent extends Entity{
     draw(ctx) {
         // showFOV is attached by Simulation.jsx as a global display setting.
         const shouldDrawFOV = this.isSpecial && this.showFOV !== false;
-        const virtualRange = this.getBoundingRadius() + (shouldDrawFOV ? this.fovRadius : 0);
-        const offsets = [...this.getVirtualOffsets(virtualRange), { x: 0, y: 0 }];
+        const canvasWidth = getCanvasLogicalWidth(this.canvas);
+        const canvasHeight = getCanvasLogicalHeight(this.canvas);
+        const offsets = [
+            ...this.getVirtualOffsets(
+                canvasWidth,
+                canvasHeight,
+                shouldDrawFOV ? this.fovRadius : 0
+            ),
+            { x: 0, y: 0 },
+        ];
 
         offsets.forEach((offset) => {
             const transform = {
@@ -105,49 +106,6 @@ export class Agent extends Entity{
           ];
         const randomIndex = Math.floor(Math.random() * possibleColor.length);
         this.colorHex = possibleColor[randomIndex];
-    }
-
-    getVirtualOffsets(range) {
-        let horizontalOffset = 0, verticalOffset = 0;
-        const canvasWidth = getCanvasLogicalWidth(this.canvas);
-        const canvasHeight = getCanvasLogicalHeight(this.canvas);
-
-        if (this.transform.position.x + range > canvasWidth) {
-            horizontalOffset = -canvasWidth;
-        } else if (this.transform.position.x - range < 0) {
-            horizontalOffset = canvasWidth;
-        }
-
-        if (this.transform.position.y + range > canvasHeight) {
-            verticalOffset = -canvasHeight;
-        } else if (this.transform.position.y - range < 0) {
-            verticalOffset = canvasHeight;
-        }
-
-        const offsets = [];
-        if (horizontalOffset !== 0) offsets.push(new fovOffset(horizontalOffset, 0));
-        if (verticalOffset !== 0) offsets.push(new fovOffset(0, verticalOffset));
-        if (horizontalOffset !== 0 && verticalOffset !== 0) offsets.push(new fovOffset(horizontalOffset, verticalOffset));
-        return offsets;
-    }
-
-    // Phase 1: move and warp — rendering is handled separately by the simulation.
-    move(maxSpeed = null) {
-        this.transform.position.x += this.velocity.x;
-        this.transform.position.y += this.velocity.y;
-        if (this.velocity.x !== 0 || this.velocity.y !== 0) {
-            this.transform.rotation = Math.atan2(this.velocity.y, this.velocity.x);
-        }
-        if (maxSpeed !== null) {
-            const speedCap = parseNumberCap(maxSpeed);
-            const currentSpeed = Math.sqrt(this.velocity.x ** 2 + this.velocity.y ** 2);
-            if (currentSpeed > speedCap) {
-                const scale = speedCap / currentSpeed;
-                this.velocity.x *= scale;
-                this.velocity.y *= scale;
-            }
-        }
-        this.warpAgent();
     }
 
     // Phase 2: detect and apply behaviors using consistent post-move positions
@@ -311,25 +269,7 @@ export class Agent extends Entity{
         this.velocity.y = Math.sin(this.transform.rotation) * decision.finalSpeed;
     }
 
-    // Wrap to the other side of the canvas if out of bounds
-    warpAgent() {
-        const canvasWidth = getCanvasLogicalWidth(this.canvas);
-        const canvasHeight = getCanvasLogicalHeight(this.canvas);
-
-        if (this.transform.position.x >= canvasWidth) {
-            this.transform.position.x -= canvasWidth;
-        } else if (this.transform.position.x < 0) {
-            this.transform.position.x += canvasWidth;
-        }
-
-        if (this.transform.position.y >= canvasHeight) {
-            this.transform.position.y -= canvasHeight;
-        } else if (this.transform.position.y < 0) {
-            this.transform.position.y += canvasHeight;
-        }
-    }
-
-    // New: detect all entities specified by UI
+    // Detect runtime Entities inside this Agent's field of view.
     detectEntities(entities) {
         const currentlyDetected = [];
 
@@ -373,20 +313,8 @@ export class Agent extends Entity{
 
                     if (isVisible) {
                         currentlyDetected.push(entity);
-                        // Only change to red if this entity wasn't detected in the previous update
-                        // if (!this.runtimeState.detectedEntities.includes(entity)) {
-                        //     entity.colorHex = '#FF0000';
-                        // }
                     }
                 }
-            }
-        });
-
-        // For any entity that was previously detected but is no longer in the current list,
-        // reset its color to original.
-        this.runtimeState.detectedEntities.forEach(entity => {
-            if (!currentlyDetected.includes(entity)) {
-                // entity.colorHex = entity.originalColor; // Line changing color to red is in behavior.js
             }
         });
 
